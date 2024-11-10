@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Log Processor</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.2/css/bootstrap.min.css" rel="stylesheet" />
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css" rel="stylesheet" />
+    <style>
+        .processing-option:hover {
+            transform: translateY(-2px);
+            transition: transform 0.2s;
+        }
+
+        .nav-pills .nav-link.active {
+            background-color: #0d6efd;
+        }
+
+        .custom-file-upload {
+            border: 2px dashed #dee2e6;
+            border-radius: 10px;
+            padding: 2rem;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .custom-file-upload:hover {
+            border-color: #0d6efd;
+            background-color: #f8f9fa;
+        }
+
+        .navbar-toggler-icon {
+            background-image: url("data:image/svg+xml,%3csvg viewBox='0 0 30 30' xmlns='http://www.w3.org/2000/svg'%3e%3cpath stroke='rgba(255, 255, 255, 1)' stroke-width='2' stroke-linecap='round' stroke-miterlimit='10' d='M4 7h22M4 15h22M4 23h22'/%3e%3c/svg%3e");
+        }
+
+        @media (max-width: 992px) {
+            .side-nav {
+                position: fixed;
+                top: 0;
+                left: -100%;
+                height: 100vh;
+                z-index: 1000;
+                background: white;
+                transition: 0.3s;
+                width: 250px;
+            }
+
+            .side-nav.active {
+                left: 0;
+            }
+
+            .nav-overlay {
+                display: none;
+                position: fixed;
+                top: 0;
+                left: 0;
+                right: 0;
+                bottom: 0;
+                background: rgba(0, 0, 0, 0.5);
+                z-index: 999;
+            }
+
+            .nav-overlay.active {
+                display: block;
+            }
+        }
+    </style>
+</head>
+
+<body class="min-vh-100 d-flex flex-column justify-content-between bg-light">
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary sticky-top z-1">
+        <div class="container">
+            <a class="navbar-brand" href="#">
+                <i class="fas fa-terminal me-2"></i>
+                PyScriptsServer
+            </a>
+            <button class="navbar-toggler d-lg-none" type="button" id="sidebarCollapse">
+                <i class="fas fa-bars"></i>
+            </button>
+        </div>
+    </nav>
+
+    <div class="nav-overlay"></div>
+
+    <div class="container my-4">
+        <div class="row">
+            <div class="col-lg-3">
+                <div class="card shadow-sm side-nav">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-center d-lg-none mb-3">
+                            <h5 class="mb-0">Menu</h5>
+                            <button type="button" class="btn-close" id="sidebarClose"></button>
+                        </div>
+                        <div class="nav flex-column nav-pills" role="tablist">
+                            <button class="nav-link active mb-2" data-bs-toggle="pill" data-bs-target="#minerbot">
+                                <i class="fas fa-robot me-2"></i>Minerbot
+                            </button>
+                            <button class="nav-link mb-2" data-bs-toggle="pill" data-bs-target="#rvrGraph">
+                                <i class="fas fa-chart-line me-2"></i>RVR Graph
+                            </button>
+                            <button class="nav-link mb-2" data-bs-toggle="pill" data-bs-target="#leaGlitch">
+                                <i class="fas fa-bug me-2"></i>LEA Glitch
+                            </button>
+                            <button class="nav-link mb-2" data-bs-toggle="pill" data-bs-target="#snoopTest">
+                                <i class="fas fa-vial me-2"></i>Snoop Test
+                            </button>
+                            <button class="nav-link mb-2" data-bs-toggle="pill" data-bs-target="#btcWatermark">
+                                <i class="fas fa-stamp me-2"></i>BTC Watermark
+                            </button>
+                            <button class="nav-link mb-2" data-bs-toggle="pill" data-bs-target="#xpanProcessing">
+                                <i class="fas fa-microchip me-2"></i>XPAN Processing
+                            </button>
+                            <button class="nav-link mb-2" data-bs-toggle="pill" data-bs-target="#xpanParsing">
+                                <i class="fas fa-file-code me-2"></i>XPAN Parsing
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-lg-9">
+                <div class="card shadow-sm">
+                    <div class="card-body">
+                        <div class="tab-content">
+                            <div class="tab-pane fade show active ms-2" id="minerbot">
+                                <h4 class="mb-4">Minerbot Log Processing</h4>
+                                <form action="" method="post" enctype="multipart/form-data">
+                                    <div class="mb-4">
+                                        <div class="form-check mb-2">
+                                            <input class="form-check-input" type="radio" name="inputType"
+                                                id="logcatInput" checked />
+                                            <label class="form-check-label" for="logcatInput">
+                                                Logcat Input
+                                            </label>
+                                        </div>
+                                        <div class="form-check mb-4">
+                                            <input class="form-check-input" type="radio" name="inputType"
+                                                id="snoopInput" />
+                                            <label class="form-check-label" for="snoopInput">
+                                                Snoop File Input
+                                            </label>
+                                        </div>
+
+                                        <div class="w-100 text-center">
+                                            <label for="fileUpload" class="custom-file-upload">
+                                                <i class="fas fa-cloud-upload-alt fa-3x mb-3"></i>
+                                                <h5>Drop your file here</h5>
+                                                <p class="text-muted">or click to browse</p>
+                                                <input type="file" id="fileUpload" class="d-none" />
+                                            </label>
+                                        </div>
+                                    </div>
+
+                                    <div class="text-end">
+                                        <button type="submit" class="btn btn-primary">
+                                            <i class="fas fa-cogs me-2"></i>Process Log
+                                        </button>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <footer class="footer mt-auto py-3 bg-primary text-white">
+        <div class="container text-center">
+            <small>© Qualcomm - All rights reserved</small>
+        </div>
+    </footer>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.2/js/bootstrap.bundle.min.js"></script>
+    <script>
+        document.addEventListener("DOMContentLoaded", function () {
+            const sidebarCollapse = document.getElementById("sidebarCollapse");
+            const sidebarClose = document.getElementById("sidebarClose");
+            const sideNav = document.querySelector(".side-nav");
+            const overlay = document.querySelector(".nav-overlay");
+
+            function toggleSidebar() {
+                sideNav.classList.toggle("active");
+                overlay.classList.toggle("active");
+            }
+
+            sidebarCollapse.addEventListener("click", toggleSidebar);
+            sidebarClose.addEventListener("click", toggleSidebar);
+            overlay.addEventListener("click", toggleSidebar);
+
+            // Close sidebar when clicking a nav link on mobile
+            const navLinks = document.querySelectorAll(".nav-link");
+            navLinks.forEach((link) => {
+                link.addEventListener("click", () => {
+                    if (window.innerWidth < 992) {
+                        // lg breakpoint
+                        toggleSidebar();
+                    }
+                });
+            });
+        });
+    </script>
+</body>
+
+</html>
