@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>{% block title %}Log Processor{% endblock %}</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.2/css/bootstrap.min.css" rel="stylesheet" />
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css" rel="stylesheet" />
+    <style>
+        /* Your CSS here */
+    </style>
+</head>
+
+<body class="min-vh-100 d-flex flex-column justify-content-between bg-light">
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary sticky-top z-1">
+        <div class="container">
+            <a class="navbar-brand" href="#">
+                <i class="fas fa-terminal me-2"></i>
+                PyScriptsServer
+            </a>
+            <button class="navbar-toggler d-lg-none" type="button" id="sidebarCollapse">
+                <i class="fas fa-bars"></i>
+            </button>
+        </div>
+    </nav>
+
+    <div class="nav-overlay"></div>
+
+    <div class="container my-4">
+        <div class="row">
+            <div class="col-lg-3">
+                <div class="card shadow-sm side-nav">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-center d-lg-none mb-3">
+                            <h5 class="mb-0">Menu</h5>
+                            <button type="button" class="btn-close" id="sidebarClose"></button>
+                        </div>
+                        <div class="nav flex-column nav-pills" role="tablist">
+                            <a href="{% url 'minerbot' %}" class="nav-link {% if active_tab == 'minerbot' %}active{% endif %}">
+                                <i class="fas fa-robot me-2"></i>Minerbot
+                            </a>
+                            <a href="{% url 'rvr_graph' %}" class="nav-link {% if active_tab == 'rvr_graph' %}active{% endif %}">
+                                <i class="fas fa-chart-line me-2"></i>RVR Graph
+                            </a>
+                            <a href="{% url 'lea_glitch' %}" class="nav-link {% if active_tab == 'lea_glitch' %}active{% endif %}">
+                                <i class="fas fa-bug me-2"></i>LEA Glitch
+                            </a>
+                            <!-- Add more nav links as needed -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-lg-9">
+                <div class="card shadow-sm">
+                    <div class="card-body">
+                        {% block content %}
+                        <!-- This block will be overridden by child templates -->
+                        {% endblock %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.2/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // Your JavaScript here
+    </script>
+</body>
+
+</html>
