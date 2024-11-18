@@ -6,20 +6,34 @@
     <title>Device Management</title>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.2/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css" rel="stylesheet">
+    <style>
+        .alert .btn-close {
+            position: absolute;
+            right: 1rem;
+            top: 50%;
+            transform: translateY(-50%);
+            padding: 0.5rem;
+            opacity: 0.8;
+        }
+        .alert {
+            position: relative;
+            padding-right: 3rem;
+        }
+        .alert-container {
+            margin-bottom: 1rem;
+        }
+    </style>
 </head>
 <body class="bg-light">
     <nav class="navbar navbar-expand-lg navbar-dark bg-primary mb-4">
         <div class="container-fluid">
             <a class="navbar-brand" href="#">Device Manager</a>
-            
+
             <div class="dropdown ms-auto">
                 <button class="btn btn-primary dropdown-toggle" type="button" id="profileDropdown" data-bs-toggle="dropdown" aria-expanded="false">
                     <i class="fas fa-user-circle fs-4"></i>
                 </button>
                 <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="profileDropdown">
-                    {% comment %} <li><a class="dropdown-item" href="#"><i class="fas fa-user me-2"></i>Profile</a></li>
-                    <li><a class="dropdown-item" href="#"><i class="fas fa-cog me-2"></i>Settings</a></li>
-                    <li><hr class="dropdown-divider"></li> {% endcomment %}
                     <li><a class="dropdown-item" href="{% url 'accounts:logout' %}"><i class="fas fa-sign-out-alt me-2"></i>Logout</a></li>
                 </ul>
             </div>
@@ -32,9 +46,7 @@
                 {% for message in messages %}
                     <div class="alert {% if message.tags %}alert-{{ message.tags }}{% else %}alert-info{% endif %} alert-dismissible fade show" role="alert">
                         {{ message }}
-                        <button type="button" class="close" data-dismiss="alert" aria-label="Close" style="position: absolute; right: 1rem; top: 1rem;">
-                            <span aria-hidden="true">&times;</span>
-                        </button>
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
                     </div>
                 {% endfor %}
             </div>
@@ -48,12 +60,6 @@
                     <li class="nav-item">
                         <a class="nav-link {% if request.resolver_match.url_name == 'data_entry' %}active{% endif %}" href="{% url 'iot_catalogue:data_entry' %}">Data Entry</a>
                     </li>
-                    {% comment %} <li class="nav-item">
-                        <a class="nav-link {% if request.resolver_match.url_name == 'data_entry' %}active{% endif %}" href="#">Charts</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link {% if request.resolver_match.url_name == 'data_entry' %}active{% endif %}" href="#">Troubleshooting</a>
-                    </li> {% endcomment %}
                 </ul>
             </div>
 
@@ -62,12 +68,6 @@
             </div>
         </div>
     </div>
-
-    {% comment %} <footer class="footer mt-auto py-3 bg-primary text-white">
-        <div class="container text-center">
-            <small>© Qualcomm - All rights reserved</small>
-        </div>
-    </footer> {% endcomment %}
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.2/js/bootstrap.bundle.min.js"></script>
 </body>
