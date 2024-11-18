@@ -17,106 +17,57 @@
                     <i class="fas fa-user-circle fs-4"></i>
                 </button>
                 <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="profileDropdown">
-                    <li><a class="dropdown-item" href="#"><i class="fas fa-user me-2"></i>Profile</a></li>
+                    {% comment %} <li><a class="dropdown-item" href="#"><i class="fas fa-user me-2"></i>Profile</a></li>
                     <li><a class="dropdown-item" href="#"><i class="fas fa-cog me-2"></i>Settings</a></li>
-                    <li><hr class="dropdown-divider"></li>
-                    <li><a class="dropdown-item" href="#"><i class="fas fa-sign-out-alt me-2"></i>Logout</a></li>
+                    <li><hr class="dropdown-divider"></li> {% endcomment %}
+                    <li><a class="dropdown-item" href="{% url 'accounts:logout' %}"><i class="fas fa-sign-out-alt me-2"></i>Logout</a></li>
                 </ul>
             </div>
         </div>
     </nav>
 
     <div class="container">
+        {% if messages %}
+            <div class="alert-container">
+                {% for message in messages %}
+                    <div class="alert {% if message.tags %}alert-{{ message.tags }}{% else %}alert-info{% endif %} alert-dismissible fade show" role="alert">
+                        {{ message }}
+                        <button type="button" class="close" data-dismiss="alert" aria-label="Close" style="position: absolute; right: 1rem; top: 1rem;">
+                            <span aria-hidden="true">&times;</span>
+                        </button>
+                    </div>
+                {% endfor %}
+            </div>
+        {% endif %}
         <div class="card shadow-sm">
             <div class="card-header bg-white">
                 <ul class="nav nav-tabs card-header-tabs">
                     <li class="nav-item">
-                        <a class="nav-link active" href="#">Search</a>
+                        <a class="nav-link {% if request.resolver_match.url_name == 'search' %}active{% endif %}" href="{% url 'iot_catalogue:search' %}">Search</a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" href="#">Data Entry</a>
+                        <a class="nav-link {% if request.resolver_match.url_name == 'data_entry' %}active{% endif %}" href="{% url 'iot_catalogue:data_entry' %}">Data Entry</a>
+                    </li>
+                    {% comment %} <li class="nav-item">
+                        <a class="nav-link {% if request.resolver_match.url_name == 'data_entry' %}active{% endif %}" href="#">Charts</a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" href="#">Charts</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="#">Troubleshooting</a>
-                    </li>
+                        <a class="nav-link {% if request.resolver_match.url_name == 'data_entry' %}active{% endif %}" href="#">Troubleshooting</a>
+                    </li> {% endcomment %}
                 </ul>
             </div>
+
             <div class="card-body">
-                <form class="row g-3">
-                    <div class="col-md-6">
-                        <div class="mb-3">
-                            <label class="form-label">Tag #</label>
-                            <div class="input-group">
-                                <span class="input-group-text">LIKE</span>
-                                <input type="text" class="form-control">
-                            </div>
-                        </div>
-                        
-                        <div class="mb-3">
-                            <label class="form-label">Device Type</label>
-                            <select class="form-select">
-                                <option selected>-- All --</option>
-                                <option>Type 1</option>
-                                <option>Type 2</option>
-                            </select>
-                        </div>
-
-                        <div class="mb-3">
-                            <label class="form-label">Model Year</label>
-                            <div class="input-group">
-                                <span class="input-group-text">BETWEEN</span>
-                                <input type="number" class="form-control">
-                                <span class="input-group-text">AND</span>
-                                <input type="number" class="form-control">
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="col-md-6">
-                        <div class="mb-3">
-                            <label class="form-label">Supported Technologies</label>
-                            <select class="form-select">
-                                <option>WLAN</option>
-                                <option>Bluetooth</option>
-                                <option>WLAN and Bluetooth</option>
-                            </select>
-                        </div>
-
-                        <div class="mb-3">
-                            <label class="form-label">Acquired Date</label>
-                            <div class="input-group">
-                                <span class="input-group-text">BETWEEN</span>
-                                <input type="date" class="form-control">
-                                <span class="input-group-text">AND</span>
-                                <input type="date" class="form-control">
-                            </div>
-                        </div>
-
-                        <div class="mb-3">
-                            <label class="form-label">Status</label>
-                            <select class="form-select">
-                                <option selected>-- All --</option>
-                                <option>Active</option>
-                                <option>Inactive</option>
-                            </select>
-                        </div>
-                    </div>
-
-                    <div class="col-12 text-end">
-                        <button type="submit" class="btn btn-primary">
-                            <i class="fas fa-search me-2"></i>Search
-                        </button>
-                        <button type="reset" class="btn btn-secondary">
-                            <i class="fas fa-undo me-2"></i>Reset
-                        </button>
-                    </div>
-                </form>
+                {% block content_div %} {% endblock %}
             </div>
         </div>
     </div>
+
+    {% comment %} <footer class="footer mt-auto py-3 bg-primary text-white">
+        <div class="container text-center">
+            <small>© Qualcomm - All rights reserved</small>
+        </div>
+    </footer> {% endcomment %}
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.2/js/bootstrap.bundle.min.js"></script>
 </body>
