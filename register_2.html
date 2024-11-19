@@ -10,25 +10,45 @@
     <style>
         body {
             min-height: 100vh;
+            margin: 0;
+            background: url('/static/images/wp7026748.jpg') no-repeat center center fixed;
+            background-size: cover;
             display: flex;
             align-items: center;
-            background-color: #f8f9fa;
+        }
+        .overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.4);
+            pointer-events: none;
         }
         .register-card {
             max-width: 400px;
             width: 90%;
-            padding: 2rem;
-            box-shadow: 0 0 15px rgba(0,0,0,0.1);
-            border-radius: 10px;
-            background: white;
+            padding: 2.5rem;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+            border-radius: 15px;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(8px);
+            position: relative;
+            z-index: 1;
         }
         .btn-primary {
             width: 100%;
             padding: 0.8rem;
             font-size: 1.1rem;
+            background-color: #2C3E50;
+            border-color: #2C3E50;
+        }
+        .btn-primary:hover {
+            background-color: #34495E;
+            border-color: #34495E;
         }
         .logo-placeholder {
-            color: blue;
+            color: #2C3E50;
             font-family: 'Roboto', sans-serif;
             font-weight: 700;
             text-align: center;
@@ -40,16 +60,18 @@
         }
         .form-control {
             border-left: none;
+            background: rgba(255, 255, 255, 0.9);
         }
         .form-control:focus {
-            border-color: #86b7fe;
-            box-shadow: 0 0 0 0.25rem rgba(13,110,253,.25);
+            background: white;
+            border-color: #2C3E50;
+            box-shadow: 0 0 0 0.25rem rgba(44, 62, 80, 0.25);
         }
         .input-group:focus-within .input-group-text {
-            border-color: #86b7fe;
+            border-color: #2C3E50;
         }
         .input-icon {
-            color: #6c757d;
+            color: #2C3E50;
             width: 16px;
         }
         .btn i {
@@ -57,21 +79,42 @@
         }
         .btn-secondary {
             padding: 0.8rem 2rem;
+            background-color: transparent;
+            border-color: #2C3E50;
+            color: #2C3E50;
+        }
+        .btn-secondary:hover {
+            background-color: #2C3E50;
+            border-color: #2C3E50;
+            color: white;
+        }
+        .welcome-text {
+            color: #2C3E50;
+        }
+        .alert {
+            background: rgba(255, 255, 255, 0.9);
+            border: none;
+        }
+        @media (max-width: 768px) {
+            .register-card {
+                margin: 1rem auto;
+            }
         }
     </style>
 </head>
 <body>
+    <div class="overlay"></div>
     <div class="container">
-        <div class="row justify-content-center">
-            <div class="col-12">
-                <div class="register-card mx-auto">
+        <div class="row justify-content-end">
+            <div class="col-md-6 col-lg-5">
+                <div class="register-card">
                     <div class="logo-placeholder">
                         <h2 class="text-center mb-4">
                             <i class="fas fa-layer-group me-2"></i>
                             IOT Catalogue
                         </h2>
                     </div>
-                    <h2 class="text-center mb-4">Register a New User</h2>
+                    <h2 class="welcome-text text-center mb-4">Register a New User</h2>
                     {% if error_message %}
                         <div class="alert alert-danger alert-dismissible fade show" role="alert">
                             <i class="fas fa-exclamation-circle me-2"></i>
