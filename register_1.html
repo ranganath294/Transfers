@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Register - IOT Catalogue</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.2/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            font-family: 'Poppins', sans-serif;
+        }
+        .register-card {
+            max-width: 450px;
+            width: 90%;
+            padding: 2.5rem;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.15);
+            border-radius: 20px;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            transform: translateY(0);
+            transition: all 0.3s ease;
+        }
+        .register-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 15px 35px rgba(0,0,0,0.2);
+        }
+        .logo-placeholder {
+            color: #4a4a4a;
+            margin-bottom: 1.5rem;
+        }
+        .logo-placeholder h2 {
+            font-weight: 700;
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .welcome-text {
+            color: #2d3748;
+            font-weight: 600;
+        }
+        .form-control {
+            border: 2px solid #e2e8f0;
+            padding: 0.8rem 1rem;
+            border-radius: 12px;
+            transition: all 0.3s ease;
+        }
+        .form-control:focus {
+            border-color: #667eea;
+            box-shadow: 0 0 0 0.2rem rgba(102,126,234,0.15);
+        }
+        .input-group-text {
+            background: transparent;
+            border: 2px solid #e2e8f0;
+            border-right: none;
+            border-radius: 12px 0 0 12px;
+        }
+        .form-control {
+            border-left: none;
+            border-radius: 0 12px 12px 0;
+        }
+        .btn {
+            padding: 0.8rem 1.5rem;
+            border-radius: 12px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+        .btn-primary {
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            border: none;
+            box-shadow: 0 4px 15px rgba(102,126,234,0.3);
+        }
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(102,126,234,0.4);
+            background: linear-gradient(45deg, #5a71d5, #6a4494);
+        }
+        .btn-secondary {
+            background: transparent;
+            color: #4a4a4a;
+            border: 2px solid #e2e8f0;
+        }
+        .btn-secondary:hover {
+            background: #f8f9fa;
+            border-color: #cbd5e0;
+        }
+        .alert {
+            border-radius: 12px;
+            border: none;
+        }
+        .divider {
+            height: 1px;
+            background: #e2e8f0;
+            margin: 1.5rem 0;
+        }
+        .input-icon {
+            color: #a0aec0;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .register-card {
+            animation: fadeIn 0.6s ease-out;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="row justify-content-center">
+            <div class="col-12">
+                <div class="register-card mx-auto">
+                    <div class="logo-placeholder">
+                        <h2 class="text-center">
+                            <i class="fas fa-layer-group me-2"></i>
+                            IOT Catalogue
+                        </h2>
+                    </div>
+                    <h3 class="welcome-text text-center mb-4">Create Your Account</h3>
+                    
+                    {% if error_message %}
+                        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                            <i class="fas fa-exclamation-circle me-2"></i>
+                            {{ error_message }}
+                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                        </div>
+                    {% endif %}
+
+                    <form method="post" action="{% url 'accounts:register' %}" class="needs-validation" novalidate>
+                        {% csrf_token %}
+                        <div class="mb-4">
+                            <label for="username" class="form-label">Username</label>
+                            <div class="input-group">
+                                <span class="input-group-text">
+                                    <i class="fas fa-user input-icon"></i>
+                                </span>
+                                <input type="text" 
+                                       class="form-control" 
+                                       id="username" 
+                                       name="username" 
+                                       placeholder="Choose your username"
+                                       required>
+                            </div>
+                        </div>
+
+                        <button type="submit" class="btn btn-primary w-100">
+                            <i class="fas fa-user-plus me-2"></i>
+                            Create Account
+                        </button>
+                    </form>
+
+                    <div class="divider"></div>
+
+                    <div class="text-center">
+                        <p class="text-muted mb-3">Already have an account?</p>
+                        <a href="{% url 'accounts:login' %}" class="btn btn-secondary">
+                            <i class="fas fa-sign-in-alt me-2"></i>
+                            Sign In
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.2/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // Form validation
+        (function () {
+            'use strict'
+            var forms = document.querySelectorAll('.needs-validation')
+            Array.prototype.slice.call(forms)
+                .forEach(function (form) {
+                    form.addEventListener('submit', function (event) {
+                        if (!form.checkValidity()) {
+                            event.preventDefault()
+                            event.stopPropagation()
+                        }
+                        form.classList.add('was-validated')
+                    }, false)
+                })
+        })()
+    </script>
+</body>
+</html>
