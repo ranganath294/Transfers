@@ -1,72 +1,41 @@
-<nav class="navbar navbar-expand-lg navbar-dark bg-primary mb-4">
-    <div class="container-fluid">
-        <a class="navbar-brand" href="#">
-            <i class="fas fa-microchip me-2"></i>
-            Device Manager
-        </a>
-
-        <div class="dropdown ms-auto">
-            <button class="btn btn-primary dropdown-toggle d-flex align-items-center gap-2" type="button" id="profileDropdown" data-bs-toggle="dropdown" aria-expanded="false">
-                <span class="fw-medium">{{ current_username }}</span>
-                <i class="fas fa-user-circle fs-4"></i>
-            </button>
-            <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="profileDropdown">
-                <li>
-                    <a class="dropdown-item d-flex align-items-center" href="{% url 'accounts:logout' %}">
-                        <i class="fas fa-sign-out-alt me-2"></i>
-                        <span>Logout</span>
-                    </a>
-                </li>
-            </ul>
+<div class="card-body">
+    <div class="table-shadow">
+        <div class="table-container">
+            <table class="table table-hover table-sticky mb-0">
+                <thead>
+                    <tr class="bg-light">
+                        {% for col_name in column_names %}
+                            <th class="fw-semibold">{{ col_name }}</th>
+                        {% endfor %}
+                    </tr>
+                </thead>
+                <tbody id="results-table-body">
+                    <!-- Rows will be inserted here by JavaScript -->
+                </tbody>
+            </table>
         </div>
     </div>
-</nav>
+</div>
 
+<script id="devices-data" type="application/json">
+    {{ devices|safe }}
+</script>
 
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const devicesData = JSON.parse(document.getElementById('devices-data').textContent);
+        const tableBody = document.getElementById('results-table-body');
 
-
-
-
-
-<style>
-    .navbar {
-        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-    }
-    
-    .navbar-brand {
-        font-weight: 600;
-    }
-    
-    .dropdown .btn {
-        border: none;
-        padding: 0.5rem 1rem;
-        transition: background-color 0.2s;
-    }
-    
-    .dropdown .btn:hover, 
-    .dropdown .btn:focus {
-        background-color: rgba(255, 255, 255, 0.1);
-    }
-    
-    .dropdown .btn:active {
-        background-color: rgba(255, 255, 255, 0.2) !important;
-    }
-    
-    .dropdown-menu {
-        margin-top: 0.5rem;
-        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-        border: none;
-    }
-    
-    .dropdown-item {
-        padding: 0.5rem 1rem;
-    }
-    
-    .dropdown-item:hover {
-        background-color: #f8f9fa;
-    }
-    
-    .fa-user-circle {
-        color: rgba(255, 255, 255, 0.9);
-    }
-</style>
+        devicesData.forEach(device => {
+            const row = document.createElement('tr');
+            for (const key in device) {
+                const cell = document.createElement('td');
+                cell.textContent = device[key];
+                row.appendChild(cell);
+            }
+            tableBody.appendChild(row);
+        });
+    });
+</script>
+{% endif %}
+{% endblock %}
