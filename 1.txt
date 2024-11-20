@@ -1,0 +1,185 @@
+{% if devices %}
+<style>
+    .table-container {
+        position: relative;
+        max-height: calc(100vh - 300px);
+        overflow: auto;
+    }
+
+    /* Existing styles remain the same */
+    .table-sticky thead {
+        position: sticky;
+        top: 0;
+        z-index: 1;
+        background-color: #f8f9fa;
+    }
+
+    .table-container::-webkit-scrollbar {
+        width: 8px;
+        height: 8px;
+    }
+
+    .table-container::-webkit-scrollbar-track {
+        background: #f1f1f1;
+        border-radius: 4px;
+    }
+
+    .table-container::-webkit-scrollbar-thumb {
+        background: #888;
+        border-radius: 4px;
+    }
+
+    .table-container::-webkit-scrollbar-thumb:hover {
+        background: #555;
+    }
+
+    .table-sticky th,
+    .table-sticky td {
+        white-space: nowrap;
+        padding: 0.75rem;
+    }
+
+    .table-shadow {
+        box-shadow: inset 0 0 5px rgba(0,0,0,0.15);
+        border-radius: 0.375rem;
+    }
+
+    /* New styles for edit icon */
+    .edit-icon {
+        cursor: pointer;
+        padding: 0.25rem;
+        margin-left: 0.5rem;
+        border-radius: 0.25rem;
+        transition: background-color 0.2s;
+    }
+
+    .edit-icon:hover {
+        background-color: rgba(0, 0, 0, 0.05);
+    }
+</style>
+
+{% if is_admin and usernames %}
+<!-- Assignment Modal - Only rendered if user is admin and usernames exist -->
+<div class="modal fade" id="assignUserModal" tabindex="-1" aria-labelledby="assignUserModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="assignUserModalLabel">Assign User to Device</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="assignUserForm">
+                    {% csrf_token %}
+                    <input type="hidden" id="deviceId" name="device_id">
+                    <div class="mb-3">
+                        <label for="userSelect" class="form-label">Select User</label>
+                        <select class="form-select" id="userSelect" name="user_id" required>
+                            <option value="">Choose a user...</option>
+                            {% for username in usernames %}
+                            <option value="{{ username }}">{{ username }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" id="assignButton">Assign</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<div class="card-body">
+    <div class="table-shadow">
+        <div class="table-container">
+            <table class="table table-hover table-sticky mb-0">
+                <thead>
+                    <tr class="bg-light">
+                        {% for col_name in column_names %}
+                            <th class="fw-semibold">{{ col_name }}</th>
+                        {% endfor %}
+                    </tr>
+                </thead>
+                <tbody id="results-table-body">
+                    <!-- Rows will be inserted here by JavaScript -->
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<script id="devices-data" type="application/json">
+    {{ devices|safe }}
+</script>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const devicesData = JSON.parse(document.getElementById('devices-data').textContent);
+        const tableBody = document.getElementById('results-table-body');
+        const isAdmin = {% if is_admin %}true{% else %}false{% endif %};
+        const hasUsernames = {% if usernames %}true{% else %}false{% endif %};
+        const assignModal = isAdmin && hasUsernames ? new bootstrap.Modal(document.getElementById('assignUserModal')) : null;
+
+        devicesData.forEach(device => {
+            const row = document.createElement('tr');
+            for (const key in device) {
+                const cell = document.createElement('td');
+                if (key === 'Current User' && isAdmin && hasUsernames) {
+                    const container = document.createElement('div');
+                    container.className = 'd-flex align-items-center';
+                    
+                    const textSpan = document.createElement('span');
+                    textSpan.textContent = device[key] || 'None';
+                    container.appendChild(textSpan);
+
+                    const editIcon = document.createElement('i');
+                    editIcon.className = 'fas fa-edit edit-icon';
+                    editIcon.setAttribute('data-device-id', device.id);
+                    editIcon.addEventListener('click', () => {
+                        document.getElementById('deviceId').value = device.id;
+                        assignModal.show();
+                    });
+                    container.appendChild(editIcon);
+                    
+                    cell.appendChild(container);
+                } else {
+                    cell.textContent = device[key];
+                }
+                row.appendChild(cell);
+            }
+            tableBody.appendChild(row);
+        });
+
+        // Handle assignment - Only set up event listener if admin and usernames exist
+        if (isAdmin && hasUsernames) {
+            document.getElementById('assignButton').addEventListener('click', async () => {
+                const form = document.getElementById('assignUserForm');
+                const formData = new FormData(form);
+
+                try {
+                    const response = await fetch('{% url "iot_catalogue:assign_user" %}', {
+                        method: 'POST',
+                        body: formData,
+                        headers: {
+                            'X-CSRFToken': formData.get('csrfmiddlewaretoken')
+                        }
+                    });
+
+                    if (response.ok) {
+                        window.location.reload();
+                    } else {
+                        alert('Failed to assign user. Please try again.');
+                    }
+                } catch (error) {
+                    console.error('Error:', error);
+                    alert('An error occurred. Please try again.');
+                }
+
+                assignModal.hide();
+            });
+        }
+    });
+</script>
+{% endif %}
