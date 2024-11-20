@@ -1,70 +1,134 @@
-<!-- Add the modal HTML after the table -->
-<div class="modal fade" id="userAssignmentModal" tabindex="-1" aria-labelledby="userAssignmentModalLabel" aria-hidden="true">
-  <div class="modal-dialog">
-    <div class="modal-dialog modal-dialog-centered">
-      <div class="modal-content">
-        <div class="modal-header">
-          <h5 class="modal-title" id="userAssignmentModalLabel">Assign User</h5>
-          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-        </div>
-        <div class="modal-body">
-          <form id="userAssignmentForm">
-            <input type="hidden" id="deviceId" name="deviceId">
-            <div class="mb-3">
-              <label for="userSelect" class="form-label">Select User</label>
-              <select class="form-select" id="userSelect" name="username" required>
-                <option value="">Choose...</option>
-                {% for username in usernames %}
-                  <option value="{{ username }}">{{ username }}</option>
-                {% endfor %}
-              </select>
-            </div>
-          </form>
-        </div>
-        <div class="modal-footer">
-          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-          <button type="button" class="btn btn-primary" id="saveUserAssignment">Save changes</button>
-        </div>
+<!-- Move this to just before </body> in base.html -->
+<div class="modal fade" id="userAssignmentModal" tabindex="-1" aria-labelledby="userAssignmentModalLabel" aria-hidden="true" style="z-index: 1050;">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="userAssignmentModalLabel">Assign User</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <form id="userAssignmentForm">
+          <input type="hidden" id="deviceId" name="deviceId">
+          <div class="mb-3">
+            <label for="userSelect" class="form-label">Select User</label>
+            <select class="form-select" id="userSelect" name="username" required>
+              <option value="">Choose...</option>
+              {% for username in usernames %}
+                <option value="{{ username }}">{{ username }}</option>
+              {% endfor %}
+            </select>
+          </div>
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button type="button" class="btn btn-primary" id="saveUserAssignment">Save changes</button>
       </div>
     </div>
   </div>
 </div>
 
+<style>
+.modal-backdrop {
+    z-index: 1040;
+}
+
+.modal {
+    z-index: 1050;
+}
+
+/* Ensure modal content is always clickable */
+.modal-content {
+    position: relative;
+    z-index: 1051;
+}
+
+/* Additional styling for the backdrop */
+.modal-backdrop.show {
+    opacity: 0.5;
+}
+
+/* Ensure modal dialog is centered */
+.modal-dialog-centered {
+    display: flex;
+    align-items: center;
+    min-height: calc(100% - 1rem);
+}
+
+/* Improve modal appearance */
+.modal-content {
+    border: none;
+    border-radius: 0.5rem;
+    box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+}
+
+/* Ensure form elements are clickable */
+.modal form,
+.modal input,
+.modal select,
+.modal button {
+    position: relative;
+    z-index: 1052;
+}
+</style>
+
 <script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Ensure modal is properly initialized
+    const modalElement = document.getElementById('userAssignmentModal');
+    const modal = new bootstrap.Modal(modalElement, {
+        backdrop: 'static',  // Prevents closing when clicking outside
+        keyboard: true       // Allows closing with Esc key
+    });
+
+    // Add event listener to close modal with escape key
+    document.addEventListener('keydown', function(event) {
+        if (event.key === 'Escape' && modalElement.classList.contains('show')) {
+            modal.hide();
+        }
+    });
+
+    // Rest of your modal initialization code...
+    // (Keep the existing JavaScript for handling edit icons and form submission)
+});
+</script>
+
+
+
+
+
+
+
+
+
+
 document.addEventListener('DOMContentLoaded', function() {
     const devicesData = JSON.parse(document.getElementById('devices-data').textContent);
     const tableBody = document.getElementById('results-table-body');
-    let currentDeviceId = null;
-    const modal = new bootstrap.Modal(document.getElementById('userAssignmentModal'));
-
+    
     devicesData.forEach(device => {
         const row = document.createElement('tr');
         for (const key in device) {
             const cell = document.createElement('td');
 
             if (key === "current_user__username") {
-                // Create a container for user cell content
                 const container = document.createElement('div');
                 container.className = 'current-user-cell';
 
-                // Add the user text
                 const userText = document.createElement('span');
                 userText.className = 'current-user-text';
                 userText.textContent = device[key] || '';
                 container.appendChild(userText);
 
-                // Add the edit icon
                 const editIcon = document.createElement('i');
                 editIcon.className = 'fas fa-edit current-user-edit-icon';
                 editIcon.setAttribute('title', 'Edit User Assignment');
 
-                // Add click event listener to the edit icon
                 editIcon.addEventListener('click', function(e) {
                     e.stopPropagation();
-                    currentDeviceId = device.id; // Assuming there's an id field
-                    document.getElementById('deviceId').value = currentDeviceId;
+                    const modal = new bootstrap.Modal(document.getElementById('userAssignmentModal'));
+                    document.getElementById('deviceId').value = device.id;
                     
-                    // Pre-select current user if exists
                     const userSelect = document.getElementById('userSelect');
                     if (device[key]) {
                         userSelect.value = device[key];
@@ -85,85 +149,4 @@ document.addEventListener('DOMContentLoaded', function() {
         }
         tableBody.appendChild(row);
     });
-
-    // Handle form submission
-    document.getElementById('saveUserAssignment').addEventListener('click', function() {
-        const form = document.getElementById('userAssignmentForm');
-        const formData = new FormData(form);
-        
-        // Send AJAX request to update user assignment
-        fetch('{% url "iot_catalogue:update_user_assignment" %}', {
-            method: 'POST',
-            headers: {
-                'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-                device_id: formData.get('deviceId'),
-                username: formData.get('username'),
-            })
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                // Update the UI
-                const deviceRow = document.querySelector(`tr[data-device-id="${currentDeviceId}"]`);
-                if (deviceRow) {
-                    const userCell = deviceRow.querySelector('.current-user-text');
-                    userCell.textContent = formData.get('username');
-                }
-                modal.hide();
-            } else {
-                alert('Error updating user assignment');
-            }
-        })
-        .catch(error => {
-            console.error('Error:', error);
-            alert('Error updating user assignment');
-        });
-    });
 });
-
-// Add styles
-const style = document.createElement('style');
-style.textContent = `
-    .current-user-cell {
-        display: flex;
-        align-items: center;
-        gap: 1rem;
-    }
-
-    .current-user-text {
-        flex-grow: 1;
-    }
-
-    .current-user-edit-icon {
-        color: #6c757d;
-        cursor: pointer;
-        transition: color 0.2s ease;
-    }
-
-    .current-user-edit-icon:hover {
-        color: #0d6efd;
-    }
-
-    .modal-content {
-        border-radius: 0.5rem;
-    }
-
-    .modal-header {
-        background-color: #f8f9fa;
-        border-bottom: 1px solid #dee2e6;
-        border-top-left-radius: 0.5rem;
-        border-top-right-radius: 0.5rem;
-    }
-
-    .modal-footer {
-        background-color: #f8f9fa;
-        border-top: 1px solid #dee2e6;
-        border-bottom-left-radius: 0.5rem;
-        border-bottom-right-radius: 0.5rem;
-    }
-`;
-document.head.appendChild(style);
-</script>
