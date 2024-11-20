@@ -1,105 +1,51 @@
-<div class="card-body">
-    <div class="table-shadow">
-        <div class="table-container">
-            <table class="table table-hover table-sticky mb-0">
-                <thead>
-                    <tr class="bg-light">
-                        {% for col_name in column_names %}
-                            <th class="fw-semibold">{{ col_name }}</th>
-                        {% endfor %}
-                    </tr>
-                </thead>
-                <tbody id="results-table-body">
-                    <!-- Rows will be inserted here by JavaScript -->
-                </tbody>
-            </table>
-        </div>
-    </div>
-</div>
+document.addEventListener('DOMContentLoaded', function() {
+    const devicesData = JSON.parse(document.getElementById('devices-data').textContent);
+    const tableBody = document.getElementById('results-table-body');
 
-<script id="devices-data" type="application/json">
-    {{ devices|safe }}
-</script>
-
-<script>
-    const columnNames = {{ column_names|safe }};
-</script>
-
-<style>
-    .user-cell {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        padding: 4px 8px;
-    }
-
-    .edit-icon {
-        color: #4a5568;
-        cursor: pointer;
-        margin-left: 12px;
-        transition: color 0.2s ease;
-    }
-
-    .edit-icon:hover {
-        color: #2d3748;
-    }
-
-    .table-container {
-        overflow-x: auto;
-    }
-
-    .table-shadow {
-        box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
-        border-radius: 0.375rem;
-    }
-</style>
-
-<script>
-    document.addEventListener('DOMContentLoaded', function() {
-        const devicesData = JSON.parse(document.getElementById('devices-data').textContent);
-        const tableBody = document.getElementById('results-table-body');
-
-        devicesData.forEach(device => {
-            const row = document.createElement('tr');
+    devicesData.forEach(device => {
+        const row = document.createElement('tr');
+        
+        // Use columnNames array to maintain the correct order of columns
+        columnNames.forEach(colName => {
+            const cell = document.createElement('td');
             
-            // Use columnNames array to maintain the correct order of columns
-            columnNames.forEach(colName => {
-                const cell = document.createElement('td');
+            // First set the text content for all cells
+            cell.textContent = device[colName] || '';
+            
+            // If it's the Edit column, append the icon after the text
+            if (colName === "Edit") {
+                // Create the edit icon
+                const editIcon = document.createElement('i');
+                editIcon.className = 'fas fa-edit edit-icon';
+                editIcon.setAttribute('title', 'Edit User Assignment');
                 
-                if (colName === "Edit") {
-                    // Create a container for edit cell content
-                    const container = document.createElement('div');
-                    container.className = 'user-cell';
+                // Add click event listener to the edit icon
+                editIcon.addEventListener('click', function(e) {
+                    e.stopPropagation();
+                    console.log('Edit clicked for:', device);
+                });
+                
+                // Clear the cell and create a container div
+                const container = document.createElement('div');
+                container.className = 'user-cell';
+                
+                // Create text span
+                const textSpan = document.createElement('span');
+                textSpan.className = 'user-text';
+                textSpan.textContent = device[colName] || '';
+                
+                // Add both text and icon to container
+                container.appendChild(textSpan);
+                container.appendChild(editIcon);
+                
+                // Clear cell and add container
+                cell.textContent = '';
+                cell.appendChild(container);
+            }
 
-                    // Add the text content
-                    const textSpan = document.createElement('span');
-                    textSpan.className = 'user-text';
-                    textSpan.textContent = device[colName] || '';
-                    container.appendChild(textSpan);
-
-                    // Add the edit icon
-                    const editIcon = document.createElement('i');
-                    editIcon.className = 'fas fa-edit edit-icon';
-                    editIcon.setAttribute('title', 'Edit User Assignment');
-                    
-                    // Add click event listener to the edit icon
-                    editIcon.addEventListener('click', function(e) {
-                        e.stopPropagation();
-                        // Add your edit functionality here
-                        console.log('Edit clicked for:', device);
-                    });
-                    
-                    container.appendChild(editIcon);
-                    cell.appendChild(container);
-                } else {
-                    // For non-edit columns, just set the text content
-                    cell.textContent = device[colName] || '';
-                }
-
-                row.appendChild(cell);
-            });
-            
-            tableBody.appendChild(row);
+            row.appendChild(cell);
         });
+        
+        tableBody.appendChild(row);
     });
-</script>
+});
