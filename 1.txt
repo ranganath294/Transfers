@@ -1,51 +1,66 @@
-document.addEventListener('DOMContentLoaded', function() {
-    const devicesData = JSON.parse(document.getElementById('devices-data').textContent);
-    const tableBody = document.getElementById('results-table-body');
-
-    devicesData.forEach(device => {
-        const row = document.createElement('tr');
-        
-        // Use columnNames array to maintain the correct order of columns
-        columnNames.forEach(colName => {
-            const cell = document.createElement('td');
-            
-            // First set the text content for all cells
-            cell.textContent = device[colName] || '';
-            
-            // If it's the Edit column, append the icon after the text
-            if (colName === "Edit") {
-                // Create the edit icon
-                const editIcon = document.createElement('i');
-                editIcon.className = 'fas fa-edit edit-icon';
-                editIcon.setAttribute('title', 'Edit User Assignment');
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const devicesData = JSON.parse(document.getElementById('devices-data').textContent);
+        const tableBody = document.getElementById('results-table-body');
+    
+        devicesData.forEach(device => {
+            const row = document.createElement('tr');
+            for (const key in device) {
+                const cell = document.createElement('td');
                 
-                // Add click event listener to the edit icon
-                editIcon.addEventListener('click', function(e) {
-                    e.stopPropagation();
-                    console.log('Edit clicked for:', device);
-                });
-                
-                // Clear the cell and create a container div
-                const container = document.createElement('div');
-                container.className = 'user-cell';
-                
-                // Create text span
-                const textSpan = document.createElement('span');
-                textSpan.className = 'user-text';
-                textSpan.textContent = device[colName] || '';
-                
-                // Add both text and icon to container
-                container.appendChild(textSpan);
-                container.appendChild(editIcon);
-                
-                // Clear cell and add container
-                cell.textContent = '';
-                cell.appendChild(container);
+                if (key === "current_user__username") {
+                    // Create a container for user cell content
+                    const container = document.createElement('div');
+                    container.className = 'curent-user-cell';
+    
+                    // Add the user text
+                    const userText = document.createElement('span');
+                    userText.className = 'curent-user-text';
+                    userText.textContent = device[key] || '';
+                    container.appendChild(userText);
+    
+                    // Add the edit icon
+                    const editIcon = document.createElement('i');
+                    editIcon.className = 'fas fa-edit curent-user-edit-icon';
+                    editIcon.setAttribute('title', 'Edit User Assignment');
+                    
+                    // Add click event listener to the edit icon
+                    editIcon.addEventListener('click', function(e) {
+                        e.stopPropagation();
+                        // Add your edit functionality here
+                        console.log('Edit clicked for:', device);
+                    });
+    
+                    container.appendChild(editIcon);
+                    cell.appendChild(container);
+    
+                    // Render CSS for edit icon
+                    const style = document.createElement('style');
+                    style.textContent = `
+                        .curent-user-cell {
+                            display: flex;
+                            align-items: center;
+                            justify-content: space-between;
+                        }
+    
+                        .curent-user-text {
+                            flex-grow: 1;
+                        }
+    
+                        .curent-user-edit-icon {
+                            margin-left: 10px;
+                            cursor: pointer;
+                        }
+                    `;
+                    document.head.appendChild(style);
+                } else {
+                    cell.textContent = device[key];
+                }
+    
+                row.appendChild(cell);
             }
-
-            row.appendChild(cell);
+            tableBody.appendChild(row);
         });
-        
-        tableBody.appendChild(row);
     });
-});
+    
+</script>
