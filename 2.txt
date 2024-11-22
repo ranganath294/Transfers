@@ -1,0 +1,117 @@
+{% block results_div %}
+{% if devices %}
+<!-- Your existing styles -->
+<style>
+    .table-container {
+        position: relative;
+        max-height: calc(100vh - 300px);
+        overflow: auto;
+    }
+    <!-- other existing styles -->
+</style>
+
+<!-- Your existing table HTML -->
+<div class="card-body">
+    <!-- ... -->
+</div>
+
+<!-- Your existing scripts -->
+<script id="devices-data" type="application/json">
+    {{ devices|safe }}
+</script>
+
+<!-- Add the OptimizedSelect class definition first -->
+<script>
+    // OptimizedSelect class definition
+    class OptimizedSelect {
+        constructor(originalSelect, options = {}) {
+            this.originalSelect = originalSelect;
+            this.options = options;
+            this.itemHeight = 35;
+            this.visibleItems = 8;
+            this.allOptions = Array.from(originalSelect.options).map(opt => ({
+                value: opt.value,
+                label: opt.text
+            }));
+            
+            this.init();
+        }
+
+        // ... rest of the OptimizedSelect class code ...
+    }
+</script>
+
+<!-- Then modify your existing DOMContentLoaded script -->
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const devicesData = JSON.parse(document.getElementById('devices-data').textContent);
+        const tableBody = document.getElementById('results-table-body');
+        let currentRow = null;
+
+        // Your existing table population code
+        devicesData.forEach(device => {
+            // ... existing code ...
+        });
+
+        // Initialize the optimized select when the modal is shown
+        const userAssignmentModal = document.getElementById('userAssignmentModal');
+        userAssignmentModal.addEventListener('show.bs.modal', function() {
+            const userSelect = document.getElementById('userSelect');
+            if (!userSelect.optimizedSelect) {
+                userSelect.optimizedSelect = new OptimizedSelect(userSelect);
+            }
+        });
+
+        // Your existing save button code
+        const saveUserBtn = document.getElementById('userAssignmentModalSaveBtn');
+        saveUserBtn.addEventListener('click', function() {
+            // Hide the modal
+            const modal = bootstrap.Modal.getInstance(document.getElementById('userAssignmentModal'));
+            modal.hide();
+
+            // Get the selected user and rowId
+            const selectedUser = document.getElementById('userSelect').value;
+            const rowId = currentRow.getAttribute('data-id');
+
+            const csrftoken = getCookie('csrftoken');
+
+            // Send a PUT request
+            fetch("{% url 'iot_catalogue:assign_user' %}", {
+                method: 'PATCH',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': csrftoken
+                },
+                body: JSON.stringify({ user: selectedUser, id: rowId })
+            })
+            .then(response => response.json())
+            .then(data => {
+                const currentUserCell = currentRow.querySelector('.current-user-text');
+                currentUserCell.textContent = selectedUser;
+
+                const availabilityCell = currentRow.querySelector('.availability-cell');
+                const assignedDateCell = currentRow.querySelector('.assigned-date-cell');
+                const currentDate = new Date().toISOString().split('T')[0];
+
+                if (selectedUser) {
+                    availabilityCell.textContent = "In Use";
+                    assignedDateCell.textContent = currentDate;
+                } else {
+                    availabilityCell.textContent = "Available";
+                    assignedDateCell.textContent = "";
+                }
+            })
+            .catch((error) => {
+                console.error('Error:', error);
+            });
+        });
+    });
+
+    // Your existing getCookie function
+    function getCookie(name) {
+        // ... existing code ...
+    }
+</script>
+
+{% endif %}
+{% endblock %}
