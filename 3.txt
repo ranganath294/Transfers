@@ -1,0 +1,156 @@
+class OptimizedSelect {
+    constructor(originalSelect, options = {}) {
+        // ... existing constructor code ...
+    }
+
+    init() {
+        // ... existing init code ...
+
+        // Update button to include a visual cue for the dropdown
+        this.button.innerHTML = `
+            <span class="select-value">${this.originalSelect.selectedOptions[0]?.text || 'Choose...'}</span>
+            <span class="select-arrow">▼</span>
+        `;
+        this.button.style.display = 'flex';
+        this.button.style.justifyContent = 'space-between';
+        this.button.style.alignItems = 'center';
+        
+        // Set initial dropdown display to none
+        this.dropdown.style.display = 'none';
+        
+        // ... rest of init code ...
+    }
+
+    addEventListeners() {
+        // Improved click handling
+        this.button.addEventListener('mousedown', (e) => {
+            e.preventDefault(); // Prevent default to avoid focus issues
+            e.stopPropagation(); // Stop event from bubbling
+            
+            if (this.dropdown.style.display === 'none') {
+                // Close any other open dropdowns first
+                document.querySelectorAll('.optimized-select-dropdown').forEach(dropdown => {
+                    if (dropdown !== this.dropdown) {
+                        dropdown.style.display = 'none';
+                    }
+                });
+                
+                // Open this dropdown
+                this.dropdown.style.display = 'block';
+                this.searchInput.focus();
+                
+                // Position the dropdown
+                const buttonRect = this.button.getBoundingClientRect();
+                const modalRect = this.button.closest('.modal-content').getBoundingClientRect();
+                
+                // Check if dropdown would go below modal bottom
+                const spaceBelow = modalRect.bottom - buttonRect.bottom;
+                const spaceAbove = buttonRect.top - modalRect.top;
+                const dropdownHeight = this.itemHeight * this.visibleItems + 50; // 50px for search input
+                
+                if (spaceBelow < dropdownHeight && spaceAbove > spaceBelow) {
+                    // Position above the button if there's more space there
+                    this.dropdown.style.top = 'auto';
+                    this.dropdown.style.bottom = '100%';
+                    this.dropdown.style.marginTop = '0';
+                    this.dropdown.style.marginBottom = '0.25rem';
+                } else {
+                    // Position below the button
+                    this.dropdown.style.top = '100%';
+                    this.dropdown.style.bottom = 'auto';
+                    this.dropdown.style.marginTop = '0.25rem';
+                    this.dropdown.style.marginBottom = '0';
+                }
+            } else {
+                this.dropdown.style.display = 'none';
+            }
+        });
+
+        // Prevent mousedown on dropdown from closing modal
+        this.dropdown.addEventListener('mousedown', (e) => {
+            e.stopPropagation();
+        });
+
+        // Close dropdown when clicking outside
+        document.addEventListener('mousedown', (e) => {
+            if (!this.wrapper.contains(e.target)) {
+                this.dropdown.style.display = 'none';
+            }
+        });
+
+        // Handle search input
+        this.searchInput.addEventListener('input', () => {
+            this.filterAndRenderOptions();
+        });
+
+        // Prevent search input from closing dropdown
+        this.searchInput.addEventListener('click', (e) => {
+            e.stopPropagation();
+        });
+
+        // Handle scroll
+        this.optionsContainer.addEventListener('scroll', () => {
+            this.renderVisibleOptions();
+        });
+    }
+
+    selectOption(option) {
+        // Update original select
+        this.originalSelect.value = option.value;
+        this.originalSelect.dispatchEvent(new Event('change'));
+        
+        // Update custom select button text
+        const valueSpan = this.button.querySelector('.select-value');
+        if (valueSpan) {
+            valueSpan.textContent = option.label;
+        }
+        
+        // Close dropdown
+        this.dropdown.style.display = 'none';
+        
+        // Clear search
+        this.searchInput.value = '';
+        this.filterAndRenderOptions();
+    }
+
+    // ... rest of the class methods remain the same ...
+}
+
+
+
+
+
+
+
+
+
+
+
+.optimized-select-button {
+    width: 100%;
+    text-align: left;
+    cursor: pointer;
+    padding-right: 2rem;
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    min-height: 38px; /* Match Bootstrap select height */
+}
+
+.optimized-select-button .select-value {
+    flex-grow: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.optimized-select-button .select-arrow {
+    font-size: 0.8em;
+    color: #6c757d;
+    margin-left: 8px;
+}
+
+.optimized-select-dropdown {
+    max-height: calc(35px * 8 + 50px); /* visibleItems * itemHeight + search height */
+}
