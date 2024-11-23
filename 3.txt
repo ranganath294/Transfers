@@ -1,137 +1,143 @@
-<script>
-    // Initialize all optimized selects
-    document.addEventListener('DOMContentLoaded', function() {
-        // Initialize optimized selects for all elements with the 'optimized-select' class
-        document.querySelectorAll('.optimized-select').forEach(select => {
-            new OptimizedSelect(select);
-        });
-        
-        const devicesData = JSON.parse(document.getElementById('devices-data').textContent);
-        const tableBody = document.getElementById('results-table-body');
-        let currentRow = null; // Variable to keep track of the current row being edited
-    
-        devicesData.forEach(device => {
-            const row = document.createElement('tr');
-            row.setAttribute('data-id', device.id);
-            for (const key in device) {
-                const cell = document.createElement('td');
-    
-                if (key === "current_user__username") {
-                    const container = document.createElement('div');
-                    container.className = 'current-user-cell';
-    
-                    const userText = document.createElement('span');
-                    userText.className = 'current-user-text';
-                    userText.textContent = device[key] || '';
-                    container.appendChild(userText);
-    
-                    const editIcon = document.createElement('i');
-                    editIcon.className = 'fas fa-edit current-user-edit-icon';
-                    editIcon.setAttribute('title', 'Edit User Assignment');
-    
-                    editIcon.addEventListener('click', function(e) {
-                        e.stopPropagation();
-    
-                        // Pre-select current user if exists
-                        const userSelect = document.getElementById('userSelect');
-                        if (device[key]) {
-                            userSelect.value = device[key];
-                        } else {
-                            userSelect.selectedIndex = 0;
-                        }
-    
-                        // Set the current row being edited
-                        currentRow = row;
-    
-                        // Show modal
-                        const modal = new bootstrap.Modal(document.getElementById('userAssignmentModal'));
-                        modal.show();
-                    });
-    
-                    container.appendChild(editIcon);
-                    cell.appendChild(container);
-                } else if (key === "availability") {
-                    cell.className = 'availability-cell';
-                    cell.textContent = device[key];
-                } else if (key === "assigned_date") {
-                    cell.className = 'assigned-date-cell';
-                    cell.textContent = device[key];
-                } else {
-                    cell.textContent = device[key];
-                }
-    
-                row.appendChild(cell);
-            }
-            tableBody.appendChild(row);
-        });
-
-        // Initialize the optimized select when the modal is shown
-        const userAssignmentModal = document.getElementById('userAssignmentModal');
-        userAssignmentModal.addEventListener('show.bs.modal', function() {
-            const userSelect = document.getElementById('userSelect');
-            if (!userSelect.optimizedSelect) {
-                userSelect.optimizedSelect = new OptimizedSelect(userSelect);
-            }
-        });
-    
-        // Add the event listener for the save button only once
-        const saveUserBtn = document.getElementById('userAssignmentModalSaveBtn');
-        saveUserBtn.addEventListener('click', function() {
-            // Hide the modal
-            const modal = bootstrap.Modal.getInstance(document.getElementById('userAssignmentModal'));
-            modal.hide();
-    
-            // Get the selected user and rowId
-            const selectedUser = document.getElementById('userSelect').value;
-            const rowId = currentRow.getAttribute('data-id');
-    
-            const csrftoken = getCookie('csrftoken');
-                            
-            // Send a PUT request
-            fetch("{% url 'iot_catalogue:assign_user' %}", {
-                method: 'PATCH',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRFToken': csrftoken
-                },
-                body: JSON.stringify({ user: selectedUser, id: rowId })
-            })
-            .then(response => response.json())
-            .then(data => {
-                // console.log('Success:', data);
-                const currentUserCell = currentRow.querySelector('.current-user-text');
-                currentUserCell.textContent = selectedUser;
-    
-                const availabilityCell = currentRow.querySelector('.availability-cell');
-                const assignedDateCell = currentRow.querySelector('.assigned-date-cell');
-                const currentDate = new Date().toISOString().split('T')[0]; // Format: YYYY-MM-DD
-    
-                if (selectedUser) {
-                    availabilityCell.textContent = "In Use";
-                    assignedDateCell.textContent = currentDate;
-                } else {
-                    availabilityCell.textContent = "Available";
-                    assignedDateCell.textContent = "";
-                }
-            })
-            .catch((error) => {
-                console.error('Error:', error);
-            });
-        });
+// Initialize all optimized selects
+document.addEventListener('DOMContentLoaded', function() {
+    // Initialize optimized selects for all elements with the 'optimized-select' class
+    document.querySelectorAll('.optimized-select').forEach(select => {
+        new OptimizedSelect(select);
     });
     
-    function getCookie(name) {
-        let cookieValue = null;
-        if (document.cookie && document.cookie !== '') {
-            const cookies = document.cookie.split(';');
-            for (let i = 0; i < cookies.length; i++) {
-                const cookie = cookies[i].trim();
-                if (cookie.substring(0, name.length + 1) === (name + '=')) {
-                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
-                    break;
-                }
+    const devicesData = JSON.parse(document.getElementById('devices-data').textContent);
+    const tableBody = document.getElementById('results-table-body');
+    let currentRow = null; // Variable to keep track of the current row being edited
+
+    devicesData.forEach((device, rowIndex) => {
+        const row = document.createElement('tr');
+        row.id = `device-row-${device.id}`;
+        row.setAttribute('data-id', device.id);
+        
+        for (const key in device) {
+            const cell = document.createElement('td');
+            cell.id = `cell-${device.id}-${key}`;
+
+            if (key === "current_user__username") {
+                const container = document.createElement('div');
+                container.id = `user-container-${device.id}`;
+                container.className = 'current-user-cell';
+
+                const userText = document.createElement('span');
+                userText.id = `user-text-${device.id}`;
+                userText.className = 'current-user-text';
+                userText.textContent = device[key] || '';
+                container.appendChild(userText);
+
+                const editIcon = document.createElement('i');
+                editIcon.id = `edit-user-${device.id}`;
+                editIcon.className = 'fas fa-edit current-user-edit-icon';
+                editIcon.setAttribute('title', 'Edit User Assignment');
+
+                editIcon.addEventListener('click', function(e) {
+                    e.stopPropagation();
+
+                    // Pre-select current user if exists
+                    const userSelect = document.getElementById('userSelect');
+                    if (device[key]) {
+                        userSelect.value = device[key];
+                    } else {
+                        userSelect.selectedIndex = 0;
+                    }
+
+                    // Set the current row being edited
+                    currentRow = row;
+
+                    // Show modal
+                    const modal = new bootstrap.Modal(document.getElementById('userAssignmentModal'));
+                    modal.show();
+                });
+
+                container.appendChild(editIcon);
+                cell.appendChild(container);
+            } else if (key === "availability") {
+                cell.id = `availability-${device.id}`;
+                cell.className = 'availability-cell';
+                cell.textContent = device[key];
+            } else if (key === "assigned_date") {
+                cell.id = `assigned-date-${device.id}`;
+                cell.className = 'assigned-date-cell';
+                cell.textContent = device[key];
+            } else {
+                cell.textContent = device[key];
+            }
+
+            row.appendChild(cell);
+        }
+        tableBody.appendChild(row);
+    });
+
+    // Initialize the optimized select when the modal is shown
+    const userAssignmentModal = document.getElementById('userAssignmentModal');
+    userAssignmentModal.addEventListener('show.bs.modal', function() {
+        const userSelect = document.getElementById('userSelect');
+        if (!userSelect.optimizedSelect) {
+            userSelect.optimizedSelect = new OptimizedSelect(userSelect);
+        }
+    });
+
+    // Add the event listener for the save button only once
+    const saveUserBtn = document.getElementById('userAssignmentModalSaveBtn');
+    saveUserBtn.addEventListener('click', function() {
+        // Hide the modal
+        const modal = bootstrap.Modal.getInstance(document.getElementById('userAssignmentModal'));
+        modal.hide();
+
+        // Get the selected user and rowId
+        const selectedUser = document.getElementById('userSelect').value;
+        const rowId = currentRow.getAttribute('data-id');
+
+        const csrftoken = getCookie('csrftoken');
+                        
+        // Send a PUT request
+        fetch("{% url 'iot_catalogue:assign_user' %}", {
+            method: 'PATCH',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': csrftoken
+            },
+            body: JSON.stringify({ user: selectedUser, id: rowId })
+        })
+        .then(response => response.json())
+        .then(data => {
+            // Update cells with meaningful ID selectors
+            const currentUserCell = document.getElementById(`user-text-${rowId}`);
+            currentUserCell.textContent = selectedUser;
+
+            const availabilityCell = document.getElementById(`availability-${rowId}`);
+            const assignedDateCell = document.getElementById(`assigned-date-${rowId}`);
+            const currentDate = new Date().toISOString().split('T')[0]; // Format: YYYY-MM-DD
+
+            if (selectedUser) {
+                availabilityCell.textContent = "In Use";
+                assignedDateCell.textContent = currentDate;
+            } else {
+                availabilityCell.textContent = "Available";
+                assignedDateCell.textContent = "";
+            }
+        })
+        .catch((error) => {
+            console.error('Error:', error);
+        });
+    });
+});
+
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
             }
         }
-        return cookieValue;
-    }    
-</script>
+    }
+    return cookieValue;
+}
