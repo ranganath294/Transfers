@@ -1,176 +1,137 @@
-{% extends 'iot_catalogue/base.html' %}
-{% load static %}
-
-{% block content_div %}
-<form id="iot-search-form" method="post" action="{% url 'iot_catalogue:search' %}" class="row g-3">
-{% csrf_token %}
-<div class="col-md-6" id="search-form-left-col">
-    <div class="mb-3" id="device-type-container">
-        <label class="form-label" for="device-type-select">Device Type</label>
-        <select name="device_type" class="form-select optimized-select" id="device-type-select">
-            <option value="default" selected>-- All --</option>
-            <option value="Headset">Headset</option>
-            <!-- ... other device options ... -->
-        </select>
-    </div>
-
-    <!-- Other form fields with meaningful IDs -->
-</div>
-
-<div class="col-md-6" id="search-form-right-col">
-    <div class="mb-3" id="manufacturer-container">
-        <label class="form-label" for="manufacturer-select">Manufacturer</label>
-        <select name="manufacturer" class="form-select optimized-select" id="manufacturer-select">
-            <option value="default" selected>-- All --</option>
-            {% for manufacturer in manufacturers %}
-            <option value="{{ manufacturer }}">{{ manufacturer }}</option>
-            {% endfor %}
-        </select>
-    </div>
-    
-    <!-- Other form fields -->
-</div>
-</form>
-
-<!-- Modal with meaningful IDs -->
-<div class="modal fade" id="userAssignmentModal" tabindex="-1" aria-labelledby="userAssignmentModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered" id="userAssignmentDialog">
-        <div class="modal-content" id="userAssignmentContent">
-            <!-- ... modal content ... -->
-        </div>
-    </div>
-</div>
-{% endblock %}
-
-{% block results_div %}
-{% if devices %}
-<!-- ... styles ... -->
-
-<div class="card-body" id="results-card">
-    <div class="table-shadow" id="results-table-container">
-        <div class="table-container" id="results-scrollable-container">
-            <table class="table table-hover table-sticky mb-0" id="results-table">
-                <thead>
-                    <tr class="bg-light" id="results-header-row">
-                        {% for col_name in column_names %}
-                        <th class="fw-semibold" id="col-header-{{ col_name|lower|slugify }}">{{ col_name }}</th>
-                        {% endfor %}
-                    </tr>
-                </thead>
-                <tbody id="results-table-body">
-                    <!-- Rows will be inserted here by JavaScript -->
-                </tbody>
-            </table>
-        </div>
-    </div>
-</div>
-
 <script>
-// Enhanced OptimizedSelect class that can be reused
-class OptimizedSelect {
-    constructor(originalSelect, options = {}) {
-        this.originalSelect = originalSelect;
-        this.elementId = originalSelect.id;
-        this.options = options;
-        this.itemHeight = 35;
-        this.visibleItems = 8;
-        this.allOptions = Array.from(originalSelect.options).map(opt => ({
-            value: opt.value,
-            label: opt.text
-        }));
-        this.isOpen = false;
-
-        this.init();
-    }
-
-    init() {
-        // Create wrapper with meaningful ID
-        this.wrapper = document.createElement('div');
-        this.wrapper.className = 'optimized-select-wrapper';
-        this.wrapper.id = `${this.elementId}-wrapper`;
-
-        // Create button with meaningful ID
-        this.button = document.createElement('button');
-        this.button.className = 'optimized-select-button form-select';
-        this.button.id = `${this.elementId}-button`;
-        this.button.type = 'button';
-        this.button.textContent = this.originalSelect.selectedOptions[0]?.text || 'Choose...';
-
-        // Create dropdown with meaningful ID
-        this.dropdown = document.createElement('div');
-        this.dropdown.className = 'optimized-select-dropdown';
-        this.dropdown.id = `${this.elementId}-dropdown`;
-
-        // Create search input with meaningful ID
-        this.searchInput = document.createElement('input');
-        this.searchInput.className = 'optimized-select-search form-control';
-        this.searchInput.id = `${this.elementId}-search`;
-        this.searchInput.placeholder = 'Search...';
-
-        // Create options container with meaningful ID
-        this.optionsContainer = document.createElement('div');
-        this.optionsContainer.className = 'optimized-select-options';
-        this.optionsContainer.id = `${this.elementId}-options`;
-        this.optionsContainer.style.height = `${this.itemHeight * this.visibleItems}px`;
-
-        // Assemble components
-        this.virtualScroll = document.createElement('div');
-        this.virtualScroll.className = 'virtual-scroll-container';
-        this.virtualScroll.id = `${this.elementId}-virtual-scroll`;
-
-        // ... rest of the init code ...
-    }
-
-    // ... rest of the OptimizedSelect methods remain the same ...
-}
-
-// Initialize all optimized selects
-document.addEventListener('DOMContentLoaded', function() {
-    // Initialize optimized selects for all elements with the 'optimized-select' class
-    document.querySelectorAll('.optimized-select').forEach(select => {
-        new OptimizedSelect(select);
-    });
-
-    // Table row creation with meaningful IDs
-    const devicesData = JSON.parse(document.getElementById('devices-data').textContent);
-    const tableBody = document.getElementById('results-table-body');
-    
-    devicesData.forEach((device, rowIndex) => {
-        const row = document.createElement('tr');
-        row.id = `device-row-${device.id}`;
-        row.setAttribute('data-id', device.id);
-        
-        Object.entries(device).forEach(([key, value], colIndex) => {
-            const cell = document.createElement('td');
-            cell.id = `cell-${device.id}-${key}`;
-            
-            if (key === "current_user__username") {
-                const container = document.createElement('div');
-                container.id = `user-cell-container-${device.id}`;
-                container.className = 'current-user-cell';
-                
-                const userText = document.createElement('span');
-                userText.id = `user-text-${device.id}`;
-                userText.className = 'current-user-text';
-                userText.textContent = value || '';
-                
-                const editIcon = document.createElement('i');
-                editIcon.id = `edit-icon-${device.id}`;
-                editIcon.className = 'fas fa-edit current-user-edit-icon';
-                
-                container.appendChild(userText);
-                container.appendChild(editIcon);
-                cell.appendChild(container);
-            } else {
-                cell.textContent = value;
-            }
-            
-            row.appendChild(cell);
+    // Initialize all optimized selects
+    document.addEventListener('DOMContentLoaded', function() {
+        // Initialize optimized selects for all elements with the 'optimized-select' class
+        document.querySelectorAll('.optimized-select').forEach(select => {
+            new OptimizedSelect(select);
         });
         
-        tableBody.appendChild(row);
+        const devicesData = JSON.parse(document.getElementById('devices-data').textContent);
+        const tableBody = document.getElementById('results-table-body');
+        let currentRow = null; // Variable to keep track of the current row being edited
+    
+        devicesData.forEach(device => {
+            const row = document.createElement('tr');
+            row.setAttribute('data-id', device.id);
+            for (const key in device) {
+                const cell = document.createElement('td');
+    
+                if (key === "current_user__username") {
+                    const container = document.createElement('div');
+                    container.className = 'current-user-cell';
+    
+                    const userText = document.createElement('span');
+                    userText.className = 'current-user-text';
+                    userText.textContent = device[key] || '';
+                    container.appendChild(userText);
+    
+                    const editIcon = document.createElement('i');
+                    editIcon.className = 'fas fa-edit current-user-edit-icon';
+                    editIcon.setAttribute('title', 'Edit User Assignment');
+    
+                    editIcon.addEventListener('click', function(e) {
+                        e.stopPropagation();
+    
+                        // Pre-select current user if exists
+                        const userSelect = document.getElementById('userSelect');
+                        if (device[key]) {
+                            userSelect.value = device[key];
+                        } else {
+                            userSelect.selectedIndex = 0;
+                        }
+    
+                        // Set the current row being edited
+                        currentRow = row;
+    
+                        // Show modal
+                        const modal = new bootstrap.Modal(document.getElementById('userAssignmentModal'));
+                        modal.show();
+                    });
+    
+                    container.appendChild(editIcon);
+                    cell.appendChild(container);
+                } else if (key === "availability") {
+                    cell.className = 'availability-cell';
+                    cell.textContent = device[key];
+                } else if (key === "assigned_date") {
+                    cell.className = 'assigned-date-cell';
+                    cell.textContent = device[key];
+                } else {
+                    cell.textContent = device[key];
+                }
+    
+                row.appendChild(cell);
+            }
+            tableBody.appendChild(row);
+        });
+
+        // Initialize the optimized select when the modal is shown
+        const userAssignmentModal = document.getElementById('userAssignmentModal');
+        userAssignmentModal.addEventListener('show.bs.modal', function() {
+            const userSelect = document.getElementById('userSelect');
+            if (!userSelect.optimizedSelect) {
+                userSelect.optimizedSelect = new OptimizedSelect(userSelect);
+            }
+        });
+    
+        // Add the event listener for the save button only once
+        const saveUserBtn = document.getElementById('userAssignmentModalSaveBtn');
+        saveUserBtn.addEventListener('click', function() {
+            // Hide the modal
+            const modal = bootstrap.Modal.getInstance(document.getElementById('userAssignmentModal'));
+            modal.hide();
+    
+            // Get the selected user and rowId
+            const selectedUser = document.getElementById('userSelect').value;
+            const rowId = currentRow.getAttribute('data-id');
+    
+            const csrftoken = getCookie('csrftoken');
+                            
+            // Send a PUT request
+            fetch("{% url 'iot_catalogue:assign_user' %}", {
+                method: 'PATCH',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': csrftoken
+                },
+                body: JSON.stringify({ user: selectedUser, id: rowId })
+            })
+            .then(response => response.json())
+            .then(data => {
+                // console.log('Success:', data);
+                const currentUserCell = currentRow.querySelector('.current-user-text');
+                currentUserCell.textContent = selectedUser;
+    
+                const availabilityCell = currentRow.querySelector('.availability-cell');
+                const assignedDateCell = currentRow.querySelector('.assigned-date-cell');
+                const currentDate = new Date().toISOString().split('T')[0]; // Format: YYYY-MM-DD
+    
+                if (selectedUser) {
+                    availabilityCell.textContent = "In Use";
+                    assignedDateCell.textContent = currentDate;
+                } else {
+                    availabilityCell.textContent = "Available";
+                    assignedDateCell.textContent = "";
+                }
+            })
+            .catch((error) => {
+                console.error('Error:', error);
+            });
+        });
     });
-});
+    
+    function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }    
 </script>
-{% endif %}
-{% endblock %}
