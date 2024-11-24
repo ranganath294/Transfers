@@ -255,3 +255,149 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
 });
+
+
+
+
+
+
+
+
+
+
+document.addEventListener('DOMContentLoaded', function() {
+    // Your existing initialization code for optimized selects
+    document.querySelectorAll('.optimized-select').forEach(select => {
+        new OptimizedSelect(select);
+    });
+
+    const devicesData = JSON.parse(document.getElementById('devices-data').textContent);
+    const tableBody = document.getElementById('results-table-body');
+    let currentRow = null;
+
+    // Your existing code for creating table rows
+    devicesData.forEach((device, rowIndex) => {
+        // ... (keep your existing table row creation code)
+    });
+
+    // Initialize the optimized select when the modal is shown
+    const userAssignmentModal = document.getElementById('userAssignmentModal');
+    let currentDeviceId = null;
+
+    // Function to populate modal with device data
+    function populateModalWithDeviceData(deviceId) {
+        const row = document.querySelector(`tr[data-id="${deviceId}"]`);
+        if (!row) return;
+
+        // Get all the cell values
+        const deviceType = row.querySelector('td:nth-child(1)').textContent;
+        const modelNumber = row.querySelector('td:nth-child(2)').textContent;
+        const chipsetManufacturer = row.querySelector('td:nth-child(3)').textContent;
+        const manufacturer = row.querySelector('td:nth-child(4)').textContent;
+        const modelYear = row.querySelector('td:nth-child(5)').textContent;
+        const procuredDate = row.querySelector('td:nth-child(6)').textContent;
+        const availability = row.querySelector('td:nth-child(7)').textContent;
+        const deviceStatus = row.querySelector('td:nth-child(8)').textContent;
+        const geoLocation = row.querySelector('td:nth-child(9)').textContent;
+        const currentUser = row.querySelector('td:nth-child(10) .current-user-text').textContent.trim();
+
+        // Set values in modal
+        document.getElementById('modal-device-type').value = deviceType;
+        document.getElementById('modal-model-number').value = modelNumber;
+        document.getElementById('modal-chipset-manufacturer').value = chipsetManufacturer;
+        document.getElementById('modal-manufacturer').value = manufacturer;
+        document.getElementById('modal-model-year').value = modelYear;
+        document.getElementById('modal-procured-date').value = procuredDate;
+        document.getElementById('modal-availability').value = availability;
+        document.getElementById('modal-device-status').value = deviceStatus;
+        document.getElementById('modal-geo-location').value = geoLocation;
+        document.getElementById('userSelect').value = currentUser;
+
+        // Update the OptimizedSelect displays
+        document.querySelectorAll('#userAssignmentModal .optimized-select').forEach(select => {
+            if (select.optimizedSelect) {
+                select.optimizedSelect.button.textContent = select.options[select.selectedIndex].text;
+            }
+        });
+    }
+
+    // Modified event listener for edit icon click
+    document.addEventListener('click', function(e) {
+        if (e.target.classList.contains('current-user-edit-icon')) {
+            const deviceId = e.target.closest('tr').getAttribute('data-id');
+            currentDeviceId = deviceId;
+            currentRow = e.target.closest('tr');
+            populateModalWithDeviceData(deviceId);
+            
+            // Initialize all optimized selects in the modal if not already initialized
+            document.querySelectorAll('#userAssignmentModal .optimized-select').forEach(select => {
+                if (!select.optimizedSelect) {
+                    new OptimizedSelect(select);
+                }
+            });
+
+            const modal = new bootstrap.Modal(userAssignmentModal);
+            modal.show();
+        }
+    });
+
+    // Replace your existing save button event listener with this updated version
+    document.getElementById('userAssignmentModalSaveBtn').addEventListener('click', function() {
+        if (!currentDeviceId) return;
+
+        const formData = {
+            id: currentDeviceId,
+            device_type: document.getElementById('modal-device-type').value,
+            model_number: document.getElementById('modal-model-number').value,
+            chipset_manufacturer: document.getElementById('modal-chipset-manufacturer').value,
+            manufacturer: document.getElementById('modal-manufacturer').value,
+            model_year: document.getElementById('modal-model-year').value,
+            procured_date: document.getElementById('modal-procured-date').value,
+            availability: document.getElementById('modal-availability').value,
+            device_status: document.getElementById('modal-device-status').value,
+            geo_location: document.getElementById('modal-geo-location').value,
+            user: document.getElementById('userSelect').value
+        };
+
+        const csrftoken = getCookie('csrftoken');
+
+        // Send PATCH request with all form data
+        fetch("{% url 'iot_catalogue:assign_user' %}", {
+            method: 'PATCH',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': csrftoken
+            },
+            body: JSON.stringify(formData)
+        })
+        .then(response => response.json())
+        .then(data => {
+            // Update the row in the table with new values
+            if (currentRow) {
+                const cells = currentRow.querySelectorAll('td');
+                cells[0].textContent = formData.device_type;
+                cells[1].textContent = formData.model_number;
+                cells[2].textContent = formData.chipset_manufacturer;
+                cells[3].textContent = formData.manufacturer;
+                cells[4].textContent = formData.model_year;
+                cells[5].textContent = formData.procured_date;
+                cells[6].textContent = formData.availability;
+                cells[7].textContent = formData.device_status;
+                cells[8].textContent = formData.geo_location;
+                cells[9].querySelector('.current-user-text').textContent = formData.user;
+            }
+
+            // Hide the modal
+            const modal = bootstrap.Modal.getInstance(userAssignmentModal);
+            modal.hide();
+        })
+        .catch((error) => {
+            console.error('Error:', error);
+        });
+    });
+
+    // Keep your existing getCookie function
+    function getCookie(name) {
+        // ... (your existing getCookie function)
+    }
+});
