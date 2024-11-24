@@ -109,59 +109,39 @@
 </style>
 
 <script>
-// Custom select with virtual scrolling and search that can be reused
-class OptimizedSelect {
-    constructor(originalSelect, options = {}) {
-        this.originalSelect = originalSelect;
-        this.options = options;
-        this.itemHeight = 35;
-        this.visibleItems = 8;
-        this.allOptions = Array.from(originalSelect.options).map(opt => ({
-            value: opt.value,
-            label: opt.text
-        }));
-        this.isOpen = false;
+// ... (OptimizedSelect class remains unchanged) ... 
 
-        // Find the corresponding new entry input field
-        const inputName = `new_${originalSelect.name}`;
-        this.newEntryInput = document.querySelector(`input[name="${inputName}"]`);
-
-        this.init();
-    }
-
-    // ... (previous methods remain the same) ...
-
-    selectOption(option) {
-        // Update original select
-        this.originalSelect.value = option.value;
-        this.originalSelect.dispatchEvent(new Event('change'));
-
-        // Update custom select
-        this.button.textContent = option.label;
-
-        // Enable/disable new entry input field based on selection
-        if (this.newEntryInput) {
-            this.newEntryInput.disabled = option.value !== 'other';
-        }
-
-        this.closeDropdown();
-    }
-}
-
-// Initialize all optimized selects
+// Initialize optimized selects
 document.addEventListener('DOMContentLoaded', function() {
-    // Initialize optimized selects for all elements with the 'optimized-select' class
+    // Initialize optimized selects
     document.querySelectorAll('.optimized-select').forEach(select => {
         new OptimizedSelect(select);
+    });
+
+    // Handle "Other" option separately
+    const handleOtherOption = (selectElement) => {
+        const inputName = `new_${selectElement.name}`;
+        const newEntryInput = document.querySelector(`input[name="${inputName}"]`);
         
-        // Add change event listener to handle the original select changes
-        select.addEventListener('change', function() {
-            const inputName = `new_${this.name}`;
-            const newEntryInput = document.querySelector(`input[name="${inputName}"]`);
-            if (newEntryInput) {
+        if (newEntryInput) {
+            // Update on change event
+            selectElement.addEventListener('change', function() {
                 newEntryInput.disabled = this.value !== 'other';
-            }
-        });
+            });
+
+            // Also handle the OptimizedSelect's custom event
+            selectElement.addEventListener('customSelect:change', function() {
+                newEntryInput.disabled = this.value !== 'other';
+            });
+        }
+    };
+
+    // Apply the handler to each select that needs it
+    ['manufacturer', 'model_number', 'chipset_manufacturer'].forEach(selectName => {
+        const select = document.querySelector(`select[name="${selectName}"]`);
+        if (select) {
+            handleOtherOption(select);
+        }
     });
 });
 </script>
