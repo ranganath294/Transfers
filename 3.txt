@@ -1,45 +1,76 @@
-{# templates/iot_catalogue/components/optimized_select.html #}
-{% raw %}
+{% extends 'iot_catalogue/base.html' %}
 {% load static %}
 
-<div class="optimized-select-wrapper" id="{{ wrapper_id }}">
-    <button type="button" class="optimized-select-button form-select" id="{{ button_id }}">
-        {{ default_text|default:"Choose..." }}
-    </button>
-    <div class="optimized-select-dropdown" id="{{ dropdown_id }}">
-        <input type="text" class="optimized-select-search form-control" id="{{ search_id }}" placeholder="Search...">
-        <div class="optimized-select-options" id="{{ options_id }}">
-            <div class="virtual-scroll-container" id="{{ virtual_scroll_id }}"></div>
-        </div>
-    </div>
-</div>
-{% endraw %}
-
-{# templates/iot_catalogue/components/search_form.html #}
-{% raw %}
+{% block content_div %}
 <form id="iot-search-form" method="post" action="{% url 'iot_catalogue:search' %}" class="row g-3">
     {% csrf_token %}
     <div class="col-md-6" id="search-form-left-col">
         <div class="mb-3" id="device-type-container">
             <label class="form-label" for="device-type-select">Device Type</label>
-            {% include "iot_catalogue/components/optimized_select.html" with 
-                wrapper_id="device-type-wrapper"
-                button_id="device-type-button"
-                dropdown_id="device-type-dropdown"
-                search_id="device-type-search"
-                options_id="device-type-options"
-                virtual_scroll_id="device-type-virtual-scroll"
-                name="device_type"
-                default_text="-- All --"
-            %}
+            <select name="device_type" class="form-select optimized-select" id="device-type-select">
+                <option value="default" selected>-- All --</option>
+                <option value="Headset">Headset</option>
+                <!-- ... other options ... -->
+            </select>
         </div>
-        <!-- Other form fields... -->
+
+        <!-- Other left column fields -->
+    </div>
+
+    <div class="col-md-6" id="search-form-right-col">
+        <!-- Right column fields -->
     </div>
 </form>
-{% endraw %}
 
-{# templates/iot_catalogue/components/results_table.html #}
-{% raw %}
+<!-- Edit Modal -->
+<div class="modal fade" id="editDeviceModal" tabindex="-1" aria-labelledby="editDeviceModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered" id="editDeviceDialog">
+        <div class="modal-content" id="editDeviceContent">
+            <div class="modal-header" id="editDeviceHeader">
+                <h5 class="modal-title" id="editDeviceModalLabel">Edit Device</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body" id="editDeviceBody">
+                <form id="edit-device-form" class="row g-3">
+                    <div class="col-md-6" id="edit-form-left-col">
+                        <div class="mb-3" id="edit-device-type-container">
+                            <label class="form-label" for="edit-device-type">Device Type</label>
+                            <select name="device_type" class="form-select optimized-select" id="edit-device-type">
+                                <option value="Headset">Headset</option>
+                                <option value="Speaker">Speaker</option>
+                                <!-- ... other options ... -->
+                            </select>
+                        </div>
+
+                        <div class="mb-3" id="edit-model-number-container">
+                            <label class="form-label" for="edit-model-number">Model Number</label>
+                            <select name="model_number" class="form-select optimized-select" id="edit-model-number">
+                                {% for model_number in model_numbers %}
+                                <option value="{{ model_number }}">{{ model_number }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+
+                        <!-- Other left column fields -->
+                    </div>
+
+                    <div class="col-md-6" id="edit-form-right-col">
+                        <!-- Right column fields with their unique IDs -->
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer" id="editDeviceFooter">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" id="saveDeviceChanges">Save changes</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block results_div %}
+{% if devices %}
 <div class="card-body" id="results-card">
     <div class="table-shadow" id="results-table-container">
         <div class="table-container" id="results-scrollable-container">
@@ -51,186 +82,126 @@
                         {% endfor %}
                     </tr>
                 </thead>
-                <tbody id="results-table-body"></tbody>
+                <tbody id="results-table-body">
+                    <!-- Rows will be inserted here by JavaScript -->
+                </tbody>
             </table>
         </div>
     </div>
 </div>
-{% endraw %}
 
-{# templates/iot_catalogue/components/user_assignment_modal.html #}
-{% raw %}
-<div class="modal fade" id="userAssignmentModal" tabindex="-1" aria-labelledby="userAssignmentModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered" id="userAssignmentDialog">
-        <div class="modal-content" id="userAssignmentContent">
-            <div class="modal-header">
-                <h5 class="modal-title" id="userAssignmentModalLabel">Assign User</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <div class="modal-body">
-                <div class="mb-3">
-                    <label for="userSelect" class="form-label">Select User</label>
-                    {% include "iot_catalogue/components/optimized_select.html" with 
-                        wrapper_id="user-select-wrapper"
-                        button_id="user-select-button"
-                        dropdown_id="user-select-dropdown"
-                        search_id="user-select-search"
-                        options_id="user-select-options"
-                        virtual_scroll_id="user-select-virtual-scroll"
-                        name="user"
-                        default_text="Choose..."
-                    %}
-                </div>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-primary" id="userAssignmentModalSaveBtn">Save changes</button>
-            </div>
-        </div>
-    </div>
-</div>
-{% endraw %}
+<script id="devices-data" type="application/json">
+    {{ devices|safe }}
+</script>
 
-
-
-
-
-
-
-
-/* static/iot_catalogue/css/optimized-select.css */
-.optimized-select-wrapper {
-    position: relative;
-    width: 100%;
-}
-
-.optimized-select-button {
-    width: 100%;
-    text-align: left;
-    cursor: pointer;
-}
-
-.optimized-select-dropdown {
-    display: none;
-    position: absolute;
-    top: 100%;
-    left: 0;
-    right: 0;
-    background: white;
-    border: 1px solid #dee2e6;
-    border-radius: 0.375rem;
-    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-    z-index: 1000;
-    margin-top: 0.25rem;
-}
-
-/* Rest of the optimized select styles... */
-
-/* static/iot_catalogue/css/results-table.css */
-.table-container {
-    position: relative;
-    max-height: calc(100vh - 300px);
-    overflow: auto;
-}
-
-.table-sticky thead {
-    position: sticky;
-    top: 0;
-    z-index: 1;
-    background-color: #f8f9fa;
-}
-
-/* Rest of the table styles... */
-
-/* static/iot_catalogue/js/optimized-select.js */
-class OptimizedSelect {
-    constructor(originalSelect, options = {}) {
-        this.originalSelect = originalSelect;
-        this.options = options;
-        this.itemHeight = 35;
-        this.visibleItems = 8;
-        this.allOptions = Array.from(originalSelect.options).map(opt => ({
-            value: opt.value,
-            label: opt.text
-        }));
-        this.isOpen = false;
-
-        this.init();
-    }
-
-    // Rest of the OptimizedSelect class implementation...
-}
-
-/* static/iot_catalogue/js/results-table.js */
-class ResultsTable {
-    constructor(tableId, data) {
-        this.table = document.getElementById(tableId);
-        this.data = data;
-        this.init();
-    }
-
-    init() {
-        this.renderRows();
-        this.initializeUserAssignment();
-    }
-
-    // Rest of the ResultsTable class implementation...
-}
-
-
-
-
-
-
-
-{# templates/iot_catalogue/search.html #}
-{% raw %}
-{% extends 'iot_catalogue/base.html' %}
-{% load static %}
-
-{% block extra_css %}
-<link rel="stylesheet" href="{% static 'iot_catalogue/css/optimized-select.css' %}">
-<link rel="stylesheet" href="{% static 'iot_catalogue/css/results-table.css' %}">
-{% endblock %}
-
-{% block content_div %}
-{% include "iot_catalogue/components/search_form.html" %}
-{% include "iot_catalogue/components/user_assignment_modal.html" %}
-{% endblock %}
-
-{% block results_div %}
-{% if devices %}
-    {% include "iot_catalogue/components/results_table.html" %}
-    
-    <script id="devices-data" type="application/json">
-        {{ devices|safe }}
-    </script>
-{% endif %}
-{% endblock %}
-
-{% block extra_js %}
-<script src="{% static 'iot_catalogue/js/optimized-select.js' %}"></script>
-<script src="{% static 'iot_catalogue/js/results-table.js' %}"></script>
 <script>
-    document.addEventListener('DOMContentLoaded', function() {
-        // Initialize optimized selects
-        document.querySelectorAll('.optimized-select').forEach(select => {
-            new OptimizedSelect(select);
+document.addEventListener('DOMContentLoaded', function() {
+    const devicesData = JSON.parse(document.getElementById('devices-data').textContent);
+    const tableBody = document.getElementById('results-table-body');
+    
+    devicesData.forEach(device => {
+        const row = document.createElement('tr');
+        row.id = `device-row-${device.id}`;
+        row.setAttribute('data-id', device.id);
+        
+        for (const key in device) {
+            const cell = document.createElement('td');
+            cell.id = `cell-${device.id}-${key}`;
+            
+            if (key === "current_user__username") {
+                const container = document.createElement('div');
+                container.id = `user-container-${device.id}`;
+                
+                const userText = document.createElement('span');
+                userText.id = `user-text-${device.id}`;
+                userText.textContent = device[key] || '';
+                container.appendChild(userText);
+                
+                const editIcon = document.createElement('i');
+                editIcon.id = `edit-icon-${device.id}`;
+                editIcon.className = 'fas fa-edit ms-2';
+                editIcon.setAttribute('title', 'Edit Device');
+                
+                editIcon.addEventListener('click', function(e) {
+                    e.stopPropagation();
+                    openEditModal(device);
+                });
+                
+                container.appendChild(editIcon);
+                cell.appendChild(container);
+            } else {
+                cell.textContent = device[key];
+            }
+            
+            row.appendChild(cell);
+        }
+        tableBody.appendChild(row);
+    });
+
+    function openEditModal(device) {
+        // Populate form fields
+        Object.keys(device).forEach(key => {
+            const editField = document.getElementById(`edit-${key.replace('__', '-')}`);
+            if (editField) {
+                editField.value = device[key] || '';
+            }
         });
 
-        // Initialize results table if data exists
-        const devicesDataElement = document.getElementById('devices-data');
-        if (devicesDataElement) {
-            const devicesData = JSON.parse(devicesDataElement.textContent);
-            new ResultsTable('results-table', devicesData);
-        }
+        // Store device ID
+        document.getElementById('edit-device-form').setAttribute('data-device-id', device.id);
+
+        // Refresh optimized selects
+        document.querySelectorAll('#editDeviceModal .optimized-select').forEach(select => {
+            if (!select.optimizedSelect) {
+                new OptimizedSelect(select);
+            }
+        });
+
+        // Show modal
+        const modal = new bootstrap.Modal(document.getElementById('editDeviceModal'));
+        modal.show();
+    }
+
+    // Save changes handler
+    document.getElementById('saveDeviceChanges').addEventListener('click', function() {
+        const form = document.getElementById('edit-device-form');
+        const deviceId = form.getAttribute('data-device-id');
+        const formData = new FormData(form);
+        const data = Object.fromEntries(formData.entries());
+        
+        fetch(`/api/devices/${deviceId}/`, {
+            method: 'PATCH',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCookie('csrftoken')
+            },
+            body: JSON.stringify(data)
+        })
+        .then(response => response.json())
+        .then(updatedDevice => {
+            updateTableRow(deviceId, updatedDevice);
+            const modal = bootstrap.Modal.getInstance(document.getElementById('editDeviceModal'));
+            modal.hide();
+        })
+        .catch(error => console.error('Error:', error));
     });
+
+    function updateTableRow(deviceId, updatedDevice) {
+        Object.keys(updatedDevice).forEach(key => {
+            const cell = document.getElementById(`cell-${deviceId}-${key}`);
+            if (cell) {
+                if (key === "current_user__username") {
+                    const userText = document.getElementById(`user-text-${deviceId}`);
+                    if (userText) {
+                        userText.textContent = updatedDevice[key] || '';
+                    }
+                } else {
+                    cell.textContent = updatedDevice[key];
+                }
+            }
+        });
+    }
+});
 </script>
+{% endif %}
 {% endblock %}
-{% endraw %}
-
-
-
-
-
-
-
