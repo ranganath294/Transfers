@@ -1,237 +1,190 @@
-<!-- Replace the existing modal with this enhanced version -->
-<div class="modal fade" id="userAssignmentModal" tabindex="-1" aria-labelledby="userAssignmentModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered modal-lg">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="userAssignmentModalLabel">Edit Device Details</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <div class="modal-body">
-                <form id="edit-device-form" class="row g-3">
-                    <div class="col-md-6">
-                        <div class="mb-3">
-                            <label class="form-label" for="edit-device-type">Device Type</label>
-                            <select name="device_type" class="form-select optimized-select" id="edit-device-type">
-                                <option value="default">-- Select --</option>
-                                <option value="Headset">Headset</option>
-                                <option value="Speaker">Speaker</option>
-                                <option value="Earbud">Earbud</option>
-                                <option value="Earbud - LEA">Earbud - LEA</option>
-                                <option value="HID Mouse">HID Mouse</option>
-                                <option value="HID Keyboard">HID Keyboard</option>
-                                <option value="HID Gamepad">HID Gamepad</option>
-                                <option value="HOGP Mouse">HOGP Mouse</option>
-                                <option value="HOGP Keyboard">HOGP Keyboard</option>
-                                <option value="HOGP Gamepad">HOGP Gamepad</option>
-                                <option value="Carkit">Carkit</option>
-                                <option value="Smart Watch">Smart Watch</option>
-                                <option value="Fitness band">Fitness band</option>
-                                <option value="Heart rate monitor">Heart rate monitor</option>
-                                <option value="LE tracker">LE tracker</option>
-                                <option value="Phone">Phone</option>
-                                <option value="Smart ring">Smart ring</option>
-                                <option value="Health device">Health device</option>
-                                <option value="Smart bulb">Smart bulb</option>
-                            </select>
-                        </div>
+<script>
+    // Custom select with virtual scrolling and search that can be reused
+    class OptimizedSelect {
+        constructor(originalSelect, options = {}) {
+          this.originalSelect = originalSelect;
+          this.options = options;
+          this.itemHeight = 35;
+          this.visibleItems = 8;
+          this.allOptions = Array.from(originalSelect.options).map(opt => ({
+            value: opt.value,
+            label: opt.text
+          }));
+          this.isOpen = false;
 
-                        <div class="mb-3">
-                            <label class="form-label" for="edit-model-number">Model Number</label>
-                            <select name="model_number" class="form-select optimized-select" id="edit-model-number">
-                                <option value="default">-- Select --</option>
-                                {% for model_number in model_numbers %}
-                                <option value="{{ model_number }}">{{ model_number }}</option>
-                                {% endfor %}
-                            </select>
-                        </div>
-
-                        <div class="mb-3">
-                            <label class="form-label" for="edit-chipset-manufacturer">Chipset Manufacturer</label>
-                            <select name="chipset_manufacturer" class="form-select optimized-select" id="edit-chipset-manufacturer">
-                                <option value="default">-- Select --</option>
-                                {% for chipset_manufacturer in chipset_manufacturers %}
-                                <option value="{{ chipset_manufacturer }}">{{ chipset_manufacturer }}</option>
-                                {% endfor %}
-                            </select>
-                        </div>
-
-                        <div class="mb-3">
-                            <label class="form-label">Procured Date</label>
-                            <input type="date" name="procured_date" class="form-control" id="edit-procured-date">
-                        </div>
-                    </div>
-
-                    <div class="col-md-6">
-                        <div class="mb-3">
-                            <label class="form-label" for="edit-manufacturer">Manufacturer</label>
-                            <select name="manufacturer" class="form-select optimized-select" id="edit-manufacturer">
-                                <option value="default">-- Select --</option>
-                                {% for manufacturer in manufacturers %}
-                                <option value="{{ manufacturer }}">{{ manufacturer }}</option>
-                                {% endfor %}
-                            </select>
-                        </div>
-
-                        <div class="mb-3">
-                            <label class="form-label">Model Year</label>
-                            <input type="number" name="model_year" class="form-control" id="edit-model-year">
-                        </div>
-
-                        <div class="mb-3">
-                            <label class="form-label">Device Status</label>
-                            <select name="device_status" class="form-select" id="edit-device-status">
-                                <option value="default">-- Select --</option>
-                                <option value="Active">Active</option>
-                                <option value="Missing">Missing</option>
-                                <option value="Retired">Retired</option>
-                                <option value="Damaged">Damaged</option>
-                            </select>
-                        </div>
-
-                        <div class="mb-3">
-                            <label class="form-label">Geo Location</label>
-                            <select name="geo_location" class="form-select" id="edit-geo-location">
-                                <option value="default">-- Select --</option>
-                                <option value="SD">SD</option>
-                                <option value="SDC">SDC</option>
-                                <option value="QIPL">QIPL</option>
-                            </select>
-                        </div>
-                    </div>
-                </form>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-                <button type="button" class="btn btn-primary" id="saveDeviceChanges">Save changes</button>
-            </div>
-        </div>
-    </div>
-</div>
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-// Add this to your existing JavaScript
-document.addEventListener('DOMContentLoaded', function() {
-    let currentDeviceId = null;
-    let editOptimizedSelects = {};
-
-    // Initialize optimized selects for the edit modal
-    function initializeEditOptimizedSelects() {
-        document.querySelectorAll('#edit-device-form .optimized-select').forEach(select => {
-            const id = select.id;
-            if (!editOptimizedSelects[id]) {
-                editOptimizedSelects[id] = new OptimizedSelect(select);
-            }
-        });
-    }
-
-    // Function to populate the edit form with device data
-    function populateEditForm(deviceData) {
-        const form = document.getElementById('edit-device-form');
-        
-        // Populate select fields using OptimizedSelect instances
-        Object.keys(editOptimizedSelects).forEach(selectId => {
-            const field = selectId.replace('edit-', '').replace(/-/g, '_');
-            if (deviceData[field]) {
-                const select = document.getElementById(selectId);
-                select.value = deviceData[field];
-                editOptimizedSelects[selectId].selectOption({
-                    value: deviceData[field],
-                    label: deviceData[field]
-                });
-            }
-        });
-
-        // Populate regular input fields
-        document.getElementById('edit-model-year').value = deviceData.model_year || '';
-        document.getElementById('edit-procured-date').value = deviceData.procured_date || '';
-        document.getElementById('edit-device-status').value = deviceData.device_status || 'default';
-        document.getElementById('edit-geo-location').value = deviceData.geo_location || 'default';
-    }
-
-    // Event listener for edit icons
-    document.addEventListener('click', function(e) {
-        if (e.target.classList.contains('current-user-edit-icon')) {
-            const row = e.target.closest('tr');
-            currentDeviceId = row.getAttribute('data-id');
-            
-            // Get device data from the row
-            const deviceData = {
-                device_type: row.querySelector('td:nth-child(1)').textContent,
-                model_number: row.querySelector('td:nth-child(2)').textContent,
-                chipset_manufacturer: row.querySelector('td:nth-child(3)').textContent,
-                manufacturer: row.querySelector('td:nth-child(4)').textContent,
-                model_year: row.querySelector('td:nth-child(5)').textContent,
-                procured_date: row.querySelector('td:nth-child(6)').textContent,
-                device_status: row.querySelector('td:nth-child(7)').textContent,
-                geo_location: row.querySelector('td:nth-child(8)').textContent,
-            };
-
-            // Initialize optimized selects if not already done
-            initializeEditOptimizedSelects();
-            
-            // Populate the form
-            populateEditForm(deviceData);
-            
-            // Show the modal
-            const modal = new bootstrap.Modal(document.getElementById('userAssignmentModal'));
-            modal.show();
+          this.init();
         }
-    });
 
-    // Handle form submission
-    document.getElementById('saveDeviceChanges').addEventListener('click', function() {
-        const formData = new FormData(document.getElementById('edit-device-form'));
-        const data = Object.fromEntries(formData.entries());
-        data.id = currentDeviceId;
+        // ... (keep all your existing OptimizedSelect class methods)
+        // Note: Keep all the existing methods from your original OptimizedSelect class
+    }
 
-        // Send PATCH request to update device
-        fetch("{% url 'iot_catalogue:update_device' %}", {
-            method: 'PATCH',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRFToken': getCookie('csrftoken')
-            },
-            body: JSON.stringify(data)
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                // Update the row in the table
-                const row = document.querySelector(`tr[data-id="${currentDeviceId}"]`);
-                Object.keys(data.device).forEach((key, index) => {
-                    const cell = row.querySelector(`td:nth-child(${index + 1})`);
-                    if (cell) {
-                        cell.textContent = data.device[key];
+    // Initialize all optimized selects
+    document.addEventListener('DOMContentLoaded', function() {
+        let currentDeviceId = null;
+        let editOptimizedSelects = {};
+        
+        // Initialize optimized selects for search form
+        document.querySelectorAll('.optimized-select').forEach(select => {
+            new OptimizedSelect(select);
+        });
+
+        // Initialize optimized selects for the edit modal
+        function initializeEditOptimizedSelects() {
+            document.querySelectorAll('#edit-device-form .optimized-select').forEach(select => {
+                const id = select.id;
+                if (!editOptimizedSelects[id]) {
+                    editOptimizedSelects[id] = new OptimizedSelect(select);
+                }
+            });
+        }
+
+        // Function to populate the edit form with device data
+        function populateEditForm(deviceData) {
+            const form = document.getElementById('edit-device-form');
+            
+            // Populate select fields using OptimizedSelect instances
+            Object.keys(editOptimizedSelects).forEach(selectId => {
+                const field = selectId.replace('edit-', '').replace(/-/g, '_');
+                if (deviceData[field]) {
+                    const select = document.getElementById(selectId);
+                    select.value = deviceData[field];
+                    editOptimizedSelects[selectId].selectOption({
+                        value: deviceData[field],
+                        label: deviceData[field]
+                    });
+                }
+            });
+
+            // Populate regular input fields
+            document.getElementById('edit-model-year').value = deviceData.model_year || '';
+            document.getElementById('edit-procured-date').value = deviceData.procured_date || '';
+            document.getElementById('edit-device-status').value = deviceData.device_status || 'default';
+            document.getElementById('edit-geo-location').value = deviceData.geo_location || 'default';
+        }
+
+        // Handle device data if it exists
+        if (document.getElementById('devices-data')) {
+            const devicesData = JSON.parse(document.getElementById('devices-data').textContent);
+            const tableBody = document.getElementById('results-table-body');
+            
+            devicesData.forEach((device, rowIndex) => {
+                const row = document.createElement('tr');
+                row.id = `device-row-${device.id}`;
+                row.setAttribute('data-id', device.id);
+
+                for (const key in device) {
+                    const cell = document.createElement('td');
+                    cell.id = `cell-${device.id}-${key}`;
+
+                    if (key === "current_user__username") {
+                        const container = document.createElement('div');
+                        container.id = `user-container-${device.id}`;
+                        container.className = 'current-user-cell';
+
+                        const userText = document.createElement('span');
+                        userText.id = `user-text-${device.id}`;
+                        userText.className = 'current-user-text';
+                        userText.textContent = device[key] || '';
+                        container.appendChild(userText);
+
+                        const editIcon = document.createElement('i');
+                        editIcon.id = `edit-user-${device.id}`;
+                        editIcon.className = 'fas fa-edit current-user-edit-icon';
+                        editIcon.setAttribute('title', 'Edit Device Details');
+
+                        container.appendChild(editIcon);
+                        cell.appendChild(container);
+                    } else {
+                        cell.textContent = device[key];
                     }
-                });
+
+                    row.appendChild(cell);
+                }
+                tableBody.appendChild(row);
+            });
+        }
+
+        // Event listener for edit icons
+        document.addEventListener('click', function(e) {
+            if (e.target.classList.contains('current-user-edit-icon')) {
+                const row = e.target.closest('tr');
+                currentDeviceId = row.getAttribute('data-id');
                 
-                // Close the modal
-                const modal = bootstrap.Modal.getInstance(document.getElementById('userAssignmentModal'));
-                modal.hide();
+                // Get device data from the row
+                const deviceData = {
+                    device_type: row.querySelector('td:nth-child(1)').textContent,
+                    model_number: row.querySelector('td:nth-child(2)').textContent,
+                    chipset_manufacturer: row.querySelector('td:nth-child(3)').textContent,
+                    manufacturer: row.querySelector('td:nth-child(4)').textContent,
+                    model_year: row.querySelector('td:nth-child(5)').textContent,
+                    procured_date: row.querySelector('td:nth-child(6)').textContent,
+                    device_status: row.querySelector('td:nth-child(7)').textContent,
+                    geo_location: row.querySelector('td:nth-child(8)').textContent,
+                };
+
+                // Initialize optimized selects if not already done
+                initializeEditOptimizedSelects();
+                
+                // Populate the form
+                populateEditForm(deviceData);
+                
+                // Show the modal
+                const modal = new bootstrap.Modal(document.getElementById('userAssignmentModal'));
+                modal.show();
             }
-        })
-        .catch(error => {
-            console.error('Error:', error);
+        });
+
+        // Handle form submission
+        document.getElementById('saveDeviceChanges').addEventListener('click', function() {
+            const formData = new FormData(document.getElementById('edit-device-form'));
+            const data = Object.fromEntries(formData.entries());
+            data.id = currentDeviceId;
+
+            // Send PATCH request to update device
+            fetch("{% url 'iot_catalogue:update_device' %}", {
+                method: 'PATCH',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCookie('csrftoken')
+                },
+                body: JSON.stringify(data)
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // Update the row in the table
+                    const row = document.querySelector(`tr[data-id="${currentDeviceId}"]`);
+                    Object.keys(data.device).forEach((key, index) => {
+                        const cell = row.querySelector(`td:nth-child(${index + 1})`);
+                        if (cell) {
+                            cell.textContent = data.device[key];
+                        }
+                    });
+                    
+                    // Close the modal
+                    const modal = bootstrap.Modal.getInstance(document.getElementById('userAssignmentModal'));
+                    modal.hide();
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+            });
         });
     });
-});
+
+    function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
+</script>
