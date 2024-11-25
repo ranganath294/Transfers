@@ -1,19 +1,14 @@
-<!-- Replace the existing modal HTML with this enhanced version -->
-<div class="modal fade" id="userAssignmentModal" tabindex="-1" aria-labelledby="userAssignmentModalLabel" aria-hidden="true">
-  <div class="modal-dialog modal-dialog-centered modal-lg">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h5 class="modal-title" id="userAssignmentModalLabel">Edit Device Details</h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-      </div>
-      <div class="modal-body">
-        <form id="device-edit-form" class="row g-3">
-          <!-- Left Column -->
-          <div class="col-md-6">
-            <div class="mb-3">
-              <label class="form-label" for="modal-device-type">Device Type</label>
-              <select name="device_type" class="form-select optimized-select" id="modal-device-type">
-                <option value="default">-- All --</option>
+{% extends 'iot_catalogue/base.html' %}
+{% load static %}
+
+{% block content_div %}
+<form id="iot-search-form" method="post" action="{% url 'iot_catalogue:search' %}" class="row g-3">
+    {% csrf_token %}
+    <div class="col-md-6" id="search-form-left-col">
+        <div class="mb-3" id="device-type-container">
+            <label class="form-label" for="device-type-select">Device Type</label>
+            <select name="device_type" class="form-select optimized-select" id="device-type-select">
+                <option value="default" selected>-- All --</option>
                 <option value="Headset">Headset</option>
                 <option value="Speaker">Speaker</option>
                 <option value="Earbud">Earbud</option>
@@ -33,371 +28,719 @@
                 <option value="Smart ring">Smart ring</option>
                 <option value="Health device">Health device</option>
                 <option value="Smart bulb">Smart bulb</option>
-              </select>
-            </div>
+            </select>
+        </div>
 
-            <div class="mb-3">
-              <label class="form-label" for="modal-model-number">Model Number</label>
-              <select name="model_number" class="form-select optimized-select" id="modal-model-number">
-                <option value="default">-- All --</option>
+        <div class="mb-3">
+            <label class="form-label" for="model_number-select">Model Number</label>
+            <select name="model_number" class="form-select optimized-select" id="model_number-select">
+                <option value="default" selected>-- All --</option>
                 {% for model_number in model_numbers %}
                 <option value="{{ model_number }}">{{ model_number }}</option>
                 {% endfor %}
-              </select>
-            </div>
+            </select>
+        </div>
 
-            <div class="mb-3">
-              <label class="form-label" for="modal-chipset-manufacturer">Chipset Manufacturer</label>
-              <select name="chipset_manufacturer" class="form-select optimized-select" id="modal-chipset-manufacturer">
-                <option value="default">-- All --</option>
+        <div class="mb-3">
+            <label class="form-label" for="chipset_manufacturer-select">Chipset Manufacturer</label>
+            <select name="chipset_manufacturer" class="form-select optimized-select" id="chipset_manufacturer-select">
+                <option value="default" selected>-- All --</option>
                 {% for chipset_manufacturer in chipset_manufacturers %}
                 <option value="{{ chipset_manufacturer }}">{{ chipset_manufacturer }}</option>
                 {% endfor %}
-              </select>
-            </div>
+            </select>
+        </div>
 
-            <div class="mb-3">
-              <label class="form-label">Procured Date</label>
-              <input type="date" name="procured_date" class="form-control" id="modal-procured-date">
+        <div class="mb-3">
+            <label class="form-label">Procured Date</label>
+            <div class="input-group">
+                <span class="input-group-text">BETWEEN</span>
+                <input type="date" name="procured_date_between" class="form-control">
+                <span class="input-group-text">AND</span>
+                <input type="date" name="procured_date_and" class="form-control">
             </div>
+        </div>
 
-            <div class="mb-3">
-              <label class="form-label">Availability</label>
-              <select name="availability" class="form-select" id="modal-availability">
-                <option value="default">-- All --</option>
+        <div class="mb-3">
+            <label class="form-label">Availability</label>
+            <select name="availability" class="form-select">
+                <option value="default" selected>-- All --</option>
                 <option value="Available">Available</option>
                 <option value="In Use">In Use</option>
-              </select>
-            </div>
-          </div>
+            </select>
+        </div>
+        
+    </div>
 
-          <!-- Right Column -->
-          <div class="col-md-6">
-            <div class="mb-3">
-              <label class="form-label" for="modal-manufacturer">Manufacturer</label>
-              <select name="manufacturer" class="form-select optimized-select" id="modal-manufacturer">
-                <option value="default">-- All --</option>
+    <div class="col-md-6" id="search-form-right-col">
+        <div class="mb-3" id="manufacturer-container">
+            <label class="form-label" for="manufacturer-select">Manufacturer</label>
+            <select name="manufacturer" class="form-select optimized-select" id="manufacturer-select">
+                <option value="default" selected>-- All --</option>
                 {% for manufacturer in manufacturers %}
                 <option value="{{ manufacturer }}">{{ manufacturer }}</option>
                 {% endfor %}
-              </select>
+            </select>
+        </div>
+        
+        <div class="mb-3">
+            <label class="form-label">Model Year</label>
+            <div class="input-group">
+                <span class="input-group-text">BETWEEN</span>
+                <input type="number" name="model_year_between" class="form-control">
+                <span class="input-group-text">AND</span>
+                <input type="number" name="model_year_and" class="form-control">
             </div>
+        </div>
 
-            <div class="mb-3">
-              <label class="form-label">Model Year</label>
-              <input type="number" name="model_year" class="form-control" id="modal-model-year">
-            </div>
-
-            <div class="mb-3">
-              <label class="form-label">Device Status</label>
-              <select name="device_status" class="form-select" id="modal-device-status">
-                <option value="default">-- All --</option>
+        <div class="mb-3">
+            <label class="form-label">Device Status</label>
+            <select name="device_status" class="form-select">
+                <option value="default" selected>-- All --</option>
                 <option value="Active">Active</option>
                 <option value="Missing">Missing</option>
                 <option value="Retired">Retired</option>
                 <option value="Damaged">Damaged</option>
-              </select>
-            </div>
+            </select>
+        </div>
 
-            <div class="mb-3">
-              <label class="form-label">Geo Location</label>
-              <select name="geo_location" class="form-select" id="modal-geo-location">
-                <option value="default">-- All --</option>
+        <div class="mb-3">
+            <label class="form-label">Geo Locations</label>
+            <select name="geo_location" class="form-select">
+                <option value="default" selected>-- All --</option>
                 <option value="SD">SD</option>
                 <option value="SDC">SDC</option>
                 <option value="QIPL">QIPL</option>
-              </select>
-            </div>
+            </select>
+        </div>
 
-            <div class="mb-3">
-              <label class="form-label" for="userSelect">Current User</label>
-              <select class="form-select optimized-select" id="userSelect">
-                <option value="">Choose...</option>
-                {% for username in usernames %}
-                <option value="{{ username }}">{{ username }}</option>
-                {% endfor %}
-              </select>
+        <!-- <div class="mb-3">
+            <label class="form-label">Supported Technologies</label>
+            <select name="supported_technologies" class="form-select">
+                <option value="default" selected>-- All --</option>
+                <option value="wlan">WLAN</option>
+                <option value="bluetooth">Bluetooth</option>
+                <option value="wlan_and_bluetooth">WLAN and Bluetooth</option>
+            </select>
+        </div>
+
+        <div class="mb-3">
+            <label class="form-label">Customer Names</label>
+            <div class="input-group">
+                <span class="input-group-text">LIKE</span>
+                <input type="text" name="customer_names" class="form-control">
             </div>
-          </div>
-        </form>
-      </div>
-      <div class="modal-footer">
-        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-        <button type="button" class="btn btn-primary" id="userAssignmentModalSaveBtn">Save changes</button>
-      </div>
+        </div>  -->
     </div>
-  </div>
+    
+    <div class="col-12 text-end">
+        <button type="submit" class="btn btn-primary">
+            <i class="fas fa-search me-2"></i>Search
+        </button>
+        <button type="reset" class="btn btn-secondary">
+            <i class="fas fa-undo me-2"></i>Reset
+        </button>
+    </div>
+</form>
+
+<div class="modal fade" id="userAssignmentModal" tabindex="-1" aria-labelledby="userAssignmentModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered" id="userAssignmentDialog">
+        <div class="modal-content" id="userAssignmentContent">
+            <div class="modal-header">
+                <h5 class="modal-title" id="userAssignmentModalLabel">Assign User</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label for="userSelect" class="form-label">Select User</label>
+                    <select class="form-select" id="userSelect">
+                        <option value="">Choose...</option>
+                        {% for username in usernames %}
+                            <option value="{{ username }}">{{ username }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-primary" id="userAssignmentModalSaveBtn">Save changes</button>
+            </div>
+        </div>
+    </div>
 </div>
 
-
-
-
-
-
-
-
-
-
-
-// Add this to your existing JavaScript code
-document.addEventListener('DOMContentLoaded', function() {
-    // Initialize all optimized selects in the modal
-    const modalSelects = document.querySelectorAll('#userAssignmentModal .optimized-select');
-    modalSelects.forEach(select => {
-        new OptimizedSelect(select);
-    });
-
-    const userAssignmentModal = document.getElementById('userAssignmentModal');
-    let currentDeviceId = null;
-
-    // Function to populate modal with device data
-    function populateModalWithDeviceData(deviceId) {
-        const row = document.querySelector(`tr[data-id="${deviceId}"]`);
-        if (!row) return;
-
-        // Get all the cell values
-        const deviceType = row.querySelector('td:nth-child(1)').textContent;
-        const modelNumber = row.querySelector('td:nth-child(2)').textContent;
-        const chipsetManufacturer = row.querySelector('td:nth-child(3)').textContent;
-        const manufacturer = row.querySelector('td:nth-child(4)').textContent;
-        const modelYear = row.querySelector('td:nth-child(5)').textContent;
-        const procuredDate = row.querySelector('td:nth-child(6)').textContent;
-        const availability = row.querySelector('td:nth-child(7)').textContent;
-        const deviceStatus = row.querySelector('td:nth-child(8)').textContent;
-        const geoLocation = row.querySelector('td:nth-child(9)').textContent;
-        const currentUser = row.querySelector('td:nth-child(10)').textContent;
-
-        // Set values in modal
-        document.getElementById('modal-device-type').value = deviceType;
-        document.getElementById('modal-model-number').value = modelNumber;
-        document.getElementById('modal-chipset-manufacturer').value = chipsetManufacturer;
-        document.getElementById('modal-manufacturer').value = manufacturer;
-        document.getElementById('modal-model-year').value = modelYear;
-        document.getElementById('modal-procured-date').value = procuredDate;
-        document.getElementById('modal-availability').value = availability;
-        document.getElementById('modal-device-status').value = deviceStatus;
-        document.getElementById('modal-geo-location').value = geoLocation;
-        document.getElementById('userSelect').value = currentUser;
-
-        // Update the OptimizedSelect displays
-        modalSelects.forEach(select => {
-            if (select.optimizedSelect) {
-                select.optimizedSelect.button.textContent = select.options[select.selectedIndex].text;
-            }
-        });
+<style>
+    .optimized-select-wrapper {
+        position: relative;
+        width: 100%;
     }
+    
+    .optimized-select-button {
+        width: 100%;
+        text-align: left;
+        cursor: pointer;
+    }
+    
+    .optimized-select-dropdown {
+        display: none;
+        position: absolute;
+        top: 100%;
+        left: 0;
+        right: 0;
+        background: white;
+        border: 1px solid #dee2e6;
+        border-radius: 0.375rem;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        z-index: 1000;
+        margin-top: 0.25rem;
+    }
+    
+    .optimized-select-search {
+        width: 100%;
+        padding: 0.5rem;
+        border-bottom: 1px solid #dee2e6;
+        border-radius: 0.375rem 0.375rem 0 0;
+    }
+    
+    .optimized-select-options {
+        overflow-y: auto;
+        position: relative;
+        border-radius: 0 0 0.375rem 0.375rem;
+    }
+    
+    .virtual-scroll-container {
+        position: relative;
+    }
+    
+    .optimized-select-option {
+        padding: 0.5rem 1rem;
+        cursor: pointer;
+        position: absolute;
+        width: 100%;
+        display: flex;
+        align-items: center;
+    }
+    
+    .optimized-select-option:hover {
+        background-color: #f8f9fa;
+    }
+    
+    .optimized-select-options::-webkit-scrollbar {
+        width: 6px;
+    }
+    
+    .optimized-select-options::-webkit-scrollbar-track {
+        background: #f1f1f1;
+        border-radius: 3px;
+    }
+    
+    .optimized-select-options::-webkit-scrollbar-thumb {
+        background: #888;
+        border-radius: 3px;
+    }
+    
+    .optimized-select-options::-webkit-scrollbar-thumb:hover {
+        background: #555;
+    }
+</style>
 
-    // Modified event listener for edit icon click
-    document.addEventListener('click', function(e) {
-        if (e.target.classList.contains('current-user-edit-icon')) {
-            const deviceId = e.target.closest('tr').getAttribute('data-id');
-            currentDeviceId = deviceId;
-            populateModalWithDeviceData(deviceId);
-            const modal = new bootstrap.Modal(userAssignmentModal);
-            modal.show();
+<script>
+    // Custom select with virtual scrolling and search that can be reused
+    class OptimizedSelect {
+        constructor(originalSelect, options = {}) {
+          this.originalSelect = originalSelect;
+          this.options = options;
+          this.itemHeight = 35;
+          this.visibleItems = 8;
+          this.allOptions = Array.from(originalSelect.options).map(opt => ({
+            value: opt.value,
+            label: opt.text
+          }));
+          this.isOpen = false;
+      
+          this.init();
         }
-    });
-
-    // Modified save button event listener
-    document.getElementById('userAssignmentModalSaveBtn').addEventListener('click', function() {
-        if (!currentDeviceId) return;
-
-        const formData = {
-            id: currentDeviceId,
-            device_type: document.getElementById('modal-device-type').value,
-            model_number: document.getElementById('modal-model-number').value,
-            chipset_manufacturer: document.getElementById('modal-chipset-manufacturer').value,
-            manufacturer: document.getElementById('modal-manufacturer').value,
-            model_year: document.getElementById('modal-model-year').value,
-            procured_date: document.getElementById('modal-procured-date').value,
-            availability: document.getElementById('modal-availability').value,
-            device_status: document.getElementById('modal-device-status').value,
-            geo_location: document.getElementById('modal-geo-location').value,
-            user: document.getElementById('userSelect').value
-        };
-
-        const csrftoken = getCookie('csrftoken');
-
-        // Send PATCH request with all form data
-        fetch("{% url 'iot_catalogue:assign_user' %}", {
-            method: 'PATCH',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRFToken': csrftoken
-            },
-            body: JSON.stringify(formData)
-        })
-        .then(response => response.json())
-        .then(data => {
-            // Update the row in the table with new values
-            const row = document.querySelector(`tr[data-id="${currentDeviceId}"]`);
-            if (row) {
-                // Update all cells with new values
-                const cells = row.querySelectorAll('td');
-                cells[0].textContent = formData.device_type;
-                cells[1].textContent = formData.model_number;
-                cells[2].textContent = formData.chipset_manufacturer;
-                cells[3].textContent = formData.manufacturer;
-                cells[4].textContent = formData.model_year;
-                cells[5].textContent = formData.procured_date;
-                cells[6].textContent = formData.availability;
-                cells[7].textContent = formData.device_status;
-                cells[8].textContent = formData.geo_location;
-                cells[9].querySelector('.current-user-text').textContent = formData.user;
+      
+        init() {
+          // Create wrapper
+          this.wrapper = document.createElement('div');
+          this.wrapper.className = 'optimized-select-wrapper';
+          this.wrapper.id = `${this.elementId}-wrapper`;
+      
+          // Create custom select button
+          this.button = document.createElement('button');
+          this.button.className = 'optimized-select-button form-select';
+          this.button.id = `${this.elementId}-button`;
+          this.button.type = 'button'; // Prevent form submission
+          this.button.textContent = this.originalSelect.selectedOptions[0]?.text || 'Choose...';
+      
+          // Create dropdown container
+          this.dropdown = document.createElement('div');
+          this.dropdown.className = 'optimized-select-dropdown';
+          this.dropdown.id = `${this.elementId}-dropdown`;
+      
+          // Create search input
+          this.searchInput = document.createElement('input');
+          this.searchInput.className = 'optimized-select-search form-control';
+          this.searchInput.id = `${this.elementId}-search`;
+          this.searchInput.placeholder = 'Search...';
+      
+          // Create options container
+          this.optionsContainer = document.createElement('div');
+          this.optionsContainer.className = 'optimized-select-options';
+          this.optionsContainer.id = `${this.elementId}-options`;
+          this.optionsContainer.style.height = `${this.itemHeight * this.visibleItems}px`;
+      
+          // Create virtual scroll container
+          this.virtualScroll = document.createElement('div');
+          this.virtualScroll.className = 'virtual-scroll-container';
+          this.virtualScroll.id = `${this.elementId}-virtual-scroll`;
+      
+          // Assemble the components
+          this.dropdown.appendChild(this.searchInput);
+          this.dropdown.appendChild(this.optionsContainer);
+          this.optionsContainer.appendChild(this.virtualScroll);
+          this.wrapper.appendChild(this.button);
+          this.wrapper.appendChild(this.dropdown);
+      
+          // Insert custom select after original
+          this.originalSelect.style.display = 'none';
+          this.originalSelect.parentNode.insertBefore(this.wrapper, this.originalSelect.nextSibling);
+      
+          this.addEventListeners();
+          this.filterAndRenderOptions();
+        }
+      
+        addEventListeners() {
+          // Toggle dropdown with improved handling
+          this.button.addEventListener('mousedown', (e) => {
+            e.preventDefault(); // Prevent focus issues
+            this.toggleDropdown();
+          });
+      
+          // Handle search
+          this.searchInput.addEventListener('input', () => {
+            this.filterAndRenderOptions();
+          });
+      
+          // Prevent search input from closing dropdown
+          this.searchInput.addEventListener('mousedown', (e) => {
+            e.stopPropagation();
+          });
+      
+          // Handle scroll
+          this.optionsContainer.addEventListener('scroll', () => {
+            this.renderVisibleOptions();
+          });
+      
+          // Close dropdown when clicking outside
+          document.addEventListener('mousedown', (e) => {
+            if (!this.wrapper.contains(e.target)) {
+              this.closeDropdown();
             }
-
-            // Hide the modal
-            const modal = bootstrap.Modal.getInstance(userAssignmentModal);
-            modal.hide();
-        })
-        .catch((error) => {
-            console.error('Error:', error);
-        });
-    });
-});
-
-
-
-
-
-
-
-
-
-
-document.addEventListener('DOMContentLoaded', function() {
-    // Your existing initialization code for optimized selects
-    document.querySelectorAll('.optimized-select').forEach(select => {
-        new OptimizedSelect(select);
-    });
-
-    const devicesData = JSON.parse(document.getElementById('devices-data').textContent);
-    const tableBody = document.getElementById('results-table-body');
-    let currentRow = null;
-
-    // Your existing code for creating table rows
-    devicesData.forEach((device, rowIndex) => {
-        // ... (keep your existing table row creation code)
-    });
-
-    // Initialize the optimized select when the modal is shown
-    const userAssignmentModal = document.getElementById('userAssignmentModal');
-    let currentDeviceId = null;
-
-    // Function to populate modal with device data
-    function populateModalWithDeviceData(deviceId) {
-        const row = document.querySelector(`tr[data-id="${deviceId}"]`);
-        if (!row) return;
-
-        // Get all the cell values
-        const deviceType = row.querySelector('td:nth-child(1)').textContent;
-        const modelNumber = row.querySelector('td:nth-child(2)').textContent;
-        const chipsetManufacturer = row.querySelector('td:nth-child(3)').textContent;
-        const manufacturer = row.querySelector('td:nth-child(4)').textContent;
-        const modelYear = row.querySelector('td:nth-child(5)').textContent;
-        const procuredDate = row.querySelector('td:nth-child(6)').textContent;
-        const availability = row.querySelector('td:nth-child(7)').textContent;
-        const deviceStatus = row.querySelector('td:nth-child(8)').textContent;
-        const geoLocation = row.querySelector('td:nth-child(9)').textContent;
-        const currentUser = row.querySelector('td:nth-child(10) .current-user-text').textContent.trim();
-
-        // Set values in modal
-        document.getElementById('modal-device-type').value = deviceType;
-        document.getElementById('modal-model-number').value = modelNumber;
-        document.getElementById('modal-chipset-manufacturer').value = chipsetManufacturer;
-        document.getElementById('modal-manufacturer').value = manufacturer;
-        document.getElementById('modal-model-year').value = modelYear;
-        document.getElementById('modal-procured-date').value = procuredDate;
-        document.getElementById('modal-availability').value = availability;
-        document.getElementById('modal-device-status').value = deviceStatus;
-        document.getElementById('modal-geo-location').value = geoLocation;
-        document.getElementById('userSelect').value = currentUser;
-
-        // Update the OptimizedSelect displays
-        document.querySelectorAll('#userAssignmentModal .optimized-select').forEach(select => {
-            if (select.optimizedSelect) {
-                select.optimizedSelect.button.textContent = select.options[select.selectedIndex].text;
-            }
-        });
-    }
-
-    // Modified event listener for edit icon click
-    document.addEventListener('click', function(e) {
-        if (e.target.classList.contains('current-user-edit-icon')) {
-            const deviceId = e.target.closest('tr').getAttribute('data-id');
-            currentDeviceId = deviceId;
-            currentRow = e.target.closest('tr');
-            populateModalWithDeviceData(deviceId);
-            
-            // Initialize all optimized selects in the modal if not already initialized
-            document.querySelectorAll('#userAssignmentModal .optimized-select').forEach(select => {
-                if (!select.optimizedSelect) {
-                    new OptimizedSelect(select);
-                }
+          });
+      
+          // Prevent dropdown from closing when clicking inside
+          this.dropdown.addEventListener('mousedown', (e) => {
+            e.stopPropagation();
+          });
+        }
+      
+        toggleDropdown() {
+          if (this.isOpen) {
+            this.closeDropdown();
+          } else {
+            this.openDropdown();
+          }
+        }
+      
+        openDropdown() {
+          this.isOpen = true;
+          this.dropdown.style.display = 'block';
+          this.searchInput.focus();
+          this.filterAndRenderOptions();
+        }
+      
+        closeDropdown() {
+          this.isOpen = false;
+          this.dropdown.style.display = 'none';
+          this.searchInput.value = '';
+          this.filterAndRenderOptions();
+        }
+      
+        filterAndRenderOptions() {
+          const searchTerm = this.searchInput.value.toLowerCase();
+          this.filteredOptions = this.allOptions.filter(option => 
+            option.label.toLowerCase().includes(searchTerm)
+          );
+      
+          // Reset scroll position
+          this.optionsContainer.scrollTop = 0;
+          this.virtualScroll.style.height = `${this.filteredOptions.length * this.itemHeight}px`;
+          this.renderVisibleOptions();
+        }
+      
+        renderVisibleOptions() {
+          const scrollTop = this.optionsContainer.scrollTop;
+          const startIndex = Math.floor(scrollTop / this.itemHeight);
+          const endIndex = startIndex + this.visibleItems + 2;
+      
+          this.virtualScroll.innerHTML = '';
+      
+          this.filteredOptions.slice(startIndex, endIndex).forEach((option, index) => {
+            const optionEl = document.createElement('div');
+            optionEl.className = 'optimized-select-option';
+            optionEl.textContent = option.label;
+            optionEl.style.position = 'absolute';
+            optionEl.style.top = `${(startIndex + index) * this.itemHeight}px`;
+            optionEl.style.height = `${this.itemHeight}px`;
+      
+            optionEl.addEventListener('mousedown', (e) => {
+              e.preventDefault(); // Prevent focus issues
+              this.selectOption(option);
             });
-
-            const modal = new bootstrap.Modal(userAssignmentModal);
-            modal.show();
+      
+            this.virtualScroll.appendChild(optionEl);
+          });
         }
-    });
+      
+        selectOption(option) {
+          // Update original select
+          this.originalSelect.value = option.value;
+          this.originalSelect.dispatchEvent(new Event('change'));
+      
+          // Update custom select
+          this.button.textContent = option.label;
+          this.closeDropdown();
+        }
+      }
+</script>
 
-    // Replace your existing save button event listener with this updated version
-    document.getElementById('userAssignmentModalSaveBtn').addEventListener('click', function() {
-        if (!currentDeviceId) return;
-
-        const formData = {
-            id: currentDeviceId,
-            device_type: document.getElementById('modal-device-type').value,
-            model_number: document.getElementById('modal-model-number').value,
-            chipset_manufacturer: document.getElementById('modal-chipset-manufacturer').value,
-            manufacturer: document.getElementById('modal-manufacturer').value,
-            model_year: document.getElementById('modal-model-year').value,
-            procured_date: document.getElementById('modal-procured-date').value,
-            availability: document.getElementById('modal-availability').value,
-            device_status: document.getElementById('modal-device-status').value,
-            geo_location: document.getElementById('modal-geo-location').value,
-            user: document.getElementById('userSelect').value
-        };
-
-        const csrftoken = getCookie('csrftoken');
-
-        // Send PATCH request with all form data
-        fetch("{% url 'iot_catalogue:assign_user' %}", {
-            method: 'PATCH',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRFToken': csrftoken
-            },
-            body: JSON.stringify(formData)
-        })
-        .then(response => response.json())
-        .then(data => {
-            // Update the row in the table with new values
-            if (currentRow) {
-                const cells = currentRow.querySelectorAll('td');
-                cells[0].textContent = formData.device_type;
-                cells[1].textContent = formData.model_number;
-                cells[2].textContent = formData.chipset_manufacturer;
-                cells[3].textContent = formData.manufacturer;
-                cells[4].textContent = formData.model_year;
-                cells[5].textContent = formData.procured_date;
-                cells[6].textContent = formData.availability;
-                cells[7].textContent = formData.device_status;
-                cells[8].textContent = formData.geo_location;
-                cells[9].querySelector('.current-user-text').textContent = formData.user;
-            }
-
-            // Hide the modal
-            const modal = bootstrap.Modal.getInstance(userAssignmentModal);
-            modal.hide();
-        })
-        .catch((error) => {
-            console.error('Error:', error);
+<script>
+    // Initialize all optimized selects
+    document.addEventListener('DOMContentLoaded', function() {
+        // Initialize optimized selects for all elements with the 'optimized-select' class
+        document.querySelectorAll('.optimized-select').forEach(select => {
+            new OptimizedSelect(select);
         });
     });
+    
+</script>
+{% endblock %}
 
-    // Keep your existing getCookie function
-    function getCookie(name) {
-        // ... (your existing getCookie function)
+{% block results_div %}
+{% if devices %}
+
+<style>
+    /* <link rel="stylesheet" href="{% static 'iot_catalogue/css/optimized-select.css' %}"> */
+    .table-container {
+        position: relative;
+        max-height: calc(100vh - 300px);
+        overflow: auto;
     }
-});
+    
+    /* Make the header sticky */
+    .table-sticky thead {
+        position: sticky;
+        top: 0;
+        z-index: 1;
+        background-color: #f8f9fa;
+    }
+    
+    /* Custom scrollbar styling */
+    .table-container::-webkit-scrollbar {
+        width: 8px;
+        height: 8px;
+    }
+    
+    .table-container::-webkit-scrollbar-track {
+        background: #f1f1f1;
+        border-radius: 4px;
+    }
+    
+    .table-container::-webkit-scrollbar-thumb {
+        background: #888;
+        border-radius: 4px;
+    }
+    
+    .table-container::-webkit-scrollbar-thumb:hover {
+        background: #555;
+    }
+
+    /* Ensure table columns don't wrap */
+    .table-sticky th,
+    .table-sticky td {
+        white-space: nowrap;
+        padding: 0.75rem;
+    }
+
+    /* Add shadow when scrolling */
+    .table-shadow {
+        box-shadow: inset 0 0 5px rgba(0,0,0,0.15);
+        border-radius: 0.375rem;
+    }
+
+    .current-user-cell {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+    }
+
+    .current-user-text {
+        flex-grow: 1;
+    }
+
+    .current-user-edit-icon {
+        color: #6c757d;
+        cursor: pointer;
+        transition: color 0.2s ease;
+    }
+
+    .current-user-edit-icon:hover {
+        color: #0d6efd;
+    }
+
+    .optimized-select-wrapper {
+        position: relative;
+        width: 100%;
+    }
+    
+    .optimized-select-button {
+        width: 100%;
+        text-align: left;
+        cursor: pointer;
+    }
+    
+    .optimized-select-dropdown {
+        display: none;
+        position: absolute;
+        top: 100%;
+        left: 0;
+        right: 0;
+        background: white;
+        border: 1px solid #dee2e6;
+        border-radius: 0.375rem;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        z-index: 1000;
+        margin-top: 0.25rem;
+    }
+    
+    .optimized-select-search {
+        width: 100%;
+        padding: 0.5rem;
+        border-bottom: 1px solid #dee2e6;
+        border-radius: 0.375rem 0.375rem 0 0;
+    }
+    
+    .optimized-select-options {
+        overflow-y: auto;
+        position: relative;
+        border-radius: 0 0 0.375rem 0.375rem;
+    }
+    
+    .virtual-scroll-container {
+        position: relative;
+    }
+    
+    .optimized-select-option {
+        padding: 0.5rem 1rem;
+        cursor: pointer;
+        position: absolute;
+        width: 100%;
+        display: flex;
+        align-items: center;
+    }
+    
+    .optimized-select-option:hover {
+        background-color: #f8f9fa;
+    }
+    
+    .optimized-select-options::-webkit-scrollbar {
+        width: 6px;
+    }
+    
+    .optimized-select-options::-webkit-scrollbar-track {
+        background: #f1f1f1;
+        border-radius: 3px;
+    }
+    
+    .optimized-select-options::-webkit-scrollbar-thumb {
+        background: #888;
+        border-radius: 3px;
+    }
+    
+    .optimized-select-options::-webkit-scrollbar-thumb:hover {
+        background: #555;
+    }
+</style>
+
+<div class="card-body" id="results-card">
+    <div class="table-shadow" id="results-table-container">
+        <div class="table-container" id="results-scrollable-container">
+            <table class="table table-hover table-sticky mb-0" id="results-table">
+                <thead>
+                    <tr class="bg-light" id="results-header-row">
+                        {% for col_name in column_names %}
+                            <th class="fw-semibold" id="col-header-{{ col_name|lower|slugify }}">{{ col_name }}</th>
+                        {% endfor %}
+                    </tr>
+                </thead>
+                <tbody id="results-table-body">
+                    <!-- Rows will be inserted here by JavaScript -->
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<script id="devices-data" type="application/json">
+    {{ devices|safe }}
+</script>
+
+<script>
+    // Initialize all optimized selects
+    document.addEventListener('DOMContentLoaded', function() {
+        // Initialize optimized selects for all elements with the 'optimized-select' class
+        // document.querySelectorAll('.optimized-select').forEach(select => {
+        //    new OptimizedSelect(select);
+        //});
+        
+        const devicesData = JSON.parse(document.getElementById('devices-data').textContent);
+        const tableBody = document.getElementById('results-table-body');
+        let currentRow = null; // Variable to keep track of the current row being edited
+    
+        devicesData.forEach((device, rowIndex) => {
+            const row = document.createElement('tr');
+            row.id = `device-row-${device.id}`;
+            row.setAttribute('data-id', device.id);
+            
+            for (const key in device) {
+                const cell = document.createElement('td');
+                cell.id = `cell-${device.id}-${key}`;
+    
+                if (key === "current_user__username") {
+                    const container = document.createElement('div');
+                    container.id = `user-container-${device.id}`;
+                    container.className = 'current-user-cell';
+    
+                    const userText = document.createElement('span');
+                    userText.id = `user-text-${device.id}`;
+                    userText.className = 'current-user-text';
+                    userText.textContent = device[key] || '';
+                    container.appendChild(userText);
+    
+                    const editIcon = document.createElement('i');
+                    editIcon.id = `edit-user-${device.id}`;
+                    editIcon.className = 'fas fa-edit current-user-edit-icon';
+                    editIcon.setAttribute('title', 'Edit User Assignment');
+    
+                    editIcon.addEventListener('click', function(e) {
+                        e.stopPropagation();
+    
+                        // Pre-select current user if exists
+                        const userSelect = document.getElementById('userSelect');
+                        if (device[key]) {
+                            userSelect.value = device[key];
+                        } else {
+                            userSelect.selectedIndex = 0;
+                        }
+    
+                        // Set the current row being edited
+                        currentRow = row;
+    
+                        // Show modal
+                        const modal = new bootstrap.Modal(document.getElementById('userAssignmentModal'));
+                        modal.show();
+                    });
+    
+                    container.appendChild(editIcon);
+                    cell.appendChild(container);
+                } else if (key === "availability") {
+                    cell.id = `availability-${device.id}`;
+                    cell.className = 'availability-cell';
+                    cell.textContent = device[key];
+                } else if (key === "assigned_date") {
+                    cell.id = `assigned-date-${device.id}`;
+                    cell.className = 'assigned-date-cell';
+                    cell.textContent = device[key];
+                } else {
+                    cell.textContent = device[key];
+                }
+    
+                row.appendChild(cell);
+            }
+            tableBody.appendChild(row);
+        });
+    
+        // Initialize the optimized select when the modal is shown
+        const userAssignmentModal = document.getElementById('userAssignmentModal');
+        userAssignmentModal.addEventListener('show.bs.modal', function() {
+            const userSelect = document.getElementById('userSelect');
+            if (!userSelect.optimizedSelect) {
+                userSelect.optimizedSelect = new OptimizedSelect(userSelect);
+            }
+        });
+    
+        // Add the event listener for the save button only once
+        const saveUserBtn = document.getElementById('userAssignmentModalSaveBtn');
+        saveUserBtn.addEventListener('click', function() {
+            // Hide the modal
+            const modal = bootstrap.Modal.getInstance(document.getElementById('userAssignmentModal'));
+            modal.hide();
+    
+            // Get the selected user and rowId
+            const selectedUser = document.getElementById('userSelect').value;
+            const rowId = currentRow.getAttribute('data-id');
+    
+            const csrftoken = getCookie('csrftoken');
+                            
+            // Send a PUT request
+            fetch("{% url 'iot_catalogue:assign_user' %}", {
+                method: 'PATCH',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': csrftoken
+                },
+                body: JSON.stringify({ user: selectedUser, id: rowId })
+            })
+            .then(response => response.json())
+            .then(data => {
+                // Update cells with meaningful ID selectors
+                const currentUserCell = document.getElementById(`user-text-${rowId}`);
+                currentUserCell.textContent = selectedUser;
+    
+                const availabilityCell = document.getElementById(`availability-${rowId}`);
+                const assignedDateCell = document.getElementById(`assigned-date-${rowId}`);
+                const currentDate = new Date().toISOString().split('T')[0]; // Format: YYYY-MM-DD
+    
+                if (selectedUser) {
+                    availabilityCell.textContent = "In Use";
+                    assignedDateCell.textContent = currentDate;
+                } else {
+                    availabilityCell.textContent = "Available";
+                    assignedDateCell.textContent = "";
+                }
+            })
+            .catch((error) => {
+                console.error('Error:', error);
+            });
+        });
+    });
+    
+    function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
+</script>
+
+{% endif %}
+{% endblock %}
