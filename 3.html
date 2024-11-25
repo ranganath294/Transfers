@@ -1,129 +1,38 @@
-{% extends 'iot_catalogue/base.html' %}
-{% load static %}
-
-{% block content_div %}
-<form id="iot-search-form" method="post" action="{% url 'iot_catalogue:search' %}" class="row g-3">
-    {% csrf_token %}
-    <div class="col-md-6" id="search-form-left-col">
-        <div class="mb-3" id="device-type-container">
-            <label class="form-label" for="device-type-select">Device Type</label>
-            <select name="device_type" class="form-select optimized-select" id="device-type-select">
-                <option value="default" selected>-- All --</option>
-                <option value="Headset">Headset</option>
-                <!-- ... other options ... -->
-            </select>
-        </div>
-
-        <!-- Other left column fields -->
-    </div>
-
-    <div class="col-md-6" id="search-form-right-col">
-        <!-- Right column fields -->
-    </div>
-</form>
-
-<!-- Edit Modal -->
-<div class="modal fade" id="editDeviceModal" tabindex="-1" aria-labelledby="editDeviceModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-lg modal-dialog-centered" id="editDeviceDialog">
-        <div class="modal-content" id="editDeviceContent">
-            <div class="modal-header" id="editDeviceHeader">
-                <h5 class="modal-title" id="editDeviceModalLabel">Edit Device</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <div class="modal-body" id="editDeviceBody">
-                <form id="edit-device-form" class="row g-3">
-                    <div class="col-md-6" id="edit-form-left-col">
-                        <div class="mb-3" id="edit-device-type-container">
-                            <label class="form-label" for="edit-device-type">Device Type</label>
-                            <select name="device_type" class="form-select optimized-select" id="edit-device-type">
-                                <option value="Headset">Headset</option>
-                                <option value="Speaker">Speaker</option>
-                                <!-- ... other options ... -->
-                            </select>
-                        </div>
-
-                        <div class="mb-3" id="edit-model-number-container">
-                            <label class="form-label" for="edit-model-number">Model Number</label>
-                            <select name="model_number" class="form-select optimized-select" id="edit-model-number">
-                                {% for model_number in model_numbers %}
-                                <option value="{{ model_number }}">{{ model_number }}</option>
-                                {% endfor %}
-                            </select>
-                        </div>
-
-                        <!-- Other left column fields -->
-                    </div>
-
-                    <div class="col-md-6" id="edit-form-right-col">
-                        <!-- Right column fields with their unique IDs -->
-                    </div>
-                </form>
-            </div>
-            <div class="modal-footer" id="editDeviceFooter">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                <button type="button" class="btn btn-primary" id="saveDeviceChanges">Save changes</button>
-            </div>
-        </div>
-    </div>
-</div>
-
-{% endblock %}
-
-{% block results_div %}
-{% if devices %}
-<div class="card-body" id="results-card">
-    <div class="table-shadow" id="results-table-container">
-        <div class="table-container" id="results-scrollable-container">
-            <table class="table table-hover table-sticky mb-0" id="results-table">
-                <thead>
-                    <tr class="bg-light" id="results-header-row">
-                        {% for col_name in column_names %}
-                            <th class="fw-semibold" id="col-header-{{ col_name|lower|slugify }}">{{ col_name }}</th>
-                        {% endfor %}
-                    </tr>
-                </thead>
-                <tbody id="results-table-body">
-                    <!-- Rows will be inserted here by JavaScript -->
-                </tbody>
-            </table>
-        </div>
-    </div>
-</div>
-
-<script id="devices-data" type="application/json">
-    {{ devices|safe }}
-</script>
-
-<script>
 document.addEventListener('DOMContentLoaded', function() {
     const devicesData = JSON.parse(document.getElementById('devices-data').textContent);
     const tableBody = document.getElementById('results-table-body');
+    let currentRow = null; // Track current row being edited
     
     devicesData.forEach(device => {
         const row = document.createElement('tr');
         row.id = `device-row-${device.id}`;
         row.setAttribute('data-id', device.id);
+        row.className = 'device-row';
         
         for (const key in device) {
             const cell = document.createElement('td');
             cell.id = `cell-${device.id}-${key}`;
+            cell.className = `cell-${key}`;
             
             if (key === "current_user__username") {
                 const container = document.createElement('div');
                 container.id = `user-container-${device.id}`;
+                container.className = 'current-user-cell';
                 
                 const userText = document.createElement('span');
                 userText.id = `user-text-${device.id}`;
+                userText.className = 'current-user-text';
                 userText.textContent = device[key] || '';
                 container.appendChild(userText);
                 
                 const editIcon = document.createElement('i');
                 editIcon.id = `edit-icon-${device.id}`;
-                editIcon.className = 'fas fa-edit ms-2';
+                editIcon.className = 'fas fa-edit current-user-edit-icon ms-2';
                 editIcon.setAttribute('title', 'Edit Device');
                 
                 editIcon.addEventListener('click', function(e) {
                     e.stopPropagation();
+                    currentRow = row; // Set current row before opening modal
                     openEditModal(device);
                 });
                 
@@ -147,10 +56,7 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
 
-        // Store device ID
-        document.getElementById('edit-device-form').setAttribute('data-device-id', device.id);
-
-        // Refresh optimized selects
+        // Initialize or refresh optimized selects in the modal
         document.querySelectorAll('#editDeviceModal .optimized-select').forEach(select => {
             if (!select.optimizedSelect) {
                 new OptimizedSelect(select);
@@ -164,8 +70,10 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Save changes handler
     document.getElementById('saveDeviceChanges').addEventListener('click', function() {
+        if (!currentRow) return; // Guard clause if no row selected
+        
         const form = document.getElementById('edit-device-form');
-        const deviceId = form.getAttribute('data-device-id');
+        const deviceId = currentRow.getAttribute('data-id');
         const formData = new FormData(form);
         const data = Object.fromEntries(formData.entries());
         
@@ -179,19 +87,33 @@ document.addEventListener('DOMContentLoaded', function() {
         })
         .then(response => response.json())
         .then(updatedDevice => {
+            // Update only the current row
             updateTableRow(deviceId, updatedDevice);
+            
+            // Reset currentRow and close modal
+            currentRow = null;
             const modal = bootstrap.Modal.getInstance(document.getElementById('editDeviceModal'));
             modal.hide();
         })
-        .catch(error => console.error('Error:', error));
+        .catch(error => {
+            console.error('Error:', error);
+            currentRow = null; // Reset on error too
+        });
+    });
+
+    // Add modal hidden event to reset currentRow
+    document.getElementById('editDeviceModal').addEventListener('hidden.bs.modal', function() {
+        currentRow = null; // Reset currentRow when modal is closed
     });
 
     function updateTableRow(deviceId, updatedDevice) {
+        if (!currentRow) return; // Guard clause
+        
         Object.keys(updatedDevice).forEach(key => {
-            const cell = document.getElementById(`cell-${deviceId}-${key}`);
+            const cell = currentRow.querySelector(`#cell-${deviceId}-${key}`);
             if (cell) {
                 if (key === "current_user__username") {
-                    const userText = document.getElementById(`user-text-${deviceId}`);
+                    const userText = cell.querySelector(`#user-text-${deviceId}`);
                     if (userText) {
                         userText.textContent = updatedDevice[key] || '';
                     }
@@ -201,7 +123,20 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
     }
+
+    function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
 });
 </script>
-{% endif %}
-{% endblock %}
