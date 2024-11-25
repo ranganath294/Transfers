@@ -155,7 +155,7 @@
                     <div class="col-md-6">
                         <div class="mb-3">
                             <label class="form-label" for="modal-device-type-select">Device Type</label>
-                            <select name="device_type" class="form-select optimized-select" id="modal-device-type-select">
+                            <select name="device_type" class="form-select optimized-select" id="modal-device-type-select" data-modal>
                                 <option value="default" selected>-- All --</option>
                                 <option value="Headset">Headset</option>
                                 <option value="Speaker">Speaker</option>
@@ -181,7 +181,7 @@
 
                         <div class="mb-3">
                             <label class="form-label" for="modal-model-number-select">Model Number</label>
-                            <select name="model_number" class="form-select optimized-select" id="modal-model-number-select">
+                            <select name="model_number" class="form-select optimized-select" id="modal-model-number-select" data-modal>
                                 <option value="default" selected>-- All --</option>
                                 {% for model_number in model_numbers %}
                                 <option value="{{ model_number }}">{{ model_number }}</option>
@@ -191,7 +191,7 @@
 
                         <div class="mb-3">
                             <label class="form-label" for="modal-chipset-manufacturer-select">Chipset Manufacturer</label>
-                            <select name="chipset_manufacturer" class="form-select optimized-select" id="modal-chipset-manufacturer-select">
+                            <select name="chipset_manufacturer" class="form-select optimized-select" id="modal-chipset-manufacturer-select" data-modal>
                                 <option value="default" selected>-- All --</option>
                                 {% for chipset_manufacturer in chipset_manufacturers %}
                                 <option value="{{ chipset_manufacturer }}">{{ chipset_manufacturer }}</option>
@@ -202,10 +202,7 @@
                         <div class="mb-3">
                             <label class="form-label">Procured Date</label>
                             <div class="input-group">
-                                <span class="input-group-text">BETWEEN</span>
-                                <input type="date" name="procured_date_between" class="form-control">
-                                <span class="input-group-text">AND</span>
-                                <input type="date" name="procured_date_and" class="form-control">
+                                <input type="date" name="procured_date" class="form-control">
                             </div>
                         </div>
 
@@ -222,7 +219,7 @@
                     <div class="col-md-6">
                         <div class="mb-3">
                             <label class="form-label" for="modal-manufacturer-select">Manufacturer</label>
-                            <select name="manufacturer" class="form-select optimized-select" id="modal-manufacturer-select">
+                            <select name="manufacturer" class="form-select optimized-select" id="modal-manufacturer-select" data-modal>
                                 <option value="default" selected>-- All --</option>
                                 {% for manufacturer in manufacturers %}
                                 <option value="{{ manufacturer }}">{{ manufacturer }}</option>
@@ -233,10 +230,7 @@
                         <div class="mb-3">
                             <label class="form-label">Model Year</label>
                             <div class="input-group">
-                                <span class="input-group-text">BETWEEN</span>
-                                <input type="number" name="model_year_between" class="form-control">
-                                <span class="input-group-text">AND</span>
-                                <input type="number" name="model_year_and" class="form-control">
+                                <input type="number" name="model_year" class="form-control">
                             </div>
                         </div>
 
@@ -263,7 +257,7 @@
 
                         <div class="mb-3">
                             <label class="form-label" for="modal-user-select">Assign To User</label>
-                            <select name="user" class="form-select optimized-select" id="modal-user-select">
+                            <select name="user" class="form-select optimized-select" id="modal-user-select" data-modal>
                                 <option value="">Choose...</option>
                                 {% for username in usernames %}
                                     <option value="{{ username }}">{{ username }}</option>
@@ -360,6 +354,10 @@
     // Custom select with virtual scrolling and search that can be reused
     class OptimizedSelect {
         constructor(originalSelect, options = {}) {
+            if(originalSelect.dataset.initialized){
+                return;
+            }
+
           this.originalSelect = originalSelect;
           this.options = options;
           this.itemHeight = 35;
@@ -369,6 +367,8 @@
             label: opt.text
           }));
           this.isOpen = false;
+
+          originalSelect.dataset.initialized = 'true';
       
           this.init();
         }
@@ -532,7 +532,7 @@
     // Initialize all optimized selects
     document.addEventListener('DOMContentLoaded', function() {
         // Initialize optimized selects for all elements with the 'optimized-select' class
-        document.querySelectorAll('.optimized-select').forEach(select => {
+        document.querySelectorAll('.optimized-select:not([data-modal])').forEach(select => {
             new OptimizedSelect(select);
         });
     });
@@ -749,13 +749,7 @@
                     editIcon.addEventListener('click', function(e) {
                         e.stopPropagation();
     
-                        // Pre-select current user if exists
-                        const userSelect = document.getElementById('userSelect');
-                        if (device[key]) {
-                            userSelect.value = device[key];
-                        } else {
-                            userSelect.selectedIndex = 0;
-                        }
+                        
     
                         // Set the current row being edited
                         currentRow = row;
@@ -788,9 +782,9 @@
         const userAssignmentModal = document.getElementById('userAssignmentModal');
         userAssignmentModal.addEventListener('show.bs.modal', function() {
             // Initialize all optimized selects in the modal
-            userAssignmentModal.querySelectorAll('.optimized-select').forEach(select => {
+            userAssignmentModal.querySelectorAll('.optimized-select[data-modal]').forEach(select => {
                 if (!select.optimizedSelect) {
-                    select.optimizedSelect = new OptimizedSelect(select);
+                    new OptimizedSelect(select);
                 }
             });
         });
