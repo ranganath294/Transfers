@@ -1,181 +1,47 @@
-document.addEventListener('DOMContentLoaded', function() {
-    const devicesData = JSON.parse(document.getElementById('devices-data').textContent);
-    const tableBody = document.getElementById('results-table-body');
-    let currentRow = null;
-
-    devicesData.forEach((device, rowIndex) => {
-        const row = document.createElement('tr');
-        row.id = `device-row-${device.id}`;
-        row.setAttribute('data-id', device.id);
+@method_decorator(csrf_protect, name='dispatch')
+class UpdateDeviceView(View):
+    def patch(self, request, *args, **kwargs):
+        data = json.loads(request.body)
+        device_id = data.get('id')
         
-        for (const key in device) {
-            const cell = document.createElement('td');
-            cell.id = `cell-${device.id}-${key}`;
-
-            if (key === "current_user__username") {
-                const container = document.createElement('div');
-                container.id = `user-container-${device.id}`;
-                container.className = 'current-user-cell';
-
-                const userText = document.createElement('span');
-                userText.id = `user-text-${device.id}`;
-                userText.className = 'current-user-text';
-                userText.textContent = device[key] || '';
-                container.appendChild(userText);
-
-                const editIcon = document.createElement('i');
-                editIcon.id = `edit-user-${device.id}`;
-                editIcon.className = 'fas fa-edit current-user-edit-icon';
-                editIcon.setAttribute('title', 'Edit User Assignment');
-
-                editIcon.addEventListener('click', function(e) {
-                    e.stopPropagation();
-                    currentRow = row;
-
-                    // Populate modal with row data
-                    populateEditModal(device);
-
-                    // Show modal
-                    const modal = new bootstrap.Modal(document.getElementById('editDeviceModal'));
-                    modal.show();
-                });
-
-                container.appendChild(editIcon);
-                cell.appendChild(container);
-            } else {
-                cell.textContent = device[key];
-            }
-
-            row.appendChild(cell);
-        }
-        tableBody.appendChild(row);
-    });
-
-    function populateEditModal(device) {
-        // Device Type
-        const deviceTypeSelect = document.getElementById('modal-device-type-select');
-        deviceTypeSelect.value = device.device_type || 'default';
-
-        // Model Number
-        const modelNumberSelect = document.getElementById('modal-model-number-select');
-        modelNumberSelect.value = device.model_number || 'default';
-
-        // Chipset Manufacturer
-        const chipsetManufacturerSelect = document.getElementById('modal-chipset-manufacturer-select');
-        chipsetManufacturerSelect.value = device.chipset_manufacturer || 'default';
-
-        // Manufacturer
-        const manufacturerSelect = document.getElementById('modal-manufacturer-select');
-        manufacturerSelect.value = device.manufacturer || 'default';
-
-        // Procured Date
-        const procuredDateInput = document.querySelector('input[name="modal-procured_date"]');
-        procuredDateInput.value = device.procured_date || '';
-
-        // Model Year
-        const modelYearInput = document.querySelector('input[name="modal-model_year"]');
-        modelYearInput.value = device.model_year || '';
-
-        // Availability
-        const availabilitySelect = document.querySelector('select[name="modal-availability"]');
-        availabilitySelect.value = device.availability || 'default';
-
-        // Device Status
-        const deviceStatusSelect = document.querySelector('select[name="modal-device_status"]');
-        deviceStatusSelect.value = device.device_status || 'default';
-
-        // Geo Location
-        const geoLocationSelect = document.querySelector('select[name="modal-geo_location"]');
-        geoLocationSelect.value = device.geo_location || 'default';
-
-        // User Assignment
-        const userSelect = document.getElementById('modal-user-select');
-        userSelect.value = device.current_user__username || '';
-    }
-
-    // Save button event listener
-    const saveUserBtn = document.getElementById('editDeviceModalSaveBtn');
-    saveUserBtn.addEventListener('click', function() {
-        const modal = bootstrap.Modal.getInstance(document.getElementById('editDeviceModal'));
-        modal.hide();
-
-        // Collect updated data from modal
-        const updatedDevice = {
-            id: currentRow.getAttribute('data-id'),
-            device_type: document.getElementById('modal-device-type-select').value,
-            model_number: document.getElementById('modal-model-number-select').value,
-            chipset_manufacturer: document.getElementById('modal-chipset-manufacturer-select').value,
-            manufacturer: document.getElementById('modal-manufacturer-select').value,
-            procured_date: document.querySelector('input[name="modal-procured_date"]').value,
-            model_year: document.querySelector('input[name="modal-model_year"]').value,
-            availability: document.querySelector('select[name="modal-availability"]').value,
-            device_status: document.querySelector('select[name="modal-device_status"]').value,
-            geo_location: document.querySelector('select[name="modal-geo_location"]').value,
-            current_user: document.getElementById('modal-user-select').value
-        };
-
-        const csrftoken = getCookie('csrftoken');
-                        
-        // Send a PATCH request to update the device
-        fetch("{% url 'iot_catalogue:update_device' %}", {
-            method: 'PATCH',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRFToken': csrftoken
-            },
-            body: JSON.stringify(updatedDevice)
-        })
-        .then(response => response.json())
-        .then(data => {
-            // Update the row with new data
-            updateRowWithNewData(updatedDevice);
-        })
-        .catch((error) => {
-            console.error('Error:', error);
-        });
-    });
-
-    function updateRowWithNewData(deviceData) {
-        const row = document.getElementById(`device-row-${deviceData.id}`);
+        try:
+            device = Device.objects.get(id=device_id)
+            
+            # Update fields
+            device.device_type = data.get('device_type', device.device_type)
+            device.model_number = data.get('model_number', device.model_number)
+            device.chipset_manufacturer = data.get('chipset_manufacturer', device.chipset_manufacturer)
+            device.manufacturer = data.get('manufacturer', device.manufacturer)
+            device.procured_date = data.get('procured_date', device.procured_date)
+            device.model_year = data.get('model_year', device.model_year)
+            device.availability = data.get('availability', device.availability)
+            device.device_status = data.get('device_status', device.device_status)
+            device.geo_location = data.get('geo_location', device.geo_location)
+            
+            # Handle user assignment
+            user = data.get('current_user')
+            if user:
+                user_obj = User.objects.get(username=user)
+                device.current_user = user_obj
+                device.assigned_date = timezone.now()
+            else:
+                device.current_user = None
+                device.assigned_date = None
+            
+            device.save()
+            
+            return JsonResponse({
+                'status': 'success',
+                'message': 'Device updated successfully'
+            })
         
-        // Update each cell with new data
-        Object.entries(deviceData).forEach(([key, value]) => {
-            const cell = row.querySelector(`[id*="${key}"]`);
-            if (cell) {
-                if (key === 'current_user') {
-                    const userTextEl = cell.querySelector('.current-user-text');
-                    if (userTextEl) {
-                        userTextEl.textContent = value || '';
-                    }
-                } else {
-                    cell.textContent = value;
-                }
-            }
-        });
-    }
-
-    function getCookie(name) {
-        let cookieValue = null;
-        if (document.cookie && document.cookie !== '') {
-            const cookies = document.cookie.split(';');
-            for (let i = 0; i < cookies.length; i++) {
-                const cookie = cookies[i].trim();
-                if (cookie.substring(0, name.length + 1) === (name + '=')) {
-                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
-                    break;
-                }
-            }
-        }
-        return cookieValue;
-    }
-
-    // Initialize optimized selects in modal
-    const editDeviceModal = document.getElementById('editDeviceModal');
-    editDeviceModal.addEventListener('show.bs.modal', function() {
-        editDeviceModal.querySelectorAll('.optimized-select[data-modal]').forEach(select => {
-            if (!select.optimizedSelect) {
-                new OptimizedSelect(select);
-            }
-        });
-    });
-});
+        except Device.DoesNotExist:
+            return JsonResponse({
+                'status': 'error',
+                'message': 'Device not found'
+            }, status=404)
+        except User.DoesNotExist:
+            return JsonResponse({
+                'status': 'error',
+                'message': 'User not found'
+            }, status=404)
