@@ -1,149 +1,87 @@
-{% load static %}
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Device Management</title>
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.2/css/bootstrap.min.css" rel="stylesheet">
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css" rel="stylesheet">
-    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
-    
-    <style>
-        /* ... (previous CSS remains the same) ... */
+from django.contrib.auth import update_session_auth_hash
+from django.contrib.auth.decorators import login_required
+from django.contrib import messages
+from django.shortcuts import render, redirect
+from django.contrib.auth.hashers import check_password
 
-        /* Additional styles for password change modal */
-        .modal-content {
-            background: rgba(255, 255, 255, 0.95);
-            border-radius: 15px;
-            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
-        }
+@login_required
+def change_password(request):
+    """
+    Handle password change for authenticated users
+    """
+    if request.method == 'POST':
+        # Get form inputs
+        current_password = request.POST.get('current_password')
+        new_password = request.POST.get('new_password')
+        confirm_new_password = request.POST.get('confirm_new_password')
 
-        .modal-header {
-            border-bottom: 1px solid rgba(0,0,0,0.1);
-        }
+        # Validation checks
+        if not current_password or not new_password or not confirm_new_password:
+            messages.error(request, 'All password fields are required.')
+            return redirect(request.META.get('HTTP_REFERER', 'home'))
 
-        .modal-footer {
-            border-top: 1px solid rgba(0,0,0,0.1);
-        }
-    </style>
-    
-</head>
-<body>
-    <div class="overlay"></div>
-    <nav class="navbar navbar-expand-lg navbar-dark mb-4">
-        <div class="container-fluid">
-            <a class="navbar-brand" href="#">
-                <i class="fas fa-microchip me-2"></i>
-                Device Manager
-            </a>
+        # Check if current password is correct
+        if not check_password(current_password, request.user.password):
+            messages.error(request, 'Current password is incorrect.')
+            return redirect(request.META.get('HTTP_REFERER', 'home'))
 
-            <div class="dropdown ms-auto">
-                <button class="btn dropdown-toggle d-flex align-items-center gap-2" type="button" id="profileDropdown" data-bs-toggle="dropdown" aria-expanded="false">
-                    <span class="fw-medium text-white">{{ current_username }}</span>
-                    <i class="fas fa-user-circle fs-4"></i>
-                </button>
-                <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="profileDropdown">
-                    <li>
-                        <a class="dropdown-item d-flex align-items-center" href="#" data-bs-toggle="modal" data-bs-target="#passwordChangeModal">
-                            <i class="fas fa-key me-2"></i>
-                            <span>Change Password</span>
-                        </a>
-                    </li>
-                    <li>
-                        <a class="dropdown-item d-flex align-items-center" href="{% url 'accounts:logout' %}">
-                            <i class="fas fa-sign-out-alt me-2"></i>
-                            <span>Logout</span>
-                        </a>
-                    </li>
-                </ul>
-            </div>
-        </div>
-    </nav>
+        # Check if new passwords match
+        if new_password != confirm_new_password:
+            messages.error(request, 'New passwords do not match.')
+            return redirect(request.META.get('HTTP_REFERER', 'home'))
 
-    <!-- Password Change Modal -->
-    <div class="modal fade" id="passwordChangeModal" tabindex="-1" aria-labelledby="passwordChangeModalLabel" aria-hidden="true">
-        <div class="modal-dialog">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title" id="passwordChangeModalLabel">Change Password</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                </div>
-                <form id="passwordChangeForm" method="post" action="{% url 'accounts:change_password' %}">
-                    {% csrf_token %}
-                    <div class="modal-body">
-                        <div class="mb-3">
-                            <label for="currentPassword" class="form-label">Current Password</label>
-                            <input type="password" class="form-control" id="currentPassword" name="current_password" required>
-                        </div>
-                        <div class="mb-3">
-                            <label for="newPassword" class="form-label">New Password</label>
-                            <input type="password" class="form-control" id="newPassword" name="new_password" required>
-                        </div>
-                        <div class="mb-3">
-                            <label for="confirmNewPassword" class="form-label">Confirm New Password</label>
-                            <input type="password" class="form-control" id="confirmNewPassword" name="confirm_new_password" required>
-                        </div>
-                    </div>
-                    <div class="modal-footer">
-                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                        <button type="submit" class="btn btn-primary">Change Password</button>
-                    </div>
-                </form>
-            </div>
-        </div>
-    </div>
+        # Validate new password strength
+        if len(new_password) < 8:
+            messages.error(request, 'New password must be at least 8 characters long.')
+            return redirect(request.META.get('HTTP_REFERER', 'home'))
 
-    <div class="container">
-        {% if messages %}
-            <div class="alert-container">
-                {% for message in messages %}
-                    <div class="alert {% if message.tags %}alert-{{ message.tags }}{% else %}alert-info{% endif %} alert-dismissible fade show" role="alert">
-                        {{ message }}
-                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-                    </div>
-                {% endfor %}
-            </div>
-        {% endif %}
+        # Additional optional password strength checks
+        if new_password.lower() == current_password.lower():
+            messages.error(request, 'New password cannot be the same as the current password.')
+            return redirect(request.META.get('HTTP_REFERER', 'home'))
 
-        <!-- Rest of the template remains the same -->
-        <div class="card">
-            <div class="card-header">
-                <ul class="nav nav-tabs card-header-tabs">
-                    <li class="nav-item">
-                        <a class="nav-link {% if request.resolver_match.url_name == 'search' %}active{% endif %}" href="{% url 'iot_catalogue:search' %}">Search</a>
-                    </li>
-                    {% if is_admin %}
-                    <li class="nav-item">
-                        <a class="nav-link {% if request.resolver_match.url_name == 'data_entry' %}active{% endif %}" href="{% url 'iot_catalogue:data_entry' %}">Data Entry</a>
-                    </li>
-                    {% endif %}
-                </ul>
-            </div>
+        # Check for common weak passwords
+        weak_passwords = ['password', '12345678', 'qwerty']
+        if new_password.lower() in weak_passwords:
+            messages.error(request, 'Please choose a stronger password.')
+            return redirect(request.META.get('HTTP_REFERER', 'home'))
 
-            <div class="card-body">
-                {% block content_div %} {% endblock %}
-            </div>
-        </div>
+        # Check that password contains complexity requirements
+        if not any(char.isdigit() for char in new_password):
+            messages.error(request, 'Password must contain at least one number.')
+            return redirect(request.META.get('HTTP_REFERER', 'home'))
 
-        <div class="card">
-            {% block results_div %} {% endblock %}
-        </div>
-    </div>
+        if not any(char.isupper() for char in new_password):
+            messages.error(request, 'Password must contain at least one uppercase letter.')
+            return redirect(request.META.get('HTTP_REFERER', 'home'))
 
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.2/js/bootstrap.bundle.min.js"></script>
+        if not any(char.islower() for char in new_password):
+            messages.error(request, 'Password must contain at least one lowercase letter.')
+            return redirect(request.META.get('HTTP_REFERER', 'home'))
 
-    <script>
-        // Optional: Add client-side validation for password change
-        document.getElementById('passwordChangeForm').addEventListener('submit', function(e) {
-            var newPassword = document.getElementById('newPassword').value;
-            var confirmNewPassword = document.getElementById('confirmNewPassword').value;
+        # Special character check
+        special_chars = "!@#$%^&*()_+-=[]{}|;:,.<>?"
+        if not any(char in special_chars for char in new_password):
+            messages.error(request, 'Password must contain at least one special character.')
+            return redirect(request.META.get('HTTP_REFERER', 'home'))
 
-            if (newPassword !== confirmNewPassword) {
-                e.preventDefault();
-                alert('New passwords do not match');
-            }
-        });
-    </script>
-</body>
-</html>
+        try:
+            # Change the password
+            request.user.set_password(new_password)
+            request.user.save()
+
+            # Update the session to prevent logout
+            update_session_auth_hash(request, request.user)
+
+            # Success message
+            messages.success(request, 'Your password was successfully updated!')
+            return redirect(request.META.get('HTTP_REFERER', 'home'))
+
+        except Exception as e:
+            # Log the error for debugging
+            print(f"Password change error: {e}")
+            messages.error(request, 'An unexpected error occurred. Please try again.')
+            return redirect(request.META.get('HTTP_REFERER', 'home'))
+
+    # If not a POST request, redirect
+    return redirect(request.META.get('HTTP_REFERER', 'home'))
