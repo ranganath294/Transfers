@@ -1,39 +1,214 @@
-function updateRowWithNewData(deviceData) {
-    const row = document.getElementById(`device-row-${deviceData.id}`);
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Device Management</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.2/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
     
-    // Update each cell with new data
-    Object.entries(deviceData).forEach(([key, value]) => {
-        const cell = row.querySelector(`[id*="${key}"]`);
-        if (cell) {
-            if (value === "default") {
-                return; // Skip updating this cell if the value is "default"
-            }
+    <style>
+        
+        body {
+            min-height: 100vh;
+            margin: 0;
+            background: url('/static/images/wp7026748.jpg') no-repeat center center fixed;
+            background-size: cover;
+            font-family: 'Roboto', sans-serif;
+        }
 
-            if (key === 'current_user') {
-                const userTextEl = cell.querySelector('.current-user-text');
-                const availabilityCell = document.getElementById(`availability-${deviceData.id}`);
-                const assignedDateCell = document.getElementById(`assigned-date-${deviceData.id}`);
+        .overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.4);
+            pointer-events: none;
+        }
+        
+        .navbar {
+            background-color: #2C3E50 !important;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            position: relative;
+        }
 
-                if (userTextEl) {
-                    // Case 1: No user assigned (empty string or default)
-                    if (!value || value === 'default') {
-                        userTextEl.textContent = '';
-                        availabilityCell.textContent = 'Available';
-                        assignedDateCell.textContent = '';
-                    } 
-                    // Case 2: User assigned
-                    else {
-                        userTextEl.textContent = value;
-                        availabilityCell.textContent = 'In Use';
-                        
-                        // Get current date in YYYY-MM-DD format
-                        const currentDate = new Date().toISOString().split('T')[0];
-                        assignedDateCell.textContent = currentDate;
-                    }
-                }
-            } else {
-                cell.textContent = value;
+        .navbar-brand {
+            font-weight: 700;
+            color: white !important;
+        }
+      
+        .container {
+            position: relative;
+        }        
+
+        .card {            
+            background: rgba(255, 255, 255, 0.95);
+            border: none;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+            border-radius: 15px;
+            margin-bottom: 2rem;
+        }
+
+        .card-header {
+            background: rgba(255, 255, 255, 0.9);
+            border-bottom: 1px solid rgba(0,0,0,0.1);
+            border-radius: 15px 15px 0 0 !important;
+        }
+
+        .nav-tabs .nav-link {
+            color: #2C3E50;
+            font-weight: 500;
+            border: none;
+            padding: 0.8rem 1.5rem;
+        }
+
+        .nav-tabs .nav-link.active {
+            color: #2C3E50;
+            background: transparent;
+            border-bottom: 3px solid #2C3E50;
+        }
+
+        .nav-tabs .nav-link:hover:not(.active) {
+            border-bottom: 3px solid rgba(44, 62, 80, 0.3);
+        }
+
+        .dropdown .btn {
+            border: none;
+            padding: 0.5rem 1rem;
+            transition: all 0.2s;
+            background: transparent;
+        }
+
+        .dropdown .btn:hover, 
+        .dropdown .btn:focus {
+            background-color: rgba(255, 255, 255, 0.1);
+        }
+
+        .dropdown-menu {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(8px);
+            margin-top: 0.5rem;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            border: none;
+            border-radius: 10px;
+        }
+
+        .dropdown-item {
+            color: #2C3E50;
+            padding: 0.7rem 1rem;
+        }
+
+        .dropdown-item:hover {
+            background-color: rgba(44, 62, 80, 0.1);
+        }
+
+        .alert {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(8px);
+            border: none;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            border-radius: 10px;
+            position: relative;
+            padding: 1rem 3rem 1rem 1rem;
+            margin-bottom: 1rem;
+        }
+
+        .alert .btn-close {
+            position: absolute;
+            right: 1rem;
+            top: 50%;
+            transform: translateY(-50%);
+            padding: 0.5rem;
+            opacity: 0.8;
+        }
+
+        .fa-user-circle {
+            color: rgba(255, 255, 255, 0.9);
+        }
+
+        .btn-primary {
+            background-color: #2C3E50;
+            border-color: #2C3E50;
+        }
+
+        .btn-primary:hover {
+            background-color: #34495E;
+            border-color: #34495E;
+        }
+
+        @media (max-width: 768px) {
+            .card {
+                margin: 1rem;
+                border-radius: 10px;
             }
         }
-    });
-}
+    </style>
+    
+</head>
+<body>
+    <div class="overlay"></div>
+    <nav class="navbar navbar-expand-lg navbar-dark mb-4">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="#">
+                <i class="fas fa-microchip me-2"></i>
+                Device Manager
+            </a>
+
+            <div class="dropdown ms-auto">
+                <button class="btn dropdown-toggle d-flex align-items-center gap-2" type="button" id="profileDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+                    <span class="fw-medium text-white">{{ current_username }}</span>
+                    <i class="fas fa-user-circle fs-4"></i>
+                </button>
+                <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="profileDropdown">
+                    <li>
+                        <a class="dropdown-item d-flex align-items-center" href="{% url 'accounts:logout' %}">
+                            <i class="fas fa-sign-out-alt me-2"></i>
+                            <span>Logout</span>
+                        </a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container">
+        {% if messages %}
+            <div class="alert-container">
+                {% for message in messages %}
+                    <div class="alert {% if message.tags %}alert-{{ message.tags }}{% else %}alert-info{% endif %} alert-dismissible fade show" role="alert">
+                        {{ message }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                    </div>
+                {% endfor %}
+            </div>
+        {% endif %}
+        <div class="card">
+            <div class="card-header">
+                <ul class="nav nav-tabs card-header-tabs">
+                    <li class="nav-item">
+                        <a class="nav-link {% if request.resolver_match.url_name == 'search' %}active{% endif %}" href="{% url 'iot_catalogue:search' %}">Search</a>
+                    </li>
+                    {% if is_admin %}
+                    <li class="nav-item">
+                        <a class="nav-link {% if request.resolver_match.url_name == 'data_entry' %}active{% endif %}" href="{% url 'iot_catalogue:data_entry' %}">Data Entry</a>
+                    </li>
+                    {% endif %}
+                </ul>
+            </div>
+
+            <div class="card-body">
+                {% block content_div %} {% endblock %}
+            </div>
+        </div>
+
+        <div class="card">
+            {% block results_div %} {% endblock %}
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.2/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
