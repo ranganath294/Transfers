@@ -1,87 +1,221 @@
-from django.contrib.auth import update_session_auth_hash
-from django.contrib.auth.decorators import login_required
-from django.contrib import messages
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.2/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css" rel="stylesheet">
+    <style>
+        .dashboard-container {
+            padding: 20px;
+        }
+        .form-section {
+            background-color: #f8f9fa;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+        .table-container {
+            position: relative;
+            max-height: calc(100vh - 300px);
+            overflow: auto;
+        }
+        
+        /* Make the header sticky */
+        .table-sticky thead {
+            position: sticky;
+            top: 0;
+            z-index: 1;
+            background-color: #f8f9fa;
+        }
+        
+        /* Custom scrollbar styling */
+        .table-container::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        
+        .table-container::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 4px;
+        }
+        
+        .table-container::-webkit-scrollbar-thumb {
+            background: #888;
+            border-radius: 4px;
+        }
+        
+        .table-container::-webkit-scrollbar-thumb:hover {
+            background: #555;
+        }
+    
+        /* Ensure table columns don't wrap */
+        .table-sticky th,
+        .table-sticky td {
+            white-space: nowrap;
+            padding: 0.75rem;
+        }
+    
+        /* Add shadow when scrolling */
+        .table-shadow {
+            box-shadow: inset 0 0 5px rgba(0,0,0,0.15);
+            border-radius: 0.375rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="dashboard-container">
+        {% if messages %}
+            <div class="alert-container">
+                {% for message in messages %}
+                    <div class="alert {% if message.tags %}alert-{{ message.tags }}{% else %}alert-info{% endif %} alert-dismissible fade show" role="alert">
+                        {{ message }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                    </div>
+                {% endfor %}
+            </div>
+        {% endif %}
+        <div class="form-section">
+            <form action="{% url 'dashboard_results:dashboard_results' %}" method="POST">
+                <div class="row">
+                    <div class="col-md-4">
+                        <label for="farmSelect" class="form-label">Select a Farm</label>
+                        <select id="farmSelect" name="farm" class="form-select">
+                            <option value="default">Select</option>
+                            <option value="BTFarm">BT Farm</option>
+                            <option value="WLANFarm">WLAN Farm</option>
+                        </select>
+                    </div>
+                    <div class="col-md-4">
+                        <label for="spSelect" class="form-label">Select a SP</label>
+                        <select id="spSelect" name="sp" class="form-select">
+                            <option value="default">Select</option>
+                            <option value="KAILUA.LA.2.0.1.R1">KAILUA.LA.2.0.1.R1</option>
+                            <option value="KAILUA.LA.2.0.1">KAILUA.LA.2.0.1</option>
+                            <option value="KAILUA.LA.2.0.C1">KAILUA.LA.2.0.C1</option>
+                            <option value="KAILUA.LA.2.0">KAILUA.LA.2.0</option>
+                            <option value="LANAI.LA.1.0.C1">LANAI.LA.1.0.C1</option>
+                            <option value="LANAI.LA.1.0">LANAI.LA.1.0</option>
+                            <option value="LANAI.LA.1.1.0.3">LANAI.LA.1.1.0.3</option>
+                            <option value="LANAI.LA.2.0">LANAI.LA.2.0</option>
+                            <option value="PAKALA.LA.1.0.C2">PAKALA.LA.1.0.C2</option>
+                            <option value="PAKALA.LA.1.0.R1">PAKALA.LA.1.0.R1</option>
+                            <option value="PAKALA.LA.1.0">PAKALA.LA.1.0</option>
+                            <option value="PAKALA.LA.2.0.0.1">PAKALA.LA.2.0.0.1</option>
+                            <option value="PALAWAN.LA.1.0">PALAWAN.LA.1.0</option>
+                            <option value="PALAWAN.LA.1.1.0.10">PALAWAN.LA.1.1.0.10</option>
+                            <option value="PALAWAN.LA.2.0">PALAWAN.LA.2.0</option>
+                            <option value="WAIPIO.LA.2.0.1.R1">WAIPIO.LA.2.0.1.R1</option>
+                            <option value="WAIPIO.LA.2.0.1">WAIPIO.LA.2.0.1</option>
+                            <option value="WAIPIO.LA.2.0.2">WAIPIO.LA.2.0.2</option>
+                            <option value="WCN7850.LA.2.2.1">WCN7850.LA.2.2.1</option>
+                            <option value="WCN7850.LA.4.1">WCN7850.LA.4.1</option>
+                            <option value="WCN7850.LA.4.3">WCN7850.LA.4.3</option>
+                            <option value="WCN7880.LA.2.0.0.1">WCN7880.LA.2.0.0.1</option>
+                            <option value="WCN7880.LA.2.1.1">WCN7880.LA.2.1.1</option>
+                            <option value="WCN7880.LA.2.1.2">WCN7880.LA.2.1.2</option>
+                        </select>
+                    </div>
+                    <div class="col-md-4">
+                        <label for="optionSelect" class="form-label">Select Build Option</label>
+                        <select id="optionSelect" name="option" class="form-select">
+                            <option value="default">Select</option>
+                            <option value="last5_results">Last 5 Builds</option>
+                            <option value="last10_results">Last 10 Builds</option>
+                            <option value="results">All Builds</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="text-end mt-3">
+                    <button type="submit" class="btn btn-primary">Submit</button>
+                </div>
+            </form>
+        </div>
+        
+        {% if data and keys %}
+        <div class="card-body" id="results-card">
+            <div class="table-shadow" id="results-table-container">
+                <div class="table-container" id="results-scrollable-container">
+                    <table class="table table-hover table-sticky mb-0" id="results-table">
+                        <thead>
+                            <tr class="bg-light" id="results-header-row">
+                                {% for key in keys %}
+                                    <th class="fw-semibold" id="col-header-{{ key|lower|slugify }}">{{ key }}</th>
+                                {% endfor %}
+                            </tr>
+                        </thead>
+                        <tbody id="results-table-body">
+                            <!-- Rows will be inserted here by JavaScript -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+
+</body>
+
+
+</html>
+
+
 from django.shortcuts import render, redirect
-from django.contrib.auth.hashers import check_password
+from django.views.decorators.csrf import csrf_exempt
+from django.contrib.auth.decorators import login_required
+from django.http import HttpResponse, FileResponse
+import pandas as pd
+import os
+from django.contrib import messages
+from django.urls import reverse
 
-@login_required
-def change_password(request):
-    """
-    Handle password change for authenticated users
-    """
+
+@csrf_exempt
+# @login_required(login_url='login')
+def dashboard_results(request):
+    print("entered dashboard results.html")
+    data = None
+    keys = None
+
     if request.method == 'POST':
-        # Get form inputs
-        current_password = request.POST.get('current_password')
-        new_password = request.POST.get('new_password')
-        confirm_new_password = request.POST.get('confirm_new_password')
+        print("fields selcted")
+        farm = request.POST.get('farm')
+        sp = request.POST.get('sp')
+        option = request.POST.get('option')
+        print(farm)
+        print(sp)
+        print(option)
 
-        # Validation checks
-        if not current_password or not new_password or not confirm_new_password:
-            messages.error(request, 'All password fields are required.')
-            return redirect(request.META.get('HTTP_REFERER', 'home'))
+        if farm == "default" and sp == "default" and option == "default":
+            messages.error(request, 'Please select all the fields')
+            return redirect(reverse('dashboard_results:dashboard_results'))
 
-        # Check if current password is correct
-        if not check_password(current_password, request.user.password):
-            messages.error(request, 'Current password is incorrect.')
-            return redirect(request.META.get('HTTP_REFERER', 'home'))
+        folderPath = r'some path'
+        file_name = f"{farm}_{sp}_{option}.csv"
+        fullPath = os.path.join(folderPath, file_name)
+        # print(fullPath)
 
-        # Check if new passwords match
-        if new_password != confirm_new_password:
-            messages.error(request, 'New passwords do not match.')
-            return redirect(request.META.get('HTTP_REFERER', 'home'))
+        if not os.path.exists(fullPath):
+            return HttpResponse('<h3> This Does not Exist </h3>')
 
-        # Validate new password strength
-        if len(new_password) < 8:
-            messages.error(request, 'New password must be at least 8 characters long.')
-            return redirect(request.META.get('HTTP_REFERER', 'home'))
+        df = pd.read_csv(fullPath)
+        data = df.to_dict(orient='records')
+        # # print(data)
 
-        # Additional optional password strength checks
-        if new_password.lower() == current_password.lower():
-            messages.error(request, 'New password cannot be the same as the current password.')
-            return redirect(request.META.get('HTTP_REFERER', 'home'))
-
-        # Check for common weak passwords
-        weak_passwords = ['password', '12345678', 'qwerty']
-        if new_password.lower() in weak_passwords:
-            messages.error(request, 'Please choose a stronger password.')
-            return redirect(request.META.get('HTTP_REFERER', 'home'))
-
-        # Check that password contains complexity requirements
-        if not any(char.isdigit() for char in new_password):
-            messages.error(request, 'Password must contain at least one number.')
-            return redirect(request.META.get('HTTP_REFERER', 'home'))
-
-        if not any(char.isupper() for char in new_password):
-            messages.error(request, 'Password must contain at least one uppercase letter.')
-            return redirect(request.META.get('HTTP_REFERER', 'home'))
-
-        if not any(char.islower() for char in new_password):
-            messages.error(request, 'Password must contain at least one lowercase letter.')
-            return redirect(request.META.get('HTTP_REFERER', 'home'))
-
-        # Special character check
-        special_chars = "!@#$%^&*()_+-=[]{}|;:,.<>?"
-        if not any(char in special_chars for char in new_password):
-            messages.error(request, 'Password must contain at least one special character.')
-            return redirect(request.META.get('HTTP_REFERER', 'home'))
-
-        try:
-            # Change the password
-            request.user.set_password(new_password)
-            request.user.save()
-
-            # Update the session to prevent logout
-            update_session_auth_hash(request, request.user)
-
-            # Success message
-            messages.success(request, 'Your password was successfully updated!')
-            return redirect(request.META.get('HTTP_REFERER', 'home'))
-
-        except Exception as e:
-            # Log the error for debugging
-            print(f"Password change error: {e}")
-            messages.error(request, 'An unexpected error occurred. Please try again.')
-            return redirect(request.META.get('HTTP_REFERER', 'home'))
-
-    # If not a POST request, redirect
-    return redirect(request.META.get('HTTP_REFERER', 'home'))
+        # # response_data = {
+        # #         'farm': farm,
+        # #         'sp': sp,
+        # #         'option': option,
+        # #         'message': 'Data received successfully!'
+        # #     }
+        # # return JsonResponse(response_data)
+        
+        if data:
+            keys = data[0].keys()
+        else:
+            keys = []
+        print(data)
+        print(keys)
+        return render(request, "dashboard_results/dashboard_results.html", context={'data': data, 'keys': keys})
+    return render(request, "dashboard_results/dashboard_results.html", context={'data': data, 'keys': keys})
