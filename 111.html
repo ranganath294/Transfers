@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dashboard</title>
+    <title>Dashboard Results</title>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.2/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css" rel="stylesheet">
     <style>
@@ -62,22 +62,32 @@
             box-shadow: inset 0 0 5px rgba(0,0,0,0.15);
             border-radius: 0.375rem;
         }
+
+        /* Sorting and filter styles */
+        .sortable-header {
+            cursor: pointer;
+            user-select: none;
+        }
+        .sortable-header:hover {
+            background-color: #f1f3f5;
+        }
+        .sort-icon {
+            margin-left: 5px;
+            opacity: 0.5;
+        }
+        .sort-icon.active {
+            opacity: 1;
+        }
+        .filter-input {
+            display: none;
+            margin-top: 5px;
+        }
     </style>
 </head>
 <body>
     <div class="dashboard-container">
-        {% if messages %}
-            <div class="alert-container">
-                {% for message in messages %}
-                    <div class="alert {% if message.tags %}alert-{{ message.tags }}{% else %}alert-info{% endif %} alert-dismissible fade show" role="alert">
-                        {{ message }}
-                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-                    </div>
-                {% endfor %}
-            </div>
-        {% endif %}
         <div class="form-section">
-            <form action="{% url 'dashboard_results:dashboard_results' %}" method="POST">
+            <form id="dashboardForm" action="" method="POST">
                 <div class="row">
                     <div class="col-md-4">
                         <label for="farmSelect" class="form-label">Select a Farm</label>
@@ -92,29 +102,7 @@
                         <select id="spSelect" name="sp" class="form-select">
                             <option value="default">Select</option>
                             <option value="KAILUA.LA.2.0.1.R1">KAILUA.LA.2.0.1.R1</option>
-                            <option value="KAILUA.LA.2.0.1">KAILUA.LA.2.0.1</option>
-                            <option value="KAILUA.LA.2.0.C1">KAILUA.LA.2.0.C1</option>
-                            <option value="KAILUA.LA.2.0">KAILUA.LA.2.0</option>
-                            <option value="LANAI.LA.1.0.C1">LANAI.LA.1.0.C1</option>
-                            <option value="LANAI.LA.1.0">LANAI.LA.1.0</option>
-                            <option value="LANAI.LA.1.1.0.3">LANAI.LA.1.1.0.3</option>
-                            <option value="LANAI.LA.2.0">LANAI.LA.2.0</option>
-                            <option value="PAKALA.LA.1.0.C2">PAKALA.LA.1.0.C2</option>
-                            <option value="PAKALA.LA.1.0.R1">PAKALA.LA.1.0.R1</option>
-                            <option value="PAKALA.LA.1.0">PAKALA.LA.1.0</option>
-                            <option value="PAKALA.LA.2.0.0.1">PAKALA.LA.2.0.0.1</option>
-                            <option value="PALAWAN.LA.1.0">PALAWAN.LA.1.0</option>
-                            <option value="PALAWAN.LA.1.1.0.10">PALAWAN.LA.1.1.0.10</option>
-                            <option value="PALAWAN.LA.2.0">PALAWAN.LA.2.0</option>
-                            <option value="WAIPIO.LA.2.0.1.R1">WAIPIO.LA.2.0.1.R1</option>
-                            <option value="WAIPIO.LA.2.0.1">WAIPIO.LA.2.0.1</option>
-                            <option value="WAIPIO.LA.2.0.2">WAIPIO.LA.2.0.2</option>
-                            <option value="WCN7850.LA.2.2.1">WCN7850.LA.2.2.1</option>
-                            <option value="WCN7850.LA.4.1">WCN7850.LA.4.1</option>
-                            <option value="WCN7850.LA.4.3">WCN7850.LA.4.3</option>
-                            <option value="WCN7880.LA.2.0.0.1">WCN7880.LA.2.0.0.1</option>
-                            <option value="WCN7880.LA.2.1.1">WCN7880.LA.2.1.1</option>
-                            <option value="WCN7880.LA.2.1.2">WCN7880.LA.2.1.2</option>
+                            <!-- Add other SP options as before -->
                         </select>
                     </div>
                     <div class="col-md-4">
@@ -127,95 +115,156 @@
                         </select>
                     </div>
                 </div>
+                <div class="row mt-3">
+                    <div class="col-md-12">
+                        <div class="input-group">
+                            <input type="text" id="globalSearch" class="form-control" placeholder="Search across all columns...">
+                            <button class="btn btn-outline-secondary" type="button" id="clearSearch">
+                                <i class="fas fa-times"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
                 <div class="text-end mt-3">
                     <button type="submit" class="btn btn-primary">Submit</button>
                 </div>
             </form>
         </div>
         
-        {% if data and keys %}
-        <div class="card-body" id="results-card">
+        <div class="card-body" id="results-card" style="display: none;">
             <div class="table-shadow" id="results-table-container">
                 <div class="table-container" id="results-scrollable-container">
-                    <table class="table table-hover table-sticky mb-0" id="results-table">
+                    <table class="table table-hover table-sticky table-striped" id="results-table">
                         <thead>
                             <tr class="bg-light" id="results-header-row">
-                                {% for key in keys %}
-                                    <th class="fw-semibold" id="col-header-{{ key|lower|slugify }}">{{ key }}</th>
-                                {% endfor %}
+                                <!-- Table headers will be dynamically populated -->
                             </tr>
                         </thead>
                         <tbody id="results-table-body">
-                            <!-- Rows will be inserted here by JavaScript -->
+                            <!-- Table rows will be dynamically populated -->
                         </tbody>
                     </table>
                 </div>
             </div>
         </div>
-        {% endif %}
     </div>
 
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.2/js/bootstrap.bundle.min.js"></script>
+    <script>
+    $(document).ready(function() {
+        // Form submission handler
+        $('#dashboardForm').on('submit', function(e) {
+            e.preventDefault();
+            
+            // Get form values
+            const farm = $('#farmSelect').val();
+            const sp = $('#spSelect').val();
+            const option = $('#optionSelect').val();
+
+            // Basic validation
+            if (farm === 'default' || sp === 'default' || option === 'default') {
+                alert('Please select all fields');
+                return;
+            }
+
+            // AJAX call to fetch data (you'll need to implement this server-side)
+            $.ajax({
+                url: '/your-dashboard-endpoint/',
+                method: 'POST',
+                data: {
+                    farm: farm,
+                    sp: sp,
+                    option: option
+                },
+                success: function(response) {
+                    renderTable(response.data, response.keys);
+                },
+                error: function() {
+                    alert('Error fetching data');
+                }
+            });
+        });
+
+        // Table rendering function
+        function renderTable(data, keys) {
+            const $headerRow = $('#results-header-row').empty();
+            const $tableBody = $('#results-table-body').empty();
+            const $resultsCard = $('#results-card');
+
+            // If no data, hide card and return
+            if (!data || data.length === 0) {
+                $resultsCard.hide();
+                return;
+            }
+
+            // Render headers with sorting capability
+            keys.forEach(key => {
+                const $th = $('<th>')
+                    .addClass('sortable-header')
+                    .text(key)
+                    .append(`<i class="fas fa-sort sort-icon" data-column="${key}"></i>`)
+                    .on('click', function() {
+                        sortTable(key);
+                    });
+                $headerRow.append($th);
+            });
+
+            // Render rows
+            data.forEach(row => {
+                const $tr = $('<tr>');
+                keys.forEach(key => {
+                    $tr.append($('<td>').text(row[key] || 'N/A'));
+                });
+                $tableBody.append($tr);
+            });
+
+            // Show results card
+            $resultsCard.show();
+        }
+
+        // Sorting function
+        let sortDirection = {};
+        function sortTable(column) {
+            const $tbody = $('#results-table-body');
+            const rows = $tbody.find('tr').get();
+
+            // Toggle sort direction
+            sortDirection[column] = !sortDirection[column];
+
+            rows.sort(function(a, b) {
+                const keyA = $(a).find(`td:eq(${$('#results-header-row th').index($(`th:contains('${column}')`))})`)
+                    .text().toUpperCase();
+                const keyB = $(b).find(`td:eq(${$('#results-header-row th').index($(`th:contains('${column}')`))})`)
+                    .text().toUpperCase();
+
+                return sortDirection[column] 
+                    ? keyA.localeCompare(keyB) 
+                    : keyB.localeCompare(keyA);
+            });
+
+            // Reappend sorted rows
+            $tbody.empty().append(rows);
+
+            // Update sort icons
+            $('.sort-icon').removeClass('active');
+            $(`[data-column="${column}"]`).addClass('active');
+        }
+
+        // Global search functionality
+        $('#globalSearch').on('keyup', function() {
+            const value = $(this).val().toLowerCase();
+            $("#results-table-body tr").filter(function() {
+                $(this).toggle($(this).text().toLowerCase().indexOf(value) > -1);
+            });
+        });
+
+        // Clear search
+        $('#clearSearch').on('click', function() {
+            $('#globalSearch').val('');
+            $("#results-table-body tr").show();
+        });
+    });
+    </script>
 </body>
-
-
 </html>
-
-
-from django.shortcuts import render, redirect
-from django.views.decorators.csrf import csrf_exempt
-from django.contrib.auth.decorators import login_required
-from django.http import HttpResponse, FileResponse
-import pandas as pd
-import os
-from django.contrib import messages
-from django.urls import reverse
-
-
-@csrf_exempt
-# @login_required(login_url='login')
-def dashboard_results(request):
-    print("entered dashboard results.html")
-    data = None
-    keys = None
-
-    if request.method == 'POST':
-        print("fields selcted")
-        farm = request.POST.get('farm')
-        sp = request.POST.get('sp')
-        option = request.POST.get('option')
-        print(farm)
-        print(sp)
-        print(option)
-
-        if farm == "default" and sp == "default" and option == "default":
-            messages.error(request, 'Please select all the fields')
-            return redirect(reverse('dashboard_results:dashboard_results'))
-
-        folderPath = r'some path'
-        file_name = f"{farm}_{sp}_{option}.csv"
-        fullPath = os.path.join(folderPath, file_name)
-        # print(fullPath)
-
-        if not os.path.exists(fullPath):
-            return HttpResponse('<h3> This Does not Exist </h3>')
-
-        df = pd.read_csv(fullPath)
-        data = df.to_dict(orient='records')
-        # # print(data)
-
-        # # response_data = {
-        # #         'farm': farm,
-        # #         'sp': sp,
-        # #         'option': option,
-        # #         'message': 'Data received successfully!'
-        # #     }
-        # # return JsonResponse(response_data)
-        
-        if data:
-            keys = data[0].keys()
-        else:
-            keys = []
-        print(data)
-        print(keys)
-        return render(request, "dashboard_results/dashboard_results.html", context={'data': data, 'keys': keys})
-    return render(request, "dashboard_results/dashboard_results.html", context={'data': data, 'keys': keys})
