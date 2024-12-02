@@ -16,7 +16,8 @@
 <body>
     <div class="container mt-5">
         <h2 class="mb-4">JIRA Tracking Form</h2>
-        <form id="jiraTrackingForm">
+        <form id="jiraTrackingForm" method="post">
+{% csrf_token %}
             <div class="row g-3">
                 <div class="col-md-6">
                     <label for="timeSleep" class="form-label required-label">TIME_SLEEP</label>
@@ -130,3 +131,12 @@
     </script>
 </body>
 </html>
+
+
+
+
+"TIME_SLEEP": {
+        "show": true,
+        "default": 600,
+        "value": ""
+    }
