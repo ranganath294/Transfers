@@ -2,7 +2,7 @@
 {% load static %}
 
 {% block content %}
-<div class="container mt-5">
+<div class="container-fluid px-4 mt-5">
     <h2 class="mb-4">Generate Configuration</h2>
     <form id="configGenerationForm" method="POST" action="{% url 'generate_config:generate_config' %}">
         {% csrf_token %}
@@ -22,6 +22,45 @@
     }
     .form-text.text-muted {
         color: #6c757d !important;
+    }
+
+    /* Responsive Adjustments */
+    @media (max-width: 768px) {
+        .container-fluid {
+            padding-left: 10px !important;
+            padding-right: 10px !important;
+        }
+        
+        #dynamicFields .col-md-6 {
+            flex: 0 0 100%;
+            max-width: 100%;
+        }
+        
+        .btn {
+            margin-bottom: 10px;
+            width: 100%;
+        }
+        
+        .btn:not(:first-child) {
+            margin-left: 0 !important;
+        }
+        
+        h2 {
+            font-size: 1.5rem;
+        }
+        
+        .form-control {
+            font-size: 14px;
+        }
+        
+        .form-text.text-muted {
+            font-size: 12px;
+        }
+    }
+
+    /* Ensure textarea and inputs are consistent */
+    textarea.form-control, input.form-control {
+        min-height: 38px;
     }
 </style>
 
@@ -136,7 +175,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 alert('Config generated successfully!');
             } else {
                 alert('Error: ' + data.message);
-            }
+           }
         })
         .catch(error => {
             console.error('Error:', error);
