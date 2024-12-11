@@ -1,33 +1,147 @@
-{
-    "TIME_SLEEP": {
-        "show": true,
-        "default": 600,
-        "value": "",
-        "required": true
-    },
-    "org": {
-        "show": true,
-        "default": "_WLAN_CST_",
-        "value": "",
-        "required": true
-    },
-    "list_cr_tag": {
-        "show": true,
-        "default": [
-            "Bonito.LA.1.0_CI_BUILT",
-            "Bonito.LA.1.0_CI_BUILT_AS_HOTFIX",
-            "Bonito.LA.1.0_CI_BUILT",
-            "Bonito.LA.1.0_CI_BUILT_AS_HOTFIX"
-        ],
-        "value": "",
-        "required": true
-    },
-    "display_name_mapping": {
-        "show": true,
-        "default": {
-            "CS": "CS"
-        },
-        "value": "",
-        "required": true
+{% extends "generate_config/base.html" %}
+{% load static %}
+
+{% block content %}
+<div class="container mt-5">
+    <h2 class="mb-4">Generate Configuration</h2>
+    <form id="configGenerationForm" method="POST" action="{% url 'generate_config:generate_config' %}">
+        {% csrf_token %}
+        <div id="dynamicFields" class="row g-3"></div>
+        <input type="hidden" id="parsedData" name="parsedData">
+        <div class="mt-4">
+            <button type="submit" class="btn btn-primary">Generate Config</button>
+            <button type="reset" class="btn btn-secondary ms-2">Reset</button>
+        </div>
+    </form>
+</div>
+
+<style>
+    .required-label::after {
+        content: " *";
+        color: red;
     }
-};
+    .form-text.text-muted {
+        color: #6c757d !important;
+    }
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Configuration data passed from Django context
+    const configData = {{ config_json|safe }};
+
+    // Function to render input based on data type
+    function renderInput(fieldName, fieldConfig) {
+        const inputWrapper = document.createElement('div');
+        inputWrapper.className = 'col-md-6 mb-3';
+
+        // Create label
+        const label = document.createElement('label');
+        label.htmlFor = fieldName;
+        label.className = `form-label ${fieldConfig.required !== false ? 'required-label' : ''}`;
+        label.textContent = `${fieldName} ${fieldConfig.required !== false ? '(required)' : '(optional)'}`;
+        inputWrapper.appendChild(label);
+
+        // Create input or textarea based on value type
+        let inputElement;
+        if (Array.isArray(fieldConfig.default)) {
+            // Array input (textarea for easier editing)
+            inputElement = document.createElement('textarea');
+            inputElement.value = JSON.stringify(fieldConfig.default, null, 2);
+        } else if (typeof fieldConfig.default === 'object' && fieldConfig.default !== null) {
+            // Object input (textarea for JSON)
+            inputElement = document.createElement('textarea');
+            inputElement.value = JSON.stringify(fieldConfig.default, null, 2);
+        } else {
+            // Standard text input
+            inputElement = document.createElement('input');
+            inputElement.type = 'text';
+            inputElement.value = fieldConfig.default;
+        }
+
+        inputElement.id = fieldName;
+        inputElement.name = fieldName;
+        inputElement.className = 'form-control';
+        inputElement.placeholder = JSON.stringify(fieldConfig.default);
+        
+        if (fieldConfig.required !== false) {
+            inputElement.required = true;
+        }
+
+        inputWrapper.appendChild(inputElement);
+
+        // Example text
+        const exampleText = document.createElement('small');
+        exampleText.className = 'form-text text-muted';
+        exampleText.textContent = `Example: ${JSON.stringify(fieldConfig.default)}`;
+        inputWrapper.appendChild(exampleText);
+
+        return inputWrapper;
+    }
+
+    // Render dynamic fields
+    const dynamicFieldsContainer = document.getElementById('dynamicFields');
+    Object.entries(configData).forEach(([fieldName, fieldConfig]) => {
+        if (fieldConfig.show) {
+            dynamicFieldsContainer.appendChild(renderInput(fieldName, fieldConfig));
+        }
+    });
+
+    // Form submission handler
+    document.getElementById('configGenerationForm').addEventListener('submit', function(event) {
+        event.preventDefault();
+
+        const parsedData = {};
+        const formElements = this.elements;
+
+        for (let element of formElements) {
+            if (element.name && element.name !== 'csrfmiddlewaretoken') {
+                try {
+                    // Attempt to parse the input value
+                    const value = element.value.trim();
+                    
+                    if (value.startsWith('[') || value.startsWith('{')) {
+                        // Parse JSON for arrays and objects
+                        parsedData[element.name] = JSON.parse(value);
+                    } else if (value === 'true' || value === 'false') {
+                        // Parse boolean
+                        parsedData[element.name] = value === 'true';
+                    } else if (!isNaN(value) && value !== '') {
+                        // Parse number
+                        parsedData[element.name] = Number(value);
+                    } else {
+                        // Keep as string
+                        parsedData[element.name] = value;
+                    }
+                } catch (error) {
+                    console.error(`Error parsing ${element.name}:`, error);
+                    parsedData[element.name] = element.value;
+                }
+            }
+        }
+
+        // Submit via AJAX
+        fetch(this.action, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(parsedData)
+        })
+        .then(response => response.json())
+        .then(data => {
+            console.log(data);
+            if (data.status === 'success') {
+                alert('Config generated successfully!');
+            } else {
+                alert('Error: ' + data.message);
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+        });
+    });
+});
+</script>
+{% endblock %}
