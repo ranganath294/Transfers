@@ -2,135 +2,71 @@
 {% load static %}
 
 {% block content %}
-<div class="container-fluid px-4 py-4">
-    <div class="card shadow-sm">
-        <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
-            <h2 class="mb-0">Configuration Generator</h2>
-            <div class="header-actions">
-                <button id="expandAll" class="btn btn-outline-light btn-sm me-2">
-                    <i class="bi bi-arrows-expand"></i> Expand All
-                </button>
-                <button id="collapseAll" class="btn btn-outline-light btn-sm">
-                    <i class="bi bi-arrows-collapse"></i> Collapse All
-                </button>
-            </div>
-        </div>
-        
-        <div class="card-body">
+<div class="container-fluid p-3">
+    <div class="row">
+        <div class="col-12">
+            <h2 class="mb-4">Generate Configuration</h2>
             <form id="configGenerationForm" method="POST" action="{% url 'generate_config:generate_config' %}">
                 {% csrf_token %}
-                <div id="dynamicFieldsAccordion" class="accordion accordion-flush"></div>
-                
-                <div class="mt-4 d-flex justify-content-between align-items-center">
-                    <div class="form-check">
-                        <input class="form-check-input" type="checkbox" id="confirmConfig">
-                        <label class="form-check-label" for="confirmConfig">
-                            I confirm the configuration details are correct
-                        </label>
-                    </div>
-                    <div class="action-buttons">
-                        <button type="submit" class="btn btn-primary" disabled id="generateConfigBtn">
-                            <i class="bi bi-gear"></i> Generate Config
-                        </button>
-                        <button type="reset" class="btn btn-secondary ms-2">
-                            <i class="bi bi-arrow-clockwise"></i> Reset
-                        </button>
-                    </div>
+                <div class="row g-3" id="dynamicFields">
+                    <!-- Fields will be dynamically inserted here -->
+                </div>
+                <div class="mt-3">
+                    <button type="submit" class="btn btn-primary">Generate Config</button>
+                    <button type="reset" class="btn btn-secondary ms-2">Reset</button>
                 </div>
             </form>
         </div>
     </div>
 </div>
 
-<!-- Modal for Configuration Preview -->
-<div class="modal fade" id="configPreviewModal" tabindex="-1">
-    <div class="modal-dialog modal-lg">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title">Configuration Preview</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-            </div>
-            <div class="modal-body">
-                <pre id="configPreviewContent" class="bg-light p-3 rounded"></pre>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-                <button type="button" class="btn btn-primary" id="confirmPreviewBtn">Confirm</button>
-            </div>
-        </div>
-    </div>
-</div>
-
 <style>
-    .accordion-button:focus {
-        box-shadow: none;
-    }
-    .form-control, .form-control:focus {
-        border-color: #6c757d;
-    }
     .required-label::after {
         content: " *";
-        color: #dc3545;
-        font-weight: bold;
+        color: red;
     }
-    .tooltip-inner {
-        max-width: 250px;
-        text-align: left;
+    @media (max-width: 768px) {
+        .form-label {
+            font-size: 0.9rem;
+        }
+        .form-control {
+            font-size: 0.9rem;
+            padding: 0.25rem 0.5rem;
+        }
     }
 </style>
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
+    // Configuration data passed from Django context
     const configData = {{ config_json|safe }};
-    const dynamicFieldsAccordion = document.getElementById('dynamicFieldsAccordion');
-    const generateConfigBtn = document.getElementById('generateConfigBtn');
-    const confirmConfigCheckbox = document.getElementById('confirmConfig');
-    const configPreviewModal = new bootstrap.Modal(document.getElementById('configPreviewModal'));
-    const configPreviewContent = document.getElementById('configPreviewContent');
-    const confirmPreviewBtn = document.getElementById('confirmPreviewBtn');
 
-    // Enhanced input rendering with accordion
-    function renderInput(fieldName, fieldConfig, index) {
-        const accordionItem = document.createElement('div');
-        accordionItem.className = 'accordion-item';
+    // Function to render input based on data type
+    function renderInput(fieldName, fieldConfig) {
+        // Create column wrapper for responsiveness
+        const colWrapper = document.createElement('div');
+        colWrapper.className = 'col-12 col-md-6 col-lg-4 mb-3';
 
-        const accordionHeader = document.createElement('h2');
-        accordionHeader.className = 'accordion-header';
-        accordionHeader.id = `heading${index}`;
+        // Create input group
+        const inputGroup = document.createElement('div');
 
-        const accordionButton = document.createElement('button');
-        accordionButton.className = 'accordion-button collapsed';
-        accordionButton.setAttribute('type', 'button');
-        accordionButton.setAttribute('data-bs-toggle', 'collapse');
-        accordionButton.setAttribute('data-bs-target', `#collapse${index}`);
-        accordionButton.setAttribute('aria-expanded', 'false');
-        accordionButton.setAttribute('aria-controls', `collapse${index}`);
-        accordionButton.innerHTML = `
-            <strong>${fieldName}</strong>
-            <span class="ms-2 badge ${fieldConfig.required !== false ? 'bg-danger' : 'bg-secondary'}">
-                ${fieldConfig.required !== false ? 'Required' : 'Optional'}
-            </span>
-        `;
+        // Create label
+        const label = document.createElement('label');
+        label.htmlFor = fieldName;
+        label.className = `form-label ${fieldConfig.required !== false ? 'required-label' : ''}`;
+        label.textContent = `${fieldName} ${fieldConfig.required !== false ? '(required)' : '(optional)'}`;
+        inputGroup.appendChild(label);
 
-        const accordionCollapse = document.createElement('div');
-        accordionCollapse.id = `collapse${index}`;
-        accordionCollapse.className = 'accordion-collapse collapse';
-        accordionCollapse.setAttribute('aria-labelledby', `heading${index}`);
-
-        const accordionBody = document.createElement('div');
-        accordionBody.className = 'accordion-body';
-
-        // Create input or textarea based on value type
+        // Create input or textarea
         let inputElement;
-        if (Array.isArray(fieldConfig.default)) {
+        if (Array.isArray(fieldConfig.default) || 
+            (typeof fieldConfig.default === 'object' && fieldConfig.default !== null)) {
+            // Textarea for arrays and objects
             inputElement = document.createElement('textarea');
             inputElement.value = JSON.stringify(fieldConfig.default, null, 2);
-            inputElement.rows = 4;
-        } else if (typeof fieldConfig.default === 'object' && fieldConfig.default !== null) {
-            inputElement = document.createElement('textarea');
-            inputElement.value = JSON.stringify(fieldConfig.default, null, 2);
-            inputElement.rows = 4;
+            inputElement.rows = 3;
         } else {
+            // Standard text input
             inputElement = document.createElement('input');
             inputElement.type = 'text';
             inputElement.value = fieldConfig.default;
@@ -145,63 +81,26 @@ document.addEventListener('DOMContentLoaded', function() {
             inputElement.required = true;
         }
 
-        // Wrapper for input and description
-        const inputWrapper = document.createElement('div');
-        inputWrapper.className = 'row g-2';
-        
-        const inputColumn = document.createElement('div');
-        inputColumn.className = 'col-md-8';
-        inputColumn.appendChild(inputElement);
+        inputGroup.appendChild(inputElement);
 
-        const descriptionColumn = document.createElement('div');
-        descriptionColumn.className = 'col-md-4';
-        descriptionColumn.innerHTML = `
-            <small class="form-text text-muted">
-                <i class="bi bi-info-circle me-1"></i>
-                Example: ${JSON.stringify(fieldConfig.default)}
-            </small>
-        `;
+        // Example text
+        const exampleText = document.createElement('small');
+        exampleText.className = 'form-text text-muted';
+        exampleText.textContent = `Example: ${JSON.stringify(fieldConfig.default)}`;
+        inputGroup.appendChild(exampleText);
 
-        inputWrapper.appendChild(inputColumn);
-        inputWrapper.appendChild(descriptionColumn);
+        // Add to column wrapper
+        colWrapper.appendChild(inputGroup);
 
-        accordionBody.appendChild(inputWrapper);
-        accordionCollapse.appendChild(accordionBody);
-
-        accordionItem.appendChild(accordionHeader);
-        accordionItem.appendChild(accordionButton);
-        accordionItem.appendChild(accordionCollapse);
-
-        return accordionItem;
+        return colWrapper;
     }
 
-    // Render dynamic fields in accordion
-    Object.entries(configData).forEach(([fieldName, fieldConfig], index) => {
+    // Render dynamic fields
+    const dynamicFieldsContainer = document.getElementById('dynamicFields');
+    Object.entries(configData).forEach(([fieldName, fieldConfig]) => {
         if (fieldConfig.show) {
-            dynamicFieldsAccordion.appendChild(renderInput(fieldName, fieldConfig, index));
+            dynamicFieldsContainer.appendChild(renderInput(fieldName, fieldConfig));
         }
-    });
-
-    // Expand/Collapse All buttons
-    document.getElementById('expandAll').addEventListener('click', () => {
-        document.querySelectorAll('.accordion-button').forEach(button => {
-            button.classList.remove('collapsed');
-            const targetId = button.getAttribute('data-bs-target');
-            document.querySelector(targetId).classList.add('show');
-        });
-    });
-
-    document.getElementById('collapseAll').addEventListener('click', () => {
-        document.querySelectorAll('.accordion-button').forEach(button => {
-            button.classList.add('collapsed');
-            const targetId = button.getAttribute('data-bs-target');
-            document.querySelector(targetId).classList.remove('show');
-        });
-    });
-
-    // Confirmation checkbox
-    confirmConfigCheckbox.addEventListener('change', () => {
-        generateConfigBtn.disabled = !confirmConfigCheckbox.checked;
     });
 
     // Form submission handler
@@ -217,12 +116,16 @@ document.addEventListener('DOMContentLoaded', function() {
                     const value = element.value.trim();
                     
                     if (value.startsWith('[') || value.startsWith('{')) {
+                        // Parse JSON for arrays and objects
                         parsedData[element.name] = JSON.parse(value);
                     } else if (value === 'true' || value === 'false') {
+                        // Parse boolean
                         parsedData[element.name] = value === 'true';
                     } else if (!isNaN(value) && value !== '') {
+                        // Parse number
                         parsedData[element.name] = Number(value);
                     } else {
+                        // Keep as string
                         parsedData[element.name] = value;
                     }
                 } catch (error) {
@@ -232,50 +135,27 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         }
 
-        // Show preview modal
-        configPreviewContent.textContent = JSON.stringify(parsedData, null, 2);
-        configPreviewModal.show();
-
-        // Confirm preview button
-        confirmPreviewBtn.onclick = () => {
-            fetch(this.action, {
-                method: 'POST',
-                headers: {
-                    'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify(parsedData)
-            })
-            .then(response => response.json())
-            .then(data => {
-                console.log(data);
-                if (data.status === 'success') {
-                    configPreviewModal.hide();
-                    Swal.fire({
-                        icon: 'success',
-                        title: 'Configuration Generated',
-                        text: 'Your configuration has been successfully generated!',
-                        confirmButtonText: 'OK'
-                    });
-                } else {
-                    Swal.fire({
-                        icon: 'error',
-                        title: 'Generation Error',
-                        text: data.message,
-                        confirmButtonText: 'Try Again'
-                    });
-                }
-            })
-            .catch(error => {
-                console.error('Error:', error);
-                Swal.fire({
-                    icon: 'error',
-                    title: 'Network Error',
-                    text: 'Unable to generate configuration. Please try again.',
-                    confirmButtonText: 'OK'
-                });
-            });
-        };
+        // Submit via AJAX
+        fetch(this.action, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(parsedData)
+        })
+        .then(response => response.json())
+        .then(data => {
+            console.log(data);
+            if (data.status === 'success') {
+                alert('Config generated successfully!');
+            } else {
+                alert('Error: ' + data.message);
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+        });
     });
 });
 </script>
