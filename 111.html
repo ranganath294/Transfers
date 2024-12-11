@@ -1,106 +1,33 @@
-{% extends "generate_config/base.html" %}
-{% load static %}
-
-{% block content %}
-<div class="container mt-5">
-    <h2 class="mb-4">Generate Configuration</h2>
-    <form id="configGenerationForm" method="POST" action="{% url 'generate_config:generate_config' %}">
-        {% csrf_token %}
-        <div class="row g-3">
-            {% for field_name, field_config in context.items %}
-                {% if field_config.show %}
-                    <div class="col-md-6">
-                        <label for="{{ field_name }}" class="form-label {% if field_config.required is not none and field_config.required %}required-label{% elif field_config.required is none %}required-label{% else %}(optional){% endif %}">
-                            {{ field_name }} {% if field_config.required is not none and field_config.required %}(required){% elif field_config.required is none %}(required){% else %}(optional){% endif %}
-                        </label>
-                        <input 
-                            type="text" 
-                            class="form-control" 
-                            id="{{ field_name }}" 
-                            name="{{ field_name }}"
-                            placeholder="{{ field_config.default }}"
-                            value="{{ field_config.value|default:field_config.default }}"
-                            {% if field_config.required is not none and field_config.required %}(required){% elif field_config.required is none %}(required){% else %}(optional){% endif %}
-                        >
-                        <small class="form-text text-muted">
-                                Example: {{ field_config.default }}
-                        </small>
-                    </div>
-                {% endif %}
-            {% endfor %}
-        </div>
-        <input type="hidden" id="parsedData" name="parsedData">
-        <div class="mt-4">
-            <button type="submit" class="btn btn-primary">Generate Config</button>
-            <button type="reset" class="btn btn-secondary ms-2">Reset</button>
-        </div>
-    </form>
-</div>
-
-<style>
-    .required-label::after {
-        content: " *";
-        color: red;
+{
+    "TIME_SLEEP": {
+        "show": true,
+        "default": 600,
+        "value": "",
+        "required": true
+    },
+    "org": {
+        "show": true,
+        "default": "_WLAN_CST_",
+        "value": "",
+        "required": true
+    },
+    "list_cr_tag": {
+        "show": true,
+        "default": [
+            "Bonito.LA.1.0_CI_BUILT",
+            "Bonito.LA.1.0_CI_BUILT_AS_HOTFIX",
+            "Bonito.LA.1.0_CI_BUILT",
+            "Bonito.LA.1.0_CI_BUILT_AS_HOTFIX"
+        ],
+        "value": "",
+        "required": true
+    },
+    "display_name_mapping": {
+        "show": true,
+        "default": {
+            "CS": "CS"
+        },
+        "value": "",
+        "required": true
     }
-    .form-text.text-muted {
-        color: #6c757d !important;
-    }
-</style>
-
-<script>
-    document.getElementById('configGenerationForm').addEventListener('submit', function(event) {
-        event.preventDefault(); // Prevent the default form submission
-
-        // Get form data
-        const formData = new FormData(this);
-        const parsedData = {};
-
-        // Parse each field
-        formData.forEach((value, key) => {
-            console.log(`Original value for ${key}:`, value);
-            try {
-                // Ensure the value is a valid JSON string
-                if (value.trim().startsWith('{') || value.trim().startsWith('[')) {
-                    parsedData[key] = JSON.parse(value.replace(/'/g, '"'));
-                    console.log(`Parsed value for ${key}:`, parsedData[key]);
-                } else {
-                    parsedData[key] = value;
-                }
-            } catch (e) {
-                console.error(`Error parsing value for ${key}:`, e);
-                // If parsing fails, use the value as is
-                parsedData[key] = value;
-            }
-        });
-
-        console.log('Final parsed data:', parsedData);
-
-        // Set the parsed data to the hidden input field
-        document.getElementById('parsedData').value = JSON.stringify(parsedData);
-
-        // Submit the form via AJAX
-        fetch(this.action, {
-            method: 'POST',
-            headers: {
-                'X-CSRFToken': formData.get('csrfmiddlewaretoken'),
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify(parsedData)
-        })
-        .then(response => response.json())
-        .then(data => {
-            console.log(data);
-            if (data.status === 'success') {
-                alert('Config generated successfully!');
-            } else {
-                alert('Error: ' + data.message);
-            }
-        })
-        .catch(error => {
-            console.error('Error:', error);
-        });
-    });
-</script>
-
-
-{% endblock %}
+};
