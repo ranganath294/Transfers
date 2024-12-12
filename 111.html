@@ -1,266 +1,281 @@
-<div class="mb-3">
-<label class="form-label" for="chipset_manufacturer-select">Chipset Manufacturer</label>
-<select name="chipset_manufacturer" class="form-select optimized-select" id="chipset_manufacturer-select">
-<option value="default" selected>Select</option>
-{% for chipset_manufacturer in chipset_manufacturers %}
-<option value="{{ chipset_manufacturer }}">{{ chipset_manufacturer }}</option>
-{% endfor %}
-</select>
-</div>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Optimized Select Dropdown</title>
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        .optimized-select-wrapper {
+            position: relative;
+            width: 100%;
+        }
 
+        .optimized-select-button {
+            width: 100%;
+            text-align: left;
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
 
-will use this for rendering the dropdown and then use the below for searchable dropdown 
+        .optimized-select-dropdown {
+            display: none;
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            background: white;
+            border: 1px solid #dee2e6;
+            border-radius: 0.375rem;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            z-index: 1000;
+            margin-top: 0.25rem;
+        }
 
+        .optimized-select-search {
+            width: 100%;
+            padding: 0.5rem;
+            border-bottom: 1px solid #dee2e6;
+            border-radius: 0.375rem 0.375rem 0 0;
+        }
 
-<style>
-.optimized-select-wrapper {
-position: relative;
-width: 100%;
-}
+        .optimized-select-options {
+            overflow-y: auto;
+            max-height: 250px;
+            position: relative;
+            border-radius: 0 0 0.375rem 0.375rem;
+        }
 
-.optimized-select-button {
-width: 100%;
-text-align: left;
-cursor: pointer;
-}
+        .optimized-select-option {
+            padding: 0.5rem 1rem;
+            cursor: pointer;
+        }
 
-.optimized-select-dropdown {
-display: none;
-position: absolute;
-top: 100%;
-left: 0;
-right: 0;
-background: white;
-border: 1px solid #dee2e6;
-border-radius: 0.375rem;
-box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-z-index: 1000;
-margin-top: 0.25rem;
-}
+        .optimized-select-option:hover {
+            background-color: #f8f9fa;
+        }
 
-.optimized-select-search {
-width: 100%;
-padding: 0.5rem;
-border-bottom: 1px solid #dee2e6;
-border-radius: 0.375rem 0.375rem 0 0;
-}
+        .optimized-select-option.selected {
+            background-color: #e9ecef;
+        }
 
-.optimized-select-options {
-overflow-y: auto;
-position: relative;
-border-radius: 0 0 0.375rem 0.375rem;
-}
+        .dropdown-toggle::after {
+            margin-left: 0.5rem;
+        }
 
-.virtual-scroll-container {
-position: relative;
-}
+        /* Responsive adjustments */
+        @media (max-width: 576px) {
+            .optimized-select-dropdown {
+                position: fixed;
+                top: 50%;
+                left: 50%;
+                transform: translate(-50%, -50%);
+                width: 90%;
+                max-width: 400px;
+                max-height: 80vh;
+                overflow-y: auto;
+            }
+        }
 
-.optimized-select-option {
-padding: 0.5rem 1rem;
-cursor: pointer;
-position: absolute;
-width: 100%;
-display: flex;
-align-items: center;
-}
+        /* Custom scrollbar */
+        .optimized-select-options::-webkit-scrollbar {
+            width: 6px;
+        }
 
-.optimized-select-option:hover {
-background-color: #f8f9fa;
-}
+        .optimized-select-options::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 3px;
+        }
 
-.optimized-select-options::-webkit-scrollbar {
-width: 6px;
-}
+        .optimized-select-options::-webkit-scrollbar-thumb {
+            background: #888;
+            border-radius: 3px;
+        }
 
-.optimized-select-options::-webkit-scrollbar-track {
-background: #f1f1f1;
-border-radius: 3px;
-}
+        .optimized-select-options::-webkit-scrollbar-thumb:hover {
+            background: #555;
+        }
+    </style>
+</head>
+<body>
+    <script>
+    class OptimizedSelect {
+        constructor(originalSelect, options = {}) {
+            if (originalSelect.dataset.initialized) return;
 
-.optimized-select-options::-webkit-scrollbar-thumb {
-background: #888;
-border-radius: 3px;
-}
+            this.originalSelect = originalSelect;
+            this.options = {
+                searchPlaceholder: 'Search...',
+                noResultsText: 'No results found',
+                ...options
+            };
 
-.optimized-select-options::-webkit-scrollbar-thumb:hover {
-background: #555;
-}
-</style>
+            this.elementId = originalSelect.id;
+            this.itemHeight = 40;
+            this.visibleItems = 8;
+            this.isOpen = false;
 
-<script>
-// Custom select with virtual scrolling and search that can be reused
-class OptimizedSelect {
-constructor(originalSelect, options = {}) {
-if(originalSelect.dataset.initialized){
-return;
-}
+            this.allOptions = Array.from(originalSelect.options)
+                .filter(opt => opt.value !== 'default')
+                .map(opt => ({
+                    value: opt.value,
+                    label: opt.text
+                }));
 
-this.originalSelect = originalSelect;
-this.options = options;
-this.itemHeight = 35;
-this.visibleItems = 8;
-this.allOptions = Array.from(originalSelect.options).map(opt => ({
-value: opt.value,
-label: opt.text
-}));
-this.isOpen = false;
+            originalSelect.dataset.initialized = 'true';
+            this.init();
+        }
 
-originalSelect.dataset.initialized = 'true';
+        init() {
+            this.createWrapper();
+            this.createButton();
+            this.createDropdown();
+            this.createSearchInput();
+            this.createOptionsContainer();
 
-this.init();
-}
+            this.originalSelect.style.display = 'none';
+            this.originalSelect.parentNode.insertBefore(this.wrapper, this.originalSelect.nextSibling);
 
-init() {
-// Create wrapper
-this.wrapper = document.createElement('div');
-this.wrapper.className = 'optimized-select-wrapper';
-this.wrapper.id = `${this.elementId}-wrapper`;
+            this.addEventListeners();
+            this.updateButtonText();
+        }
 
-// Create custom select button
-this.button = document.createElement('button');
-this.button.className = 'optimized-select-button form-select';
-this.button.id = `${this.elementId}-button`;
-this.button.type = 'button'; // Prevent form submission
-this.button.textContent = this.originalSelect.selectedOptions[0]?.text || 'Choose...';
+        createWrapper() {
+            this.wrapper = document.createElement('div');
+            this.wrapper.className = 'optimized-select-wrapper';
+            this.wrapper.id = `${this.elementId}-wrapper`;
+        }
 
-// Create dropdown container
-this.dropdown = document.createElement('div');
-this.dropdown.className = 'optimized-select-dropdown';
-this.dropdown.id = `${this.elementId}-dropdown`;
+        createButton() {
+            this.button = document.createElement('button');
+            this.button.className = 'optimized-select-button form-select dropdown-toggle';
+            this.button.id = `${this.elementId}-button`;
+            this.button.type = 'button';
+            this.wrapper.appendChild(this.button);
+        }
 
-// Create search input
-this.searchInput = document.createElement('input');
-this.searchInput.className = 'optimized-select-search form-control';
-this.searchInput.id = `${this.elementId}-search`;
-this.searchInput.placeholder = 'Search...';
+        createDropdown() {
+            this.dropdown = document.createElement('div');
+            this.dropdown.className = 'optimized-select-dropdown';
+            this.dropdown.id = `${this.elementId}-dropdown`;
+            this.wrapper.appendChild(this.dropdown);
+        }
 
-// Create options container
-this.optionsContainer = document.createElement('div');
-this.optionsContainer.className = 'optimized-select-options';
-this.optionsContainer.id = `${this.elementId}-options`;
-this.optionsContainer.style.height = `${this.itemHeight * this.visibleItems}px`;
+        createSearchInput() {
+            this.searchInput = document.createElement('input');
+            this.searchInput.className = 'optimized-select-search form-control';
+            this.searchInput.id = `${this.elementId}-search`;
+            this.searchInput.placeholder = this.options.searchPlaceholder;
+            this.dropdown.appendChild(this.searchInput);
+        }
 
-// Create virtual scroll container
-this.virtualScroll = document.createElement('div');
-this.virtualScroll.className = 'virtual-scroll-container';
-this.virtualScroll.id = `${this.elementId}-virtual-scroll`;
+        createOptionsContainer() {
+            this.optionsContainer = document.createElement('div');
+            this.optionsContainer.className = 'optimized-select-options';
+            this.optionsContainer.id = `${this.elementId}-options`;
+            this.dropdown.appendChild(this.optionsContainer);
+        }
 
-// Assemble the components
-this.dropdown.appendChild(this.searchInput);
-this.dropdown.appendChild(this.optionsContainer);
-this.optionsContainer.appendChild(this.virtualScroll);
-this.wrapper.appendChild(this.button);
-this.wrapper.appendChild(this.dropdown);
+        addEventListeners() {
+            this.button.addEventListener('click', () => this.toggleDropdown());
 
-// Insert custom select after original
-this.originalSelect.style.display = 'none';
-this.originalSelect.parentNode.insertBefore(this.wrapper, this.originalSelect.nextSibling);
+            this.searchInput.addEventListener('input', () => this.filterOptions());
 
-this.addEventListeners();
-this.filterAndRenderOptions();
-}
+            this.searchInput.addEventListener('keydown', (e) => {
+                if (e.key === 'Escape') this.closeDropdown();
+            });
 
-addEventListeners() {
-// Toggle dropdown with improved handling
-this.button.addEventListener('mousedown', (e) => {
-e.preventDefault(); // Prevent focus issues
-this.toggleDropdown();
-});
+            document.addEventListener('mousedown', (e) => {
+                if (!this.wrapper.contains(e.target)) {
+                    this.closeDropdown();
+                }
+            });
+        }
 
-// Handle search
-this.searchInput.addEventListener('input', () => {
-this.filterAndRenderOptions();
-});
+        toggleDropdown() {
+            this.isOpen ? this.closeDropdown() : this.openDropdown();
+        }
 
-// Prevent search input from closing dropdown
-this.searchInput.addEventListener('mousedown', (e) => {
-e.stopPropagation();
-});
+        openDropdown() {
+            this.isOpen = true;
+            this.dropdown.style.display = 'block';
+            this.searchInput.value = '';
+            this.searchInput.focus();
+            this.filterOptions();
+        }
 
-// Handle scroll
-this.optionsContainer.addEventListener('scroll', () => {
-this.renderVisibleOptions();
-});
+        closeDropdown() {
+            this.isOpen = false;
+            this.dropdown.style.display = 'none';
+        }
 
-// Close dropdown when clicking outside
-document.addEventListener('mousedown', (e) => {
-if (!this.wrapper.contains(e.target)) {
-this.closeDropdown();
-}
-});
+        filterOptions() {
+            const searchTerm = this.searchInput.value.toLowerCase();
+            const filteredOptions = this.allOptions.filter(option => 
+                option.label.toLowerCase().includes(searchTerm)
+            );
 
-// Prevent dropdown from closing when clicking inside
-this.dropdown.addEventListener('mousedown', (e) => {
-e.stopPropagation();
-});
-}
+            this.renderOptions(filteredOptions);
+        }
 
-toggleDropdown() {
-if (this.isOpen) {
-this.closeDropdown();
-} else {
-this.openDropdown();
-}
-}
+        renderOptions(options) {
+            this.optionsContainer.innerHTML = '';
 
-openDropdown() {
-this.isOpen = true;
-this.dropdown.style.display = 'block';
-this.searchInput.focus();
-this.filterAndRenderOptions();
-}
+            if (options.length === 0) {
+                const noResults = document.createElement('div');
+                noResults.className = 'optimized-select-option text-muted text-center p-2';
+                noResults.textContent = this.options.noResultsText;
+                this.optionsContainer.appendChild(noResults);
+                return;
+            }
 
-closeDropdown() {
-this.isOpen = false;
-this.dropdown.style.display = 'none';
-this.searchInput.value = '';
-this.filterAndRenderOptions();
-}
+            options.forEach(option => {
+                const optionEl = document.createElement('div');
+                optionEl.className = 'optimized-select-option';
+                optionEl.textContent = option.label;
+                
+                if (option.value === this.originalSelect.value) {
+                    optionEl.classList.add('selected');
+                }
 
-filterAndRenderOptions() {
-const searchTerm = this.searchInput.value.toLowerCase();
-this.filteredOptions = this.allOptions.filter(option => 
-option.label.toLowerCase().includes(searchTerm)
-);
+                optionEl.addEventListener('click', () => {
+                    this.selectOption(option);
+                });
 
-// Reset scroll position
-this.optionsContainer.scrollTop = 0;
-this.virtualScroll.style.height = `${this.filteredOptions.length * this.itemHeight}px`;
-this.renderVisibleOptions();
-}
+                this.optionsContainer.appendChild(optionEl);
+            });
+        }
 
-renderVisibleOptions() {
-const scrollTop = this.optionsContainer.scrollTop;
-const startIndex = Math.floor(scrollTop / this.itemHeight);
-const endIndex = startIndex + this.visibleItems + 2;
+        selectOption(option) {
+            this.originalSelect.value = option.value;
+            this.originalSelect.dispatchEvent(new Event('change'));
+            this.updateButtonText(option);
+            this.closeDropdown();
+        }
 
-this.virtualScroll.innerHTML = '';
+        updateButtonText(selectedOption = null) {
+            const selectedOpt = selectedOption || 
+                this.allOptions.find(opt => opt.value === this.originalSelect.value) || 
+                { label: 'Select' };
+            
+            this.button.textContent = selectedOpt.label;
+        }
 
-this.filteredOptions.slice(startIndex, endIndex).forEach((option, index) => {
-const optionEl = document.createElement('div');
-optionEl.className = 'optimized-select-option';
-optionEl.textContent = option.label;
-optionEl.style.position = 'absolute';
-optionEl.style.top = `${(startIndex + index) * this.itemHeight}px`;
-optionEl.style.height = `${this.itemHeight}px`;
+        // Static method to initialize all selects with class 'optimized-select'
+        static initializeAll() {
+            document.querySelectorAll('.optimized-select').forEach(select => {
+                new OptimizedSelect(select);
+            });
+        }
+    }
 
-optionEl.addEventListener('mousedown', (e) => {
-e.preventDefault(); // Prevent focus issues
-this.selectOption(option);
-});
-
-this.virtualScroll.appendChild(optionEl);
-});
-}
-
-selectOption(option) {
-// Update original select
-this.originalSelect.value = option.value;
-this.originalSelect.dispatchEvent(new Event('change'));
-
-// Update custom select
-this.button.textContent = option.label;
-this.closeDropdown();
-}
-}
-</script>
+    // Initialize on DOM load
+    document.addEventListener('DOMContentLoaded', () => {
+        OptimizedSelect.initializeAll();
+    });
+    </script>
+</body>
+</html>
