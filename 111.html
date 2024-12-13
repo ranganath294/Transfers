@@ -1,56 +1,112 @@
+import os
+import msal
+import ssl
+from omegaconf import OmegaConf
+from pprint import pprint
+import json
+import yaml
 import requests
 
-class SharePointClient:
-    def __init__(self, client_id, client_secret, tenant_id, site_url):
-        self.client_id = client_id
-        self.client_secret = client_secret
-        self.tenant_id = tenant_id
-        self.site_url = site_url
-        self.token = None
+secrets = OmegaConf.load(".secrets.yaml")
 
-    def authenticate(self):
-        url = f"https://login.microsoftonline.com/{self.tenant_id}/oauth2/v2.0/token"
-        data = {
-            'grant_type': 'client_credentials',
-            'client_id': self.client_id,
-            'client_secret': self.client_secret,
-            'scope': 'https://graph.microsoft.com/.default',
-        }
-        response = requests.post(url, data=data)
-        response.raise_for_status()
-        self.token = response.json().get('access_token')
+qualcommtenant = secrets["sharepoint"]["access_token"]["qualcommtenant"]
+clientid = secrets["sharepoint"]["access_token"]["client_id"]
+serviceaccount = secrets["sharepoint"]["access_token"]["serviceacc"]
+password = secrets["sharepoint"]["access_token"]["password"]
+flow_type = "password"
 
-    def get_headers(self):
-        if not self.token:
-            self.authenticate()
-        return {
-            'Authorization': f'Bearer {self.token}',
-            'Accept': 'application/json',
-            'Content-Type': 'application/json'
-        }
+# scope=["https://graph.microsoft.com/.default"] # Graph API and SharePoint API scope are different
+scope = ["https://qualcomm.sharepoint.com/.default"]  # <- This is the SPO API scope
 
-    def list_files(self, folder_path):
-        url = f"{self.site_url}/_api/web/GetFolderByServerRelativeUrl('{folder_path}')/Files"
-        headers = self.get_headers()
-        response = requests.get(url, headers=headers)
-        response.raise_for_status()
-        return response.json()
+msal_client = msal.PublicClientApplication(clientid, authority=qualcommtenant)
+token = msal_client.acquire_token_by_username_password(serviceaccount, password, scopes=scope)
 
-    def read_file(self, file_path):
-        url = f"{self.site_url}/_api/web/GetFileByServerRelativeUrl('{file_path}')/$value"
-        headers = self.get_headers()
-        response = requests.get(url, headers=headers)
-        response.raise_for_status()
-        return response.content
+base_url = "https://qualcomm.sharepoint.com"
 
-    def write_file(self, file_path, content):
-        url = f"{self.site_url}/_api/web/GetFolderByServerRelativeUrl('{file_path}')/Files/add(overwrite=true, url='{file_path}')"
-        headers = self.get_headers()
-        response = requests.post(url, headers=headers, data=content)
-        response.raise_for_status()
-        return response.json()
+class SharePoint:
 
-    def download_file(self, file_path, local_path):
-        file_content = self.read_file(file_path)
-        with open(local_path, 'wb') as file:
-            file.write(file_content)
+    def __init__(self, qualcommtenant, clientid, serviceaccount, password, flow_type):
+        self.qualcommtenant = qualcommtenant
+        self.clientid = clientid
+        self.serviceaccount = serviceaccount
+        self.password = password
+        self.flow_type = flow_type
+
+        self.access_token = (
+            self.get_access_token()
+        )  # Get access token for SharePoint Web
+        self.headers_digest = {
+            "Content-type": "application/json; odata=verbose",
+            "Accept": "application/json; odata=verbose",
+            "Authorization": self.access_token,
+        }  # Header for Post API. got it from go/spapi
+
+    def download_file(self, target_url, output_path):
+        print(f"Downloading {target_url} to {output_path}")
+        response = requests.get(target_url, headers=self.headers_digest)
+        print(f"Response Code: {response.status_code}")
+        if response.status_code == 200:
+            # yaml_content = yaml.safe_load(response.content)
+            # json_content = json.dumps(yaml_content, indent=4)
+            # pprint(json_content)
+            with open(output_path, "wb") as output:
+                output.write(response.content)
+        else:
+            raise Exception("SharePoint Update Failed")
+        
+    def get_files_list(self, folder_url):
+        response = requests.get(folder_url, headers=self.headers_digest)
+        if response.status_code == 200:
+            pprint(response.json())
+            files = response.json()["d"]["results"]
+            for file in files:
+                file_name = file["Name"]
+                file_url = file["ServerRelativeUrl"]
+                full_file_url = f"{base_url}{file_url}"
+                # print(f"File name: {file_name}, URL: {file_url}")
+                print(file_name)
+                print(file_url)
+                print(full_file_url)
+        else:
+            print(f"Failed to retrieve files: {response.status_code}")
+
+    def upload_file_to_sharepoint(self, file_path, upload_url):
+        with open(file_path, 'rb') as file:
+            response = requests.post(upload_url, headers=self.headers_digest, data=file)
+            if response.status_code == 200:
+                print("File uploaded successfully")
+                pprint(response.json())
+            else:
+                print(f"Failed to upload file: {response.status_code}")
+                print(response.text)
+        
+    def update_config_file(self):
+        """
+        :return: Download the config file from SharePoint
+        """
+        target_url = "https://qualcomm.sharepoint.com/teams/athrhome/prog/ASTWLAN/_api/web/GetFolderByServerRelativeUrl('Shared Documents/WLAN CSTBOT Tool/ConfigFile_CSTBOTReport')/Files('example.yaml')/$value"
+        folder_url = "https://qualcomm.sharepoint.com/teams/athrhome/prog/ASTWLAN/_api/web/GetFolderByServerRelativeUrl('Shared Documents/WLAN CSTBOT Tool/ConfigFile_CSTBOTReport')/Files"
+        upload_url = "https://qualcomm.sharepoint.com/teams/athrhome/prog/ASTWLAN/_api/web/GetFolderByServerRelativeUrl('Shared Documents/WLAN CSTBOT Tool/ConfigFile_CSTBOTReport')/Files/add(url='example.yaml',overwrite=true)"
+
+        file_path = r".\config_yaml_files\generated_config_3.yml"
+
+        # self.download_file(target_url, "downloaded_config.yml")
+        self.get_files_list(folder_url)
+        self.upload_file_to_sharepoint(file_path, upload_url)
+
+    @staticmethod
+    def get_access_token():
+        """
+        This method sends a POST request to a specified URL with headers and
+        payload data to get a bearer token for SharePoint Web.
+
+        :return: A string containing the bearer token for SharePoint Web with
+            the prefix "Bearer".
+        """
+        try:
+            print("in Try block")
+            access_token = token["access_token"]
+        except:
+            print("Error, No Access Token")
+
+        return "Bearer " + access_token
