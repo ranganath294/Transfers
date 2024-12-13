@@ -1,149 +1,31 @@
-import os
-import msal
-import requests
-from pprint import pprint
+<div class="mb-3">
+    <label class="form-label" for="config-select">Select Config</label>
+    <select name="config" class="config-select optimized-select" id="config-select" data-modal>
+        <option value="default" selected>Select</option>
+        {% for config in configs_list %}
+        <option value="{{ config.name }}">{{ config.name }}</option>
+        {% endfor %}
+    </select>
+</div>
 
 
-class SharePointClient:
-    def __init__(self, tenant, client_id, username, password, flow_type="password", base_url="https://qualcomm.sharepoint.com"):
-        """
-        Initialize the SharePoint client with tenant, credentials, and configuration.
+<div class="container content mt-4">
+        {% block messages %}
+            {% if messages %}
+                {% for message in messages %}
+                    <div class="alert alert-{{ message.tags }}">
+                        {{ message }}
+                    </div>
+                {% endfor %}
+            {% endif %}
+        {% endblock %}
 
-        :param tenant: SharePoint tenant URL.
-        :param client_id: Application client ID.
-        :param username: Service account username.
-        :param password: Service account password.
-        :param flow_type: Type of authentication flow (default: password).
-        :param base_url: Base SharePoint URL.
-        """
-        self.tenant = tenant
-        self.client_id = client_id
-        self.username = username
-        self.password = password
-        self.flow_type = flow_type
-        self.base_url = base_url
-        self.token = None
-        self.authenticate()
+        {% block content %}
+        <!-- Page-specific content will be inserted here by child templates -->
+        {% endblock %}
+    </div>
 
-    def authenticate(self):
-        """Authenticate using MSAL and retrieve the access token."""
-        msal_client = msal.PublicClientApplication(self.client_id, authority=self.tenant)
-        try:
-            token_response = msal_client.acquire_token_by_username_password(
-                self.username, self.password, scopes=[f"{self.base_url}/.default"]
-            )
-            if "access_token" in token_response:
-                self.token = token_response["access_token"]
-            else:
-                raise Exception(f"Authentication failed: {token_response.get('error_description')}")
-        except Exception as e:
-            raise Exception(f"Error during authentication: {e}")
 
-    def get_headers(self):
-        """Return authorization headers."""
-        if not self.token:
-            self.authenticate()
-        return {
-            "Authorization": f"Bearer {self.token}",
-            "Content-type": "application/json; odata=verbose",
-            "Accept": "application/json; odata=verbose",
+.content {
+            flex: 1;
         }
-
-    def download_file(self, target_url, output_path):
-        """
-        Download a file from SharePoint.
-
-        :param target_url: The full API URL to fetch the file.
-        :param output_path: Local file path to save the downloaded content.
-        """
-        headers = self.get_headers()
-        response = requests.get(target_url, headers=headers)
-        if response.status_code == 200:
-            with open(output_path, "wb") as file:
-                file.write(response.content)
-            print(f"File downloaded to {output_path}")
-        else:
-            raise Exception(f"Failed to download file: {response.status_code} - {response.text}")
-
-    def get_files_list(self, folder_url):
-        """
-        Retrieve a list of files from a SharePoint folder.
-
-        :param folder_url: The full API URL of the SharePoint folder.
-        :return: List of files with their names and URLs.
-        """
-        headers = self.get_headers()
-        response = requests.get(folder_url, headers=headers)
-        if response.status_code == 200:
-            files = response.json()["d"]["results"]
-            file_list = [
-                {
-                    "name": file["Name"],
-                    "relative_url": file["ServerRelativeUrl"],
-                    "full_url": f"{self.base_url}{file['ServerRelativeUrl']}",
-                }
-                for file in files
-            ]
-            return file_list
-        else:
-            raise Exception(f"Failed to retrieve files: {response.status_code} - {response.text}")
-
-    def upload_file(self, file_path, upload_url):
-        """
-        Upload a file to SharePoint.
-
-        :param file_path: Local file path of the file to upload.
-        :param upload_url: Full API URL for uploading the file.
-        """
-        headers = self.get_headers()
-        with open(file_path, "rb") as file:
-            response = requests.post(upload_url, headers=headers, data=file)
-            if response.status_code == 200:
-                print("File uploaded successfully.")
-            else:
-                raise Exception(f"Failed to upload file: {response.status_code} - {response.text}")
-
-    def update_config_file(self, folder_api_url, target_file_name, local_file_path):
-        """
-        Download, list, and upload a configuration file.
-
-        :param folder_api_url: API URL of the folder containing the configuration file.
-        :param target_file_name: Name of the file to update in the folder.
-        :param local_file_path: Path to the updated file to upload.
-        """
-        # List files in the folder
-        files = self.get_files_list(folder_api_url)
-        print("Files in folder:")
-        pprint(files)
-
-        # Download the target file
-        for file in files:
-            if file["name"] == target_file_name:
-                target_url = f"{self.base_url}/_api/web/GetFileByServerRelativeUrl('{file['relative_url']}')/$value"
-                print(f"Downloading file: {file['name']}")
-                self.download_file(target_url, f"downloaded_{target_file_name}")
-                break
-
-        # Upload the updated file
-        upload_url = f"{folder_api_url}/Files/add(url='{target_file_name}',overwrite=true)"
-        self.upload_file(local_file_path, upload_url)
-
-
-# Example Usage
-if __name__ == "__main__":
-    secrets = {
-        "qualcommtenant": "https://login.microsoftonline.com/your-tenant-id",
-        "client_id": "your-client-id",
-        "serviceaccount": "your-username",
-        "password": "your-password",
-    }
-
-    client = SharePointClient(
-        tenant=secrets["qualcommtenant"],
-        client_id=secrets["client_id"],
-        username=secrets["serviceaccount"],
-        password=secrets["password"],
-    )
-
-    folder_api_url = "https://qualcomm.sharepoint.com/teams/your-team/_api/web/GetFolderByServerRelativeUrl('Shared Documents/FolderName')"
-    client.update_config_file(folder_api_url, "example.yaml", "./local_config.yaml")
