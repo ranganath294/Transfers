@@ -1,112 +1,149 @@
 import os
 import msal
-import ssl
-from omegaconf import OmegaConf
-from pprint import pprint
-import json
-import yaml
 import requests
+from pprint import pprint
 
-secrets = OmegaConf.load(".secrets.yaml")
 
-qualcommtenant = secrets["sharepoint"]["access_token"]["qualcommtenant"]
-clientid = secrets["sharepoint"]["access_token"]["client_id"]
-serviceaccount = secrets["sharepoint"]["access_token"]["serviceacc"]
-password = secrets["sharepoint"]["access_token"]["password"]
-flow_type = "password"
+class SharePointClient:
+    def __init__(self, tenant, client_id, username, password, flow_type="password", base_url="https://qualcomm.sharepoint.com"):
+        """
+        Initialize the SharePoint client with tenant, credentials, and configuration.
 
-# scope=["https://graph.microsoft.com/.default"] # Graph API and SharePoint API scope are different
-scope = ["https://qualcomm.sharepoint.com/.default"]  # <- This is the SPO API scope
-
-msal_client = msal.PublicClientApplication(clientid, authority=qualcommtenant)
-token = msal_client.acquire_token_by_username_password(serviceaccount, password, scopes=scope)
-
-base_url = "https://qualcomm.sharepoint.com"
-
-class SharePoint:
-
-    def __init__(self, qualcommtenant, clientid, serviceaccount, password, flow_type):
-        self.qualcommtenant = qualcommtenant
-        self.clientid = clientid
-        self.serviceaccount = serviceaccount
+        :param tenant: SharePoint tenant URL.
+        :param client_id: Application client ID.
+        :param username: Service account username.
+        :param password: Service account password.
+        :param flow_type: Type of authentication flow (default: password).
+        :param base_url: Base SharePoint URL.
+        """
+        self.tenant = tenant
+        self.client_id = client_id
+        self.username = username
         self.password = password
         self.flow_type = flow_type
+        self.base_url = base_url
+        self.token = None
+        self.authenticate()
 
-        self.access_token = (
-            self.get_access_token()
-        )  # Get access token for SharePoint Web
-        self.headers_digest = {
+    def authenticate(self):
+        """Authenticate using MSAL and retrieve the access token."""
+        msal_client = msal.PublicClientApplication(self.client_id, authority=self.tenant)
+        try:
+            token_response = msal_client.acquire_token_by_username_password(
+                self.username, self.password, scopes=[f"{self.base_url}/.default"]
+            )
+            if "access_token" in token_response:
+                self.token = token_response["access_token"]
+            else:
+                raise Exception(f"Authentication failed: {token_response.get('error_description')}")
+        except Exception as e:
+            raise Exception(f"Error during authentication: {e}")
+
+    def get_headers(self):
+        """Return authorization headers."""
+        if not self.token:
+            self.authenticate()
+        return {
+            "Authorization": f"Bearer {self.token}",
             "Content-type": "application/json; odata=verbose",
             "Accept": "application/json; odata=verbose",
-            "Authorization": self.access_token,
-        }  # Header for Post API. got it from go/spapi
+        }
 
     def download_file(self, target_url, output_path):
-        print(f"Downloading {target_url} to {output_path}")
-        response = requests.get(target_url, headers=self.headers_digest)
-        print(f"Response Code: {response.status_code}")
+        """
+        Download a file from SharePoint.
+
+        :param target_url: The full API URL to fetch the file.
+        :param output_path: Local file path to save the downloaded content.
+        """
+        headers = self.get_headers()
+        response = requests.get(target_url, headers=headers)
         if response.status_code == 200:
-            # yaml_content = yaml.safe_load(response.content)
-            # json_content = json.dumps(yaml_content, indent=4)
-            # pprint(json_content)
-            with open(output_path, "wb") as output:
-                output.write(response.content)
+            with open(output_path, "wb") as file:
+                file.write(response.content)
+            print(f"File downloaded to {output_path}")
         else:
-            raise Exception("SharePoint Update Failed")
-        
+            raise Exception(f"Failed to download file: {response.status_code} - {response.text}")
+
     def get_files_list(self, folder_url):
-        response = requests.get(folder_url, headers=self.headers_digest)
+        """
+        Retrieve a list of files from a SharePoint folder.
+
+        :param folder_url: The full API URL of the SharePoint folder.
+        :return: List of files with their names and URLs.
+        """
+        headers = self.get_headers()
+        response = requests.get(folder_url, headers=headers)
         if response.status_code == 200:
-            pprint(response.json())
             files = response.json()["d"]["results"]
-            for file in files:
-                file_name = file["Name"]
-                file_url = file["ServerRelativeUrl"]
-                full_file_url = f"{base_url}{file_url}"
-                # print(f"File name: {file_name}, URL: {file_url}")
-                print(file_name)
-                print(file_url)
-                print(full_file_url)
+            file_list = [
+                {
+                    "name": file["Name"],
+                    "relative_url": file["ServerRelativeUrl"],
+                    "full_url": f"{self.base_url}{file['ServerRelativeUrl']}",
+                }
+                for file in files
+            ]
+            return file_list
         else:
-            print(f"Failed to retrieve files: {response.status_code}")
+            raise Exception(f"Failed to retrieve files: {response.status_code} - {response.text}")
 
-    def upload_file_to_sharepoint(self, file_path, upload_url):
-        with open(file_path, 'rb') as file:
-            response = requests.post(upload_url, headers=self.headers_digest, data=file)
+    def upload_file(self, file_path, upload_url):
+        """
+        Upload a file to SharePoint.
+
+        :param file_path: Local file path of the file to upload.
+        :param upload_url: Full API URL for uploading the file.
+        """
+        headers = self.get_headers()
+        with open(file_path, "rb") as file:
+            response = requests.post(upload_url, headers=headers, data=file)
             if response.status_code == 200:
-                print("File uploaded successfully")
-                pprint(response.json())
+                print("File uploaded successfully.")
             else:
-                print(f"Failed to upload file: {response.status_code}")
-                print(response.text)
-        
-    def update_config_file(self):
+                raise Exception(f"Failed to upload file: {response.status_code} - {response.text}")
+
+    def update_config_file(self, folder_api_url, target_file_name, local_file_path):
         """
-        :return: Download the config file from SharePoint
+        Download, list, and upload a configuration file.
+
+        :param folder_api_url: API URL of the folder containing the configuration file.
+        :param target_file_name: Name of the file to update in the folder.
+        :param local_file_path: Path to the updated file to upload.
         """
-        target_url = "https://qualcomm.sharepoint.com/teams/athrhome/prog/ASTWLAN/_api/web/GetFolderByServerRelativeUrl('Shared Documents/WLAN CSTBOT Tool/ConfigFile_CSTBOTReport')/Files('example.yaml')/$value"
-        folder_url = "https://qualcomm.sharepoint.com/teams/athrhome/prog/ASTWLAN/_api/web/GetFolderByServerRelativeUrl('Shared Documents/WLAN CSTBOT Tool/ConfigFile_CSTBOTReport')/Files"
-        upload_url = "https://qualcomm.sharepoint.com/teams/athrhome/prog/ASTWLAN/_api/web/GetFolderByServerRelativeUrl('Shared Documents/WLAN CSTBOT Tool/ConfigFile_CSTBOTReport')/Files/add(url='example.yaml',overwrite=true)"
+        # List files in the folder
+        files = self.get_files_list(folder_api_url)
+        print("Files in folder:")
+        pprint(files)
 
-        file_path = r".\config_yaml_files\generated_config_3.yml"
+        # Download the target file
+        for file in files:
+            if file["name"] == target_file_name:
+                target_url = f"{self.base_url}/_api/web/GetFileByServerRelativeUrl('{file['relative_url']}')/$value"
+                print(f"Downloading file: {file['name']}")
+                self.download_file(target_url, f"downloaded_{target_file_name}")
+                break
 
-        # self.download_file(target_url, "downloaded_config.yml")
-        self.get_files_list(folder_url)
-        self.upload_file_to_sharepoint(file_path, upload_url)
+        # Upload the updated file
+        upload_url = f"{folder_api_url}/Files/add(url='{target_file_name}',overwrite=true)"
+        self.upload_file(local_file_path, upload_url)
 
-    @staticmethod
-    def get_access_token():
-        """
-        This method sends a POST request to a specified URL with headers and
-        payload data to get a bearer token for SharePoint Web.
 
-        :return: A string containing the bearer token for SharePoint Web with
-            the prefix "Bearer".
-        """
-        try:
-            print("in Try block")
-            access_token = token["access_token"]
-        except:
-            print("Error, No Access Token")
+# Example Usage
+if __name__ == "__main__":
+    secrets = {
+        "qualcommtenant": "https://login.microsoftonline.com/your-tenant-id",
+        "client_id": "your-client-id",
+        "serviceaccount": "your-username",
+        "password": "your-password",
+    }
 
-        return "Bearer " + access_token
+    client = SharePointClient(
+        tenant=secrets["qualcommtenant"],
+        client_id=secrets["client_id"],
+        username=secrets["serviceaccount"],
+        password=secrets["password"],
+    )
+
+    folder_api_url = "https://qualcomm.sharepoint.com/teams/your-team/_api/web/GetFolderByServerRelativeUrl('Shared Documents/FolderName')"
+    client.update_config_file(folder_api_url, "example.yaml", "./local_config.yaml")
