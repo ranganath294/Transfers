@@ -28,11 +28,13 @@
             content: " *";
             color: red;
         }
-        .config-field {
-            margin-bottom: 20px;
-        }
-        .config-field small {
-            color: #6c757d;
+        .form-text.text-muted {
+            color: #6c757d !important;
+            word-wrap: break-word;
+            overflow-wrap: break-word;
+            white-space: normal;
+            width: 100%;
+            display: block;
         }
         
         /* Responsive Adjustments */
@@ -54,37 +56,36 @@
 <body>
     <div class="container">
         <div class="row justify-content-center">
-            <div class="col-md-8 config-container">
-                <h2 class="mb-4 text-center">Config Generator</h2>
+            <div class="col-md-10 config-container">
+                <h2 class="mb-4 text-center">Configuration Generator</h2>
                 
                 <!-- Config Selection Section -->
                 <div id="configSelectionSection">
                     <div class="mb-3">
-                        <label for="configSelect" class="form-label">Select Configuration</label>
-                        <select id="configSelect" class="form-select">
-                            <option value="">Choose a configuration</option>
-                            <!-- Dynamically populate this with available configs -->
-                            <option value="config1">Configuration 1</option>
-                            <option value="config2">Configuration 2</option>
+                        <label class="form-label" for="config-select">Select Config</label>
+                        <select name="config" class="form-select" id="config-select">
+                            <option value="" selected>Select Configuration</option>
+                            <!-- Options will be populated dynamically -->
                         </select>
                     </div>
                     <div class="text-center">
-                        <button id="showConfigBtn" class="btn btn-primary">Show Configuration</button>
+                        <button id="show-config-btn" class="btn btn-primary">Show Configuration</button>
                     </div>
                 </div>
 
-                <!-- Config Editing Section (Initially Hidden) -->
-                <div id="configEditSection" style="display:none;">
-                    <form id="configForm">
-                        <div id="dynamicConfigFields">
-                            <!-- Dynamically generated config fields will appear here -->
+                <!-- Config Generation Form -->
+                <form id="configGenerationForm" class="mt-4" style="display:none;">
+                    {% csrf_token %}
+                    <div id="dynamicFields" class="row g-3"></div>
+                    <input type="hidden" id="parsedData" name="parsedData">
+                    <div class="mt-4 d-flex justify-content-between">
+                        <div>
+                            <button type="submit" class="btn btn-success">Generate Config</button>
+                            <button type="reset" class="btn btn-secondary ms-2">Reset</button>
                         </div>
-                        <div class="btn-group mt-3 w-100">
-                            <button type="submit" class="btn btn-success">Save Configuration</button>
-                            <button type="button" id="cancelConfigBtn" class="btn btn-secondary">Cancel</button>
-                        </div>
-                    </form>
-                </div>
+                        <button id="back-to-select" type="button" class="btn btn-outline-secondary">Back to Selection</button>
+                    </div>
+                </form>
             </div>
         </div>
     </div>
@@ -93,153 +94,195 @@
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     
     <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            const configSelect = document.getElementById('configSelect');
-            const showConfigBtn = document.getElementById('showConfigBtn');
-            const configSelectionSection = document.getElementById('configSelectionSection');
-            const configEditSection = document.getElementById('configEditSection');
-            const dynamicConfigFields = document.getElementById('dynamicConfigFields');
-            const cancelConfigBtn = document.getElementById('cancelConfigBtn');
-            const configForm = document.getElementById('configForm');
+    document.addEventListener('DOMContentLoaded', function() {
+        const configSelect = document.getElementById('config-select');
+        const showConfigBtn = document.getElementById('show-config-btn');
+        const configSelectionSection = document.getElementById('configSelectionSection');
+        const configGenerationForm = document.getElementById('configGenerationForm');
+        const dynamicFieldsContainer = document.getElementById('dynamicFields');
+        const backToSelectBtn = document.getElementById('back-to-select');
 
-            // Dummy config data (replace with your actual config structure)
-            const configData = {
-                'config1': {
-                    'server_host': { 
-                        default: 'localhost', 
-                        type: 'string', 
-                        ui_displayed_name: 'Server Host' 
-                    },
-                    'port': { 
-                        default: 8000, 
-                        type: 'number', 
-                        ui_displayed_name: 'Port Number' 
-                    },
-                    'debug_mode': { 
-                        default: false, 
-                        type: 'boolean', 
-                        ui_displayed_name: 'Debug Mode' 
-                    }
-                },
-                'config2': {
-                    'database_url': { 
-                        default: 'postgresql://user:pass@localhost/db', 
-                        type: 'string', 
-                        ui_displayed_name: 'Database URL' 
-                    },
-                    'max_connections': { 
-                        default: 10, 
-                        type: 'number', 
-                        ui_displayed_name: 'Max Connections' 
-                    }
-                }
-            };
+        // Populate config dropdown
+        function populateConfigDropdown() {
+            fetch('/get-config-list/')  // Replace with your actual endpoint
+                .then(response => response.json())
+                .then(configs => {
+                    configSelect.innerHTML = '<option value="" selected>Select Configuration</option>';
+                    configs.forEach(config => {
+                        const option = document.createElement('option');
+                        option.value = config.name;
+                        option.textContent = config.name;
+                        configSelect.appendChild(option);
+                    });
+                })
+                .catch(error => {
+                    console.error('Error fetching config list:', error);
+                    alert('Failed to load configurations');
+                });
+        }
 
-            // Render input based on field type
-            function renderConfigField(fieldName, fieldConfig) {
-                const fieldDiv = document.createElement('div');
-                fieldDiv.className = 'config-field';
+        // Function to render input based on data type
+        function renderInput(fieldName, fieldConfig) {
+            const inputWrapper = document.createElement('div');
+            inputWrapper.className = 'col-md-6 mb-3';
 
-                const label = document.createElement('label');
-                label.htmlFor = fieldName;
-                label.className = 'form-label required-label';
-                label.textContent = fieldConfig.ui_displayed_name;
+            // Create label
+            const label = document.createElement('label');
+            label.htmlFor = fieldName;
+            label.className = `form-label ${fieldConfig.required !== false ? 'required-label' : ''}`;
+            label.textContent = `${fieldConfig.ui_displayed_name} ${fieldConfig.required !== false ? '(required)' : '(optional)'}`;
+            inputWrapper.appendChild(label);
 
-                let input;
-                switch (fieldConfig.type) {
-                    case 'boolean':
-                        input = document.createElement('select');
-                        input.className = 'form-select';
-                        ['true', 'false'].forEach(val => {
-                            const option = document.createElement('option');
-                            option.value = val;
-                            option.textContent = val;
-                            option.selected = val === String(fieldConfig.default);
-                            input.appendChild(option);
-                        });
-                        break;
-                    case 'number':
-                        input = document.createElement('input');
-                        input.type = 'number';
-                        input.value = fieldConfig.default;
-                        break;
-                    default:
-                        input = document.createElement('input');
-                        input.type = 'text';
-                        input.value = fieldConfig.default;
-                }
-
-                input.id = fieldName;
-                input.name = fieldName;
-                input.className = 'form-control';
-
-                const helpText = document.createElement('small');
-                helpText.className = 'form-text';
-                helpText.textContent = `Default: ${fieldConfig.default}`;
-
-                fieldDiv.appendChild(label);
-                fieldDiv.appendChild(input);
-                fieldDiv.appendChild(helpText);
-
-                return fieldDiv;
+            // Create input or textarea based on value type
+            let inputElement;
+            if (Array.isArray(fieldConfig.default)) {
+                // Array input (textarea for easier editing)
+                inputElement = document.createElement('textarea');
+                inputElement.value = JSON.stringify(fieldConfig.default, null, 2);
+            } else if (typeof fieldConfig.default === 'object' && fieldConfig.default !== null) {
+                // Object input (textarea for JSON)
+                inputElement = document.createElement('textarea');
+                inputElement.value = JSON.stringify(fieldConfig.default, null, 2);
+            } else {
+                // Standard text input
+                inputElement = document.createElement('input');
+                inputElement.type = 'text';
+                inputElement.value = fieldConfig.default;
             }
 
-            // Show Configuration Button Click
-            showConfigBtn.addEventListener('click', function() {
-                const selectedConfig = configSelect.value;
-                if (selectedConfig && configData[selectedConfig]) {
-                    // Clear previous fields
-                    dynamicConfigFields.innerHTML = '';
+            inputElement.id = fieldName;
+            inputElement.name = fieldName;
+            inputElement.className = 'form-control';
+            inputElement.placeholder = JSON.stringify(fieldConfig.default);
 
-                    // Render config fields
-                    const config = configData[selectedConfig];
-                    Object.entries(config).forEach(([fieldName, fieldConfig]) => {
-                        dynamicConfigFields.appendChild(
-                            renderConfigField(fieldName, fieldConfig)
-                        );
+            if (fieldConfig.required !== false) {
+                inputElement.required = true;
+            }
+
+            inputWrapper.appendChild(inputElement);
+
+            // Example text
+            const exampleText = document.createElement('small');
+            exampleText.className = 'form-text text-muted';
+
+            let defaultValue = fieldConfig.default;
+
+            if (Array.isArray(defaultValue) && defaultValue.length > 3) {
+                defaultValue = defaultValue.slice(0, 3);
+            } else if (typeof defaultValue === 'object' && defaultValue !== null) {
+                const keys = Object.keys(defaultValue);
+                if (keys.length > 3) {
+                    defaultValue = keys.slice(0, 3).reduce((obj, key) => {
+                        obj[key] = defaultValue[key];
+                        return obj;
+                    }, {});
+                }
+            }
+
+            exampleText.textContent = `Example: ${JSON.stringify(defaultValue)}`;
+            inputWrapper.appendChild(exampleText);
+
+            return inputWrapper;
+        }
+
+        // Show Configuration Button Click
+        showConfigBtn.addEventListener('click', function() {
+            const selectedConfig = configSelect.value;
+            if (!selectedConfig) {
+                alert('Please select a configuration');
+                return;
+            }
+
+            // Fetch configuration details
+            fetch(`/get-config-details/?config=${selectedConfig}`)  // Replace with your actual endpoint
+                .then(response => response.json())
+                .then(configData => {
+                    // Clear previous fields
+                    dynamicFieldsContainer.innerHTML = '';
+
+                    // Render dynamic fields
+                    Object.entries(configData).forEach(([fieldName, fieldConfig]) => {
+                        if (fieldConfig.show) {
+                            dynamicFieldsContainer.appendChild(renderInput(fieldName, fieldConfig));
+                        }
                     });
 
-                    // Toggle sections
+                    // Toggle visibility
                     configSelectionSection.style.display = 'none';
-                    configEditSection.style.display = 'block';
-                }
-            });
+                    configGenerationForm.style.display = 'block';
+                })
+                .catch(error => {
+                    console.error('Error fetching config details:', error);
+                    alert('Failed to load configuration details');
+                });
+        });
 
-            // Cancel Button
-            cancelConfigBtn.addEventListener('click', function() {
-                configSelectionSection.style.display = 'block';
-                configEditSection.style.display = 'none';
-            });
+        // Back to Selection Button
+        backToSelectBtn.addEventListener('click', function() {
+            configSelectionSection.style.display = 'block';
+            configGenerationForm.style.display = 'none';
+        });
 
-            // Form Submission
-            configForm.addEventListener('submit', function(event) {
-                event.preventDefault();
-                const formData = new FormData(configForm);
-                const configObject = {};
+        // Form submission handler
+        document.getElementById('configGenerationForm').addEventListener('submit', function(event) {
+            event.preventDefault();
 
-                for (let [key, value] of formData.entries()) {
-                    const configField = configData[configSelect.value][key];
-                    
-                    // Convert value based on original type
-                    if (configField.type === 'number') {
-                        configObject[key] = Number(value);
-                    } else if (configField.type === 'boolean') {
-                        configObject[key] = value === 'true';
-                    } else {
-                        configObject[key] = value;
+            const parsedData = {};
+            const formElements = this.elements;
+
+            for (let element of formElements) {
+                if (element.name && element.name !== 'csrfmiddlewaretoken') {
+                    try {
+                        // Attempt to parse the input value
+                        const value = element.value.trim();
+
+                        if (value.startsWith('[') || value.startsWith('{')) {
+                            // Parse JSON for arrays and objects
+                            parsedData[element.name] = JSON.parse(value);
+                        } else if (value === 'true' || value === 'false') {
+                            // Parse boolean
+                            parsedData[element.name] = value === 'true';
+                        } else if (!isNaN(value) && value !== '') {
+                            // Parse number
+                            parsedData[element.name] = Number(value);
+                        } else {
+                            // Keep as string
+                            parsedData[element.name] = value;
+                        }
+                    } catch (error) {
+                        console.error(`Error parsing ${element.name}:`, error);
+                        parsedData[element.name] = element.value;
                     }
                 }
+            }
 
-                console.log('Saved Configuration:', configObject);
-                alert('Configuration saved successfully!');
-
-                // Optional: Send to backend via fetch
-                // fetch('/save-config', {
-                //     method: 'POST',
-                //     body: JSON.stringify(configObject)
-                // })
+            // Submit via AJAX
+            fetch('/generate-config/', {  // Replace with your actual endpoint
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(parsedData)
+            })
+            .then(response => response.json())
+            .then(data => {
+                console.log(data);
+                if (data.status === 'success') {
+                    alert('Config generated successfully!');
+                } else {
+                    alert('Error: ' + data.message);
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('An error occurred while generating the config');
             });
         });
+
+        // Initial population of config dropdown
+        populateConfigDropdown();
+    });
     </script>
 </body>
 </html>
