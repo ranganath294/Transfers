@@ -1,175 +1,154 @@
 {% extends "base.html" %}
-{% load static %}
 
 {% block content %}
-<div class="container-fluid px-4 mt-5">
-    <h2 class="mb-4">Configuration Generator</h2>
-    
-    <!-- Config Selection Section -->
-    <div class="row">
-        <div class="col-md-6">
-            <div class="card">
+<div class="container-fluid py-4">
+    <div class="row justify-content-center">
+        <div class="col-12 col-md-8 col-lg-6">
+            <!-- Configuration Selection Card -->
+            <div class="card shadow-sm mb-4">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="card-title mb-0">Select Configuration</h5>
+                </div>
                 <div class="card-body">
-                    <h5 class="card-title">Select Configuration</h5>
-                    
-                    <!-- Dropdown Rendered by Django -->
-                    <div class="mb-3">
-                        <label class="form-label" for="config-select">Available Configurations</label>
-                        <select name="config" class="form-select" id="config-select">
-                            <option value="" selected>Select Configuration</option>
-                            {% for config in configs_list %}
-                            <option value="{{ config.name }}">{{ config.name }}</option>
-                            {% endfor %}
-                        </select>
-                    </div>
-                    
-                    <button id="show-config-btn" class="btn btn-primary">
-                        Show Configuration
-                    </button>
+                    <form id="configSelectionForm">
+                        <div class="mb-3">
+                            <label for="configDropdown" class="form-label">Choose Configuration</label>
+                            <select class="form-select" id="configDropdown" name="config_type" required>
+                                <option value="">Select Configuration Type</option>
+                                {% for config in available_configs %}
+                                <option value="{{ config.id }}">{{ config.name }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="d-grid">
+                            <button type="submit" class="btn btn-primary">
+                                Show Configuration
+                                <i class="bi bi-arrow-right-circle ms-2"></i>
+                            </button>
+                        </div>
+                    </form>
                 </div>
             </div>
-        </div>
-    </div>
 
-    <!-- Dynamic Config Generation Form -->
-    <div id="config-form-container" class="mt-4" style="display:none;">
-        <div class="card">
-            <div class="card-body">
-                <h5 class="card-title">Configuration Details</h5>
-                <form id="configGenerationForm" method="POST">
-                    {% csrf_token %}
-                    <div id="dynamicFields" class="row g-3"></div>
-                    <input type="hidden" id="parsedData" name="parsedData">
-                    <div class="mt-4 d-flex justify-content-between">
-                        <div>
-                            <button type="submit" class="btn btn-success">Generate Config</button>
-                            <button type="reset" class="btn btn-secondary ms-2">Reset</button>
+            <!-- Dynamic Configuration Fields Card -->
+            <div id="dynamicConfigSection" class="card shadow-sm" style="display: none;">
+                <div class="card-header bg-success text-white">
+                    <h5 class="card-title mb-0">Configuration Details</h5>
+                </div>
+                <div class="card-body">
+                    <form id="configGenerationForm" method="POST">
+                        {% csrf_token %}
+                        <input type="hidden" id="selectedConfigType" name="config_type">
+                        
+                        <div id="dynamicFields" class="row g-3">
+                            <!-- Dynamic fields will be inserted here by JavaScript -->
                         </div>
-                        <button id="back-to-select" type="button" class="btn btn-outline-secondary">
-                            Back to Selection
-                        </button>
-                    </div>
-                </form>
+                        
+                        <div class="d-grid mt-3">
+                            <button type="submit" class="btn btn-success">
+                                Save Configuration
+                                <i class="bi bi-save ms-2"></i>
+                            </button>
+                        </div>
+                    </form>
+                </div>
             </div>
         </div>
     </div>
 </div>
 
-{% block extra_js %}
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    const configSelect = document.getElementById('config-select');
-    const showConfigBtn = document.getElementById('show-config-btn');
-    const configFormContainer = document.getElementById('config-form-container');
+    const configSelectionForm = document.getElementById('configSelectionForm');
+    const dynamicConfigSection = document.getElementById('dynamicConfigSection');
     const dynamicFieldsContainer = document.getElementById('dynamicFields');
-    const backToSelectBtn = document.getElementById('back-to-select');
+    const selectedConfigTypeInput = document.getElementById('selectedConfigType');
 
-    // Function to render input based on data type
-    function renderInput(fieldName, fieldConfig) {
-        const inputWrapper = document.createElement('div');
-        inputWrapper.className = 'col-md-6 mb-3';
-
-        // Create label
-        const label = document.createElement('label');
-        label.htmlFor = fieldName;
-        label.className = `form-label ${fieldConfig.required !== false ? 'required-label' : ''}`;
-        label.textContent = `${fieldConfig.ui_displayed_name} ${fieldConfig.required !== false ? '(required)' : '(optional)'}`;
-        inputWrapper.appendChild(label);
-
-        // Create input or textarea based on value type
-        let inputElement;
-        if (Array.isArray(fieldConfig.default)) {
-            // Array input (textarea for easier editing)
-            inputElement = document.createElement('textarea');
-            inputElement.value = JSON.stringify(fieldConfig.default, null, 2);
-        } else if (typeof fieldConfig.default === 'object' && fieldConfig.default !== null) {
-            // Object input (textarea for JSON)
-            inputElement = document.createElement('textarea');
-            inputElement.value = JSON.stringify(fieldConfig.default, null, 2);
-        } else {
-            // Standard text input
-            inputElement = document.createElement('input');
-            inputElement.type = 'text';
-            inputElement.value = fieldConfig.default;
-        }
-
-        inputElement.id = fieldName;
-        inputElement.name = fieldName;
-        inputElement.className = 'form-control';
-        inputElement.placeholder = JSON.stringify(fieldConfig.default);
-
-        if (fieldConfig.required !== false) {
-            inputElement.required = true;
-        }
-
-        inputWrapper.appendChild(inputElement);
-
-        // Example text
-        const exampleText = document.createElement('small');
-        exampleText.className = 'form-text text-muted';
-
-        let defaultValue = fieldConfig.default;
-
-        if (Array.isArray(defaultValue) && defaultValue.length > 3) {
-            defaultValue = defaultValue.slice(0, 3);
-        } else if (typeof defaultValue === 'object' && defaultValue !== null) {
-            const keys = Object.keys(defaultValue);
-            if (keys.length > 3) {
-                defaultValue = keys.slice(0, 3).reduce((obj, key) => {
-                    obj[key] = defaultValue[key];
-                    return obj;
-                }, {});
-            }
-        }
-
-        exampleText.textContent = `Example: ${JSON.stringify(defaultValue)}`;
-        inputWrapper.appendChild(exampleText);
-
-        return inputWrapper;
-    }
-
-    // Show Configuration Button Click
-    showConfigBtn.addEventListener('click', function() {
-        const selectedConfig = configSelect.value;
-        if (!selectedConfig) {
-            alert('Please select a configuration');
-            return;
-        }
-
-        // Fetch configuration details via AJAX
-        fetch(`{% url 'generate_config:get_config_details' %}?config=${selectedConfig}`)
-            .then(response => {
-                if (!response.ok) {
-                    throw new Error('Network response was not ok');
-                }
-                return response.json();
-            })
+    // Configuration Selection Form Submit
+    configSelectionForm.addEventListener('submit', function(event) {
+        event.preventDefault();
+        const selectedConfigType = document.getElementById('configDropdown').value;
+        
+        // Fetch dynamic fields for the selected configuration
+        fetch(`/get-config-fields/${selectedConfigType}/`)
+            .then(response => response.json())
             .then(configData => {
-                // Clear previous fields
+                // Clear previous dynamic fields
                 dynamicFieldsContainer.innerHTML = '';
-
-                // Render dynamic fields
+                
+                // Render new dynamic fields
                 Object.entries(configData).forEach(([fieldName, fieldConfig]) => {
                     if (fieldConfig.show) {
                         dynamicFieldsContainer.appendChild(renderInput(fieldName, fieldConfig));
                     }
                 });
 
-                // Show config form, hide selection
-                configFormContainer.style.display = 'block';
+                // Show configuration section
+                dynamicConfigSection.style.display = 'block';
+                selectedConfigTypeInput.value = selectedConfigType;
             })
             .catch(error => {
-                console.error('Error fetching config details:', error);
-                alert('Failed to load configuration details');
+                console.error('Error fetching config fields:', error);
+                alert('Unable to load configuration fields');
             });
     });
 
-    // Back to Selection Button
-    backToSelectBtn.addEventListener('click', function() {
-        configFormContainer.style.display = 'none';
-    });
+    // Dynamic Input Rendering Function
+    function renderInput(fieldName, fieldConfig) {
+        const formGroup = document.createElement('div');
+        formGroup.className = 'col-12 col-md-6';
 
-    // Form submission handler
+        const label = document.createElement('label');
+        label.htmlFor = fieldName;
+        label.className = 'form-label';
+        label.textContent = fieldConfig.label || fieldName;
+
+        const input = document.createElement('input');
+        input.id = fieldName;
+        input.name = fieldName;
+        input.className = 'form-control';
+        
+        // Set input type and attributes based on field config
+        switch(fieldConfig.type) {
+            case 'boolean':
+                input.type = 'checkbox';
+                input.className = 'form-check-input';
+                formGroup.classList.add('form-check');
+                break;
+            case 'number':
+                input.type = 'number';
+                break;
+            case 'select':
+                const select = document.createElement('select');
+                select.id = fieldName;
+                select.name = fieldName;
+                select.className = 'form-select';
+                
+                fieldConfig.options.forEach(option => {
+                    const optionEl = document.createElement('option');
+                    optionEl.value = option.value;
+                    optionEl.textContent = option.label;
+                    select.appendChild(optionEl);
+                });
+
+                formGroup.appendChild(label);
+                formGroup.appendChild(select);
+                return formGroup;
+            default:
+                input.type = 'text';
+        }
+
+        // Set placeholder and default value if provided
+        if (fieldConfig.placeholder) input.placeholder = fieldConfig.placeholder;
+        if (fieldConfig.default !== undefined) input.value = fieldConfig.default;
+
+        formGroup.appendChild(label);
+        formGroup.appendChild(input);
+
+        return formGroup;
+    }
+
+    // Configuration Submission Handler
     document.getElementById('configGenerationForm').addEventListener('submit', function(event) {
         event.preventDefault();
 
@@ -179,20 +158,18 @@ document.addEventListener('DOMContentLoaded', function() {
         for (let element of formElements) {
             if (element.name && element.name !== 'csrfmiddlewaretoken') {
                 try {
-                    // Attempt to parse the input value
-                    const value = element.value.trim();
+                    const value = element.type === 'checkbox' ? element.checked : 
+                                  element.value.trim();
+
+                    if (value === '') continue;
 
                     if (value.startsWith('[') || value.startsWith('{')) {
-                        // Parse JSON for arrays and objects
                         parsedData[element.name] = JSON.parse(value);
                     } else if (value === 'true' || value === 'false') {
-                        // Parse boolean
                         parsedData[element.name] = value === 'true';
                     } else if (!isNaN(value) && value !== '') {
-                        // Parse number
                         parsedData[element.name] = Number(value);
                     } else {
-                        // Keep as string
                         parsedData[element.name] = value;
                     }
                 } catch (error) {
@@ -203,7 +180,7 @@ document.addEventListener('DOMContentLoaded', function() {
         }
 
         // Submit via AJAX
-        fetch('{% url 'generate_config:generate_config' %}', {
+        fetch(this.action, {
             method: 'POST',
             headers: {
                 'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
@@ -213,69 +190,34 @@ document.addEventListener('DOMContentLoaded', function() {
         })
         .then(response => response.json())
         .then(data => {
-            console.log(data);
             if (data.status === 'success') {
-                alert('Config generated successfully!');
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Success!',
+                    text: 'Configuration generated successfully!'
+                });
             } else {
-                alert('Error: ' + data.message);
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Error',
+                    text: data.message || 'Failed to generate configuration'
+                });
             }
         })
         .catch(error => {
             console.error('Error:', error);
-            alert('An error occurred while generating the config');
+            Swal.fire({
+                icon: 'error',
+                title: 'Network Error',
+                text: 'Unable to submit configuration'
+            });
         });
     });
 });
 </script>
-{% endblock %}
 
-<style>
-.required-label::after {
-    content: " *";
-    color: red;
-}
-
-.form-text.text-muted {
-    color: #6c757d !important;
-    word-wrap: break-word;
-    overflow-wrap: break-word;
-    white-space: normal;
-    width: 100%;
-    display: block;
-}
-
-/* Responsive Adjustments */
-@media (max-width: 768px) {
-    .container-fluid {
-        padding-left: 10px !important;
-        padding-right: 10px !important;
-    }
-
-    #dynamicFields .col-md-6 {
-        flex: 0 0 100%;
-        max-width: 100%;
-    }
-
-    .btn {
-        margin-bottom: 10px;
-        width: 100%;
-    }
-
-    .btn:not(:first-child) {
-        margin-left: 0 !important;
-    }
-
-    h2 {
-        font-size: 1.5rem;
-    }
-
-    .form-control {
-        font-size: 14px;
-    }
-
-    .form-text.text-muted {
-        font-size: 12px;
-    }
-}
-</style>
+<!-- Add these in your base template or include separately -->
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 {% endblock %}
