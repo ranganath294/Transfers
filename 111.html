@@ -1,14 +1,52 @@
-<div class="container-fluid px-4 mt-5">
-    <h2 class="mb-4">Generate Configuration</h2>
-    <form id="configGenerationForm" method="POST" action="{% url 'generate_config:generate_config' %}">
-        {% csrf_token %}
-        <div id="dynamicFields" class="row g-3"></div>
-        <input type="hidden" id="parsedData" name="parsedData">
-        <div class="mt-4">
-            <button type="submit" class="btn btn-primary">Generate Config</button>
-            <button type="reset" class="btn btn-secondary ms-2">Reset</button>
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="row justify-content-center">
+        <div class="col-12 col-md-8 col-lg-6">
+            <!-- Configuration Selection Card -->
+            <div class="card shadow-sm mb-4">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="card-title mb-0">Select Configuration</h5>
+                </div>
+                <div class="card-body">
+                    <form id="configSelectionForm">
+                        <div class="mb-3">
+                            <label for="configDropdown" class="form-label">Choose Configuration</label>
+                            <select class="form-select" id="configDropdown" name="config_type" required>
+                                <option value="">Select Configuration Type</option>
+                                {% for config in available_configs %}
+                                <option value="{{ config.id }}">{{ config.name }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="d-grid">
+                            <button type="submit" class="btn btn-primary">
+                                Show Configuration
+                                <i class="bi bi-arrow-right-circle ms-2"></i>
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Dynamic Configuration Generator Section -->
+            <div id="configGeneratorSection" style="display: none;">
+                <div class="container-fluid px-4">
+                    <h2 class="mb-4">Generate Configuration</h2>
+                    <form id="configGenerationForm" method="POST" action="{% url 'generate_config:generate_config' %}">
+                        {% csrf_token %}
+                        <div id="dynamicFields" class="row g-3"></div>
+                        <input type="hidden" id="parsedData" name="parsedData">
+                        <div class="mt-4">
+                            <button type="submit" class="btn btn-primary">Generate Config</button>
+                            <button type="reset" class="btn btn-secondary ms-2">Reset</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
         </div>
-    </form>
+    </div>
 </div>
 
 <style>
@@ -67,8 +105,37 @@
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    // Configuration data passed from Django context
-    const configData = {{ context|safe }};
+    const configSelectionForm = document.getElementById('configSelectionForm');
+    const configGeneratorSection = document.getElementById('configGeneratorSection');
+    const dynamicFieldsContainer = document.getElementById('dynamicFields');
+
+    // Configuration Selection Form Submit
+    configSelectionForm.addEventListener('submit', function(event) {
+        event.preventDefault();
+        const selectedConfigType = document.getElementById('configDropdown').value;
+        
+        // Fetch dynamic fields for the selected configuration
+        fetch(`/get-config-fields/${selectedConfigType}/`)
+            .then(response => response.json())
+            .then(configData => {
+                // Clear previous dynamic fields
+                dynamicFieldsContainer.innerHTML = '';
+                
+                // Render new fields using the renderInput function
+                Object.entries(configData).forEach(([fieldName, fieldConfig]) => {
+                    if (fieldConfig.show) {
+                        dynamicFieldsContainer.appendChild(renderInput(fieldName, fieldConfig));
+                    }
+                });
+
+                // Show configuration generator section
+                configGeneratorSection.style.display = 'block';
+            })
+            .catch(error => {
+                console.error('Error fetching config fields:', error);
+                alert('Unable to load configuration fields');
+            });
+    });
 
     // Function to render input based on data type
     function renderInput(fieldName, fieldConfig) {
@@ -84,16 +151,11 @@ document.addEventListener('DOMContentLoaded', function() {
 
         // Create input or textarea based on value type
         let inputElement;
-        if (Array.isArray(fieldConfig.default)) {
-            // Array input (textarea for easier editing)
-            inputElement = document.createElement('textarea');
-            inputElement.value = JSON.stringify(fieldConfig.default, null, 2);
-        } else if (typeof fieldConfig.default === 'object' && fieldConfig.default !== null) {
-            // Object input (textarea for JSON)
+        if (Array.isArray(fieldConfig.default) || 
+            (typeof fieldConfig.default === 'object' && fieldConfig.default !== null)) {
             inputElement = document.createElement('textarea');
             inputElement.value = JSON.stringify(fieldConfig.default, null, 2);
         } else {
-            // Standard text input
             inputElement = document.createElement('input');
             inputElement.type = 'text';
             inputElement.value = fieldConfig.default;
@@ -113,7 +175,6 @@ document.addEventListener('DOMContentLoaded', function() {
         // Example text
         const exampleText = document.createElement('small');
         exampleText.className = 'form-text text-muted';
-
         let defaultValue = fieldConfig.default;
 
         if (Array.isArray(defaultValue) && defaultValue.length > 3) {
@@ -134,14 +195,6 @@ document.addEventListener('DOMContentLoaded', function() {
         return inputWrapper;
     }
 
-    // Render dynamic fields
-    const dynamicFieldsContainer = document.getElementById('dynamicFields');
-    Object.entries(configData).forEach(([fieldName, fieldConfig]) => {
-        if (fieldConfig.show) {
-            dynamicFieldsContainer.appendChild(renderInput(fieldName, fieldConfig));
-        }
-    });
-
     // Form submission handler
     document.getElementById('configGenerationForm').addEventListener('submit', function(event) {
         event.preventDefault();
@@ -152,20 +205,15 @@ document.addEventListener('DOMContentLoaded', function() {
         for (let element of formElements) {
             if (element.name && element.name !== 'csrfmiddlewaretoken') {
                 try {
-                    // Attempt to parse the input value
                     const value = element.value.trim();
                     
                     if (value.startsWith('[') || value.startsWith('{')) {
-                        // Parse JSON for arrays and objects
                         parsedData[element.name] = JSON.parse(value);
                     } else if (value === 'true' || value === 'false') {
-                        // Parse boolean
                         parsedData[element.name] = value === 'true';
                     } else if (!isNaN(value) && value !== '') {
-                        // Parse number
                         parsedData[element.name] = Number(value);
                     } else {
-                        // Keep as string
                         parsedData[element.name] = value;
                     }
                 } catch (error) {
@@ -186,16 +234,34 @@ document.addEventListener('DOMContentLoaded', function() {
         })
         .then(response => response.json())
         .then(data => {
-            console.log(data);
             if (data.status === 'success') {
-                alert('Config generated successfully!');
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Success!',
+                    text: 'Configuration generated successfully!'
+                });
             } else {
-                alert('Error: ' + data.message);
-           }
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Error',
+                    text: data.message || 'Failed to generate configuration'
+                });
+            }
         })
         .catch(error => {
             console.error('Error:', error);
+            Swal.fire({
+                icon: 'error',
+                title: 'Network Error',
+                text: 'Unable to submit configuration'
+            });
         });
     });
 });
 </script>
+
+<!-- Add these in your base template or include separately -->
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+{% endblock %}
