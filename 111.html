@@ -95,3 +95,68 @@ document.addEventListener('DOMContentLoaded', function() {
     // Rest of your existing code...
 });
 </script>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+#loadingSpinner {
+    opacity: 0;
+    transition: opacity 0.3s ease-in-out;
+}
+
+#loadingSpinner.show {
+    opacity: 1;
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+function showLoading() {
+    loadingSpinner.style.display = 'block';
+    // Force a reflow to ensure the transition works
+    loadingSpinner.offsetHeight;
+    loadingSpinner.classList.add('show');
+    configFormContainer.style.display = 'none';
+}
+
+function hideLoading() {
+    loadingSpinner.classList.remove('show');
+    setTimeout(() => {
+        loadingSpinner.style.display = 'none';
+    }, 300); // Match the transition duration
+}
