@@ -1,179 +1,53 @@
-{% extends "generate_config/base.html" %}
-{% load static %}
-
-{% block content %}
-<div class="container-fluid px-4 mt-5">
-    <h2 class="mb-4">Generate Configuration</h2>
-    
-    <div class="card shadow-sm mb-4">
-        <div class="card-header bg-primary text-white">
-            <h5 class="card-title mb-0">Select Configuration</h5>
-        </div>
-        <div class="card-body">
-            <form id="configSelectionForm" method="GET" action="{% url 'generate_config:generate_config' %}">
-                <div class="mb-3">
-                    <label for="configDropdown" class="form-label">Choose Configuration</label>
-                    <select class="form-select optimized-select" id="configDropdown" name="config_type" required>
-                        <option value="">Select Configuration Type</option>
-                        {% for config in configs_list %}
-                        <option value="{{ config.name }}">{{ config.name }}</option>
-                        {% endfor %}
-                    </select>
-                </div>
-                <div class="d-grid">
-                    <button type="submit" class="btn btn-primary">
-                        Show Configuration
-                        <i class="bi bi-arrow-right-circle ms-2"></i>
-                    </button>
-                </div>
-            </form>
-        </div>
+<!-- Update the form div to include the loading spinner -->
+<div class="card shadow-sm mb-4">
+    <div class="card-header bg-primary text-white">
+        <h5 class="card-title mb-0">Select Configuration</h5>
     </div>
-    <div id="configFormContainer" style="display: none;">
-        <form id="configGenerationForm" method="POST" action="{% url 'generate_config:generate_config' %}">
-            {% csrf_token %}
-            <div id="dynamicFields" class="row g-3"></div>
-            <input type="hidden" id="parsedData" name="parsedData">
-            <div class="mt-4">
-                <button type="submit" class="btn btn-primary">Generate Config</button>
-                <button type="reset" class="btn btn-secondary ms-2">Reset</button>
+    <div class="card-body">
+        <form id="configSelectionForm" method="GET" action="{% url 'generate_config:generate_config' %}">
+            <div class="mb-3">
+                <label for="configDropdown" class="form-label">Choose Configuration</label>
+                <select class="form-select optimized-select" id="configDropdown" name="config_type" required>
+                    <option value="">Select Configuration Type</option>
+                    {% for config in configs_list %}
+                    <option value="{{ config.name }}">{{ config.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="d-grid">
+                <button type="submit" class="btn btn-primary">
+                    Show Configuration
+                    <i class="bi bi-arrow-right-circle ms-2"></i>
+                </button>
             </div>
         </form>
+        <!-- Add loading spinner -->
+        <div id="loadingSpinner" class="text-center mt-3" style="display: none;">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+            <p class="mt-2 text-primary">Loading configuration...</p>
+        </div>
     </div>
 </div>
 
-<style>
-    .required-label::after {
-        content: " *";
-        color: red;
-    }
-    .form-text.text-muted {
-        color: #6c757d !important;
-        word-wrap: break-word;
-        overflow-wrap: break-word;
-        white-space: normal;
-        width: 100%;
-        display: block;
-    }
-
-    /* Responsive Adjustments */
-    @media (max-width: 768px) {
-        .container-fluid {
-            padding-left: 10px !important;
-            padding-right: 10px !important;
-        }
-        
-        #dynamicFields .col-md-6 {
-            flex: 0 0 100%;
-            max-width: 100%;
-        }
-        
-        .btn {
-            margin-bottom: 10px;
-            width: 100%;
-        }
-        
-        .btn:not(:first-child) {
-            margin-left: 0 !important;
-        }
-        
-        h2 {
-            font-size: 1.5rem;
-        }
-        
-        .form-control {
-            font-size: 14px;
-        }
-        
-        .form-text.text-muted {
-            font-size: 12px;
-        }
-    }
-
-    textarea.form-control, input.form-control {
-        min-height: 38px;
-    }
-</style>
-
+<!-- Update the script to handle loading states -->
 <script>
-// Function to render the configuration form
-function renderConfigurationForm(configData) {
-    // Function to render input based on data type
-    function renderInput(fieldName, fieldConfig) {
-        const inputWrapper = document.createElement('div');
-        inputWrapper.className = 'col-md-6 mb-3';
+document.addEventListener('DOMContentLoaded', function() {
+    const loadingSpinner = document.getElementById('loadingSpinner');
+    const configFormContainer = document.getElementById('configFormContainer');
 
-        // Create label
-        const label = document.createElement('label');
-        label.htmlFor = fieldName;
-        label.className = `form-label ${fieldConfig.required !== false ? 'required-label' : ''}`;
-        label.textContent = `${fieldConfig.ui_displayed_name} ${fieldConfig.required !== false ? '(required)' : '(optional)'}`;
-        inputWrapper.appendChild(label);
-
-        // Create input or textarea based on value type
-        let inputElement;
-        if (Array.isArray(fieldConfig.default)) {
-            inputElement = document.createElement('textarea');
-            inputElement.value = JSON.stringify(fieldConfig.default, null, 2);
-        } else if (typeof fieldConfig.default === 'object' && fieldConfig.default !== null) {
-            inputElement = document.createElement('textarea');
-            inputElement.value = JSON.stringify(fieldConfig.default, null, 2);
-        } else {
-            inputElement = document.createElement('input');
-            inputElement.type = 'text';
-            inputElement.value = fieldConfig.default;
-        }
-
-        inputElement.id = fieldName;
-        inputElement.name = fieldName;
-        inputElement.className = 'form-control';
-        inputElement.placeholder = JSON.stringify(fieldConfig.default);
-        
-        if (fieldConfig.required !== false) {
-            inputElement.required = true;
-        }
-
-        inputWrapper.appendChild(inputElement);
-
-        // Example text
-        const exampleText = document.createElement('small');
-        exampleText.className = 'form-text text-muted';
-
-        let defaultValue = fieldConfig.default;
-
-        if (Array.isArray(defaultValue) && defaultValue.length > 3) {
-            defaultValue = defaultValue.slice(0, 3);
-        } else if (typeof defaultValue === 'object' && defaultValue !== null) {
-            const keys = Object.keys(defaultValue);
-            if (keys.length > 3) {
-                defaultValue = keys.slice(0, 3).reduce((obj, key) => {
-                    obj[key] = defaultValue[key];
-                    return obj;
-                }, {});
-            }
-        }
-
-        exampleText.textContent = `Example: ${JSON.stringify(defaultValue)}`;
-        inputWrapper.appendChild(exampleText);
-
-        return inputWrapper;
+    // Function to show loading state
+    function showLoading() {
+        loadingSpinner.style.display = 'block';
+        configFormContainer.style.display = 'none';
     }
 
-    const dynamicFieldsContainer = document.getElementById('dynamicFields');
-    dynamicFieldsContainer.innerHTML = ''; // Clear existing fields
+    // Function to hide loading state
+    function hideLoading() {
+        loadingSpinner.style.display = 'none';
+    }
 
-    // Render fields based on config data
-    Object.entries(configData).forEach(([fieldName, fieldConfig]) => {
-        if (fieldConfig.show) {
-            dynamicFieldsContainer.appendChild(renderInput(fieldName, fieldConfig));
-        }
-    });
-
-    // Show the form container
-    document.getElementById('configFormContainer').style.display = 'block';
-}
-
-document.addEventListener('DOMContentLoaded', function() {
     // Handle configuration selection form submission
     document.getElementById('configSelectionForm').addEventListener('submit', function(e) {
         e.preventDefault();
@@ -181,71 +55,43 @@ document.addEventListener('DOMContentLoaded', function() {
         const configType = document.getElementById('configDropdown').value;
         const url = `{% url 'generate_config:generate_config' %}?config_type=${configType}`;
 
+        // Show loading spinner
+        showLoading();
+
         fetch(url)
             .then(response => response.json())
             .then(data => {
                 if (data.error) {
                     alert(data.error);
+                    hideLoading();
                 } else {
                     renderConfigurationForm(data);
+                    hideLoading();
                 }
             })
             .catch(error => {
                 console.error('Error:', error);
                 alert('An error occurred while fetching the configuration.');
+                hideLoading();
             });
     });
 
-    // Handle configuration generation form submission
-    document.getElementById('configGenerationForm').addEventListener('submit', function(event) {
-        event.preventDefault();
-
-        const parsedData = {};
-        const formElements = this.elements;
-
-        for (let element of formElements) {
-            if (element.name && element.name !== 'csrfmiddlewaretoken') {
-                try {
-                    const value = element.value.trim();
-                    
-                    if (value.startsWith('[') || value.startsWith('{')) {
-                        parsedData[element.name] = JSON.parse(value);
-                    } else if (value === 'true' || value === 'false') {
-                        parsedData[element.name] = value === 'true';
-                    } else if (!isNaN(value) && value !== '') {
-                        parsedData[element.name] = Number(value);
-                    } else {
-                        parsedData[element.name] = value;
-                    }
-                } catch (error) {
-                    console.error(`Error parsing ${element.name}:`, error);
-                    parsedData[element.name] = element.value;
-                }
-            }
+    // Add some CSS for a smoother transition
+    <style>
+        #loadingSpinner {
+            transition: display 0.3s ease-in-out;
         }
+        
+        #configFormContainer {
+            transition: display 0.3s ease-in-out;
+        }
+        
+        .spinner-border {
+            width: 3rem;
+            height: 3rem;
+        }
+    </style>
 
-        fetch(this.action, {
-            method: 'POST',
-            headers: {
-                'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify(parsedData)
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.status === 'success') {
-                alert('Config generated successfully!');
-            } else {
-                alert('Error: ' + data.message);
-            }
-        })
-        .catch(error => {
-            console.error('Error:', error);
-        });
-    });
+    // Rest of your existing code...
 });
 </script>
-
-<!-- Keep your existing OptimizedSelect class and initialization -->
-{% endblock %}
