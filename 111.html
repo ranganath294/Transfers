@@ -620,26 +620,85 @@
     
         createObjectInput(defaultValue, onChangeCallback) {
             const container = document.createElement('div');
+            container.className = 'object-input-container';
+    
+            // List to store object key-value pairs
             const objectValues = typeof defaultValue === 'object' && defaultValue !== null 
                 ? Object.entries(defaultValue).map(([k, v]) => ({ key: k, value: v })) 
                 : [];
     
-            const keyInput = document.createElement('input');
-            keyInput.type = 'text';
-            keyInput.className = 'form-control mb-2';
-            keyInput.placeholder = 'Key';
+            // Function to render object items
+            const renderObjectItems = () => {
+                container.innerHTML = ''; // Clear existing items
+                
+                objectValues.forEach((item, index) => {
+                    const itemWrapper = document.createElement('div');
+                    itemWrapper.className = 'input-group mb-2';
     
-            const valueInput = document.createElement('input');
-            valueInput.type = 'text';
-            valueInput.className = 'form-control mb-2';
-            valueInput.placeholder = 'Value';
+                    // Key input
+                    const keyInput = document.createElement('input');
+                    keyInput.type = 'text';
+                    keyInput.className = 'form-control';
+                    keyInput.placeholder = 'Key';
+                    keyInput.value = item.key;
     
-            const addBtn = document.createElement('button');
-            addBtn.className = 'btn btn-primary';
-            addBtn.textContent = 'Add Key-Value Pair';
-            addBtn.type = 'button';
+                    // Value input
+                    const valueInput = document.createElement('input');
+                    valueInput.type = 'text';
+                    valueInput.className = 'form-control';
+                    valueInput.placeholder = 'Value';
+                    valueInput.value = item.value?.toString() || '';
     
-            // More implementation needed for object input
+                    // Update key
+                    keyInput.addEventListener('input', (e) => {
+                        objectValues[index].key = e.target.value;
+                        onChangeCallback(objectValues.reduce((acc, curr) => {
+                            if (curr.key) acc[curr.key] = curr.value;
+                            return acc;
+                        }, {}));
+                    });
+    
+                    // Update value
+                    valueInput.addEventListener('input', (e) => {
+                        objectValues[index].value = e.target.value;
+                        onChangeCallback(objectValues.reduce((acc, curr) => {
+                            if (curr.key) acc[curr.key] = curr.value;
+                            return acc;
+                        }, {}));
+                    });
+    
+                    // Remove button
+                    const removeBtn = document.createElement('button');
+                    removeBtn.className = 'btn btn-danger';
+                    removeBtn.innerHTML = '&times;';
+                    removeBtn.addEventListener('click', () => {
+                        objectValues.splice(index, 1);
+                        renderObjectItems();
+                        onChangeCallback(objectValues.reduce((acc, curr) => {
+                            if (curr.key) acc[curr.key] = curr.value;
+                            return acc;
+                        }, {}));
+                    });
+    
+                    itemWrapper.appendChild(keyInput);
+                    itemWrapper.appendChild(valueInput);
+                    itemWrapper.appendChild(removeBtn);
+                    container.appendChild(itemWrapper);
+                });
+    
+                // Add new item button
+                const addBtn = document.createElement('button');
+                addBtn.className = 'btn btn-primary mt-2';
+                addBtn.textContent = 'Add Key-Value Pair';
+                addBtn.addEventListener('click', () => {
+                    objectValues.push({ key: '', value: '' });
+                    renderObjectItems();
+                });
+    
+                container.appendChild(addBtn);
+            };
+    
+            renderObjectItems();
             return container;
         }
     
