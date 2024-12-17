@@ -475,8 +475,8 @@
             const exampleText = document.createElement('small');
             exampleText.className = 'form-text text-muted';
     
-            let defaultValue = fieldConfig.default;
-    
+            let defaultValue = fieldConfig.example;
+
             if (Array.isArray(defaultValue) && defaultValue.length > 3) {
                 defaultValue = defaultValue.slice(0, 3);
                 defaultValue = JSON.stringify(defaultValue)
@@ -489,8 +489,8 @@
                     }, {});
                 }
                 defaultValue = JSON.stringify(defaultValue)
-            }
-    
+            }  
+                
             // exampleText.textContent = `Example: ${JSON.stringify(defaultValue)}`;
             exampleText.textContent = "Example: " + defaultValue;
             inputWrapper.appendChild(exampleText);
@@ -500,7 +500,7 @@
             instructionText.className = 'form-text text-muted';
             
             if (Array.isArray(fieldConfig.default)) {
-                instructionTextValue = "Enter comma-separated strings with double quotes. The text box can be resized by dragging its bottom right corner.";
+                instructionTextValue = 'Enter comma-separated strings enclosed in double quotes. Ensure there are no trailing commas at the end of the list (e.g., ["ab", "cd", ]) and no leading commas before the first element. The text box can be resized by dragging its bottom right corner.';
             } else if (typeof fieldConfig.default === 'object' && fieldConfig.default !== null) {
                 instructionTextValue = "Enter a valid JSON object. The text box can be resized by dragging its bottom right corner.";
             } else if (fieldConfig.default === 'true' || fieldConfig.default === 'false' || fieldConfig.default === true || fieldConfig.default === false) {
