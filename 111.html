@@ -1,13 +1,31 @@
 class ConfigInputHandler {
-    // ... (previous code remains the same until createTypeSelector)
+    // ... (previous methods remain the same until createDynamicInput)
 
-    // Custom type selector to handle nested array types
-    createTypeSelector(initialType) {
+    // Create dynamic input with card wrapper
+    createDynamicInput(fieldName, fieldConfig) {
+        const { default: defaultValue, required, ui_displayed_name, example } = fieldConfig;
+        
+        // Container for the entire input
+        const container = document.createElement('div');
+        container.className = 'dynamic-input-wrapper';
+
+        // Label
+        const label = document.createElement('label');
+        label.htmlFor = fieldName;
+        label.className = `form-label ${required !== false ? 'required-label' : ''}`;
+        label.textContent = `${ui_displayed_name} ${required !== false ? '(required)' : '(optional)'}`;
+
+        // Current input type
+        let currentInputType = this.detectInputType(defaultValue);
+        let currentInputElement;
+
+        // Create type selector to handle nested array types
         const select = document.createElement('select');
         select.className = 'form-select mb-2';
+        let itemTypeSelect = null;
 
         // Handle array types
-        if (initialType.startsWith(`${this.inputTypes.ARRAY}_of_`)) {
+        if (currentInputType.startsWith(`${this.inputTypes.ARRAY}_of_`)) {
             // Add base types first
             Object.values(this.inputTypes).forEach(type => {
                 const option = document.createElement('option');
@@ -17,9 +35,9 @@ class ConfigInputHandler {
                 select.appendChild(option);
             });
 
-            // Create inner type selector only if array is selected
-            const innerType = initialType.split('_of_')[1];
-            const itemTypeSelect = document.createElement('select');
+            // Create inner type selector
+            const innerType = currentInputType.split('_of_')[1];
+            itemTypeSelect = document.createElement('select');
             itemTypeSelect.className = 'form-select mb-2';
 
             // Populate inner type options
@@ -74,34 +92,44 @@ class ConfigInputHandler {
                 currentInputElement = this.createInputBasedOnType(currentInputType, defaultValue);
                 container.appendChild(currentInputElement);
             });
+        } else {
+            // Regular type selector for non-array types
+            Object.values(this.inputTypes).forEach(type => {
+                const option = document.createElement('option');
+                option.value = type;
+                option.textContent = type.charAt(0).toUpperCase() + type.slice(1);
+                if (type === currentInputType) option.selected = true;
+                select.appendChild(option);
+            });
 
-            return { select, itemTypeSelect };
+            select.addEventListener('change', (e) => {
+                const newType = e.target.value;
+                
+                // Remove existing input
+                if (currentInputElement) {
+                    container.removeChild(currentInputElement);
+                }
+
+                // Create new input based on selected type
+                currentInputType = newType;
+                currentInputElement = this.createInputBasedOnType(newType, defaultValue);
+                container.appendChild(currentInputElement);
+            });
         }
 
-        // Regular type selector for non-array types
-        Object.values(this.inputTypes).forEach(type => {
-            const option = document.createElement('option');
-            option.value = type;
-            option.textContent = type.charAt(0).toUpperCase() + type.slice(1);
-            if (type === initialType) option.selected = true;
-            select.appendChild(option);
-        });
+        // Initial input
+        currentInputElement = this.createInputBasedOnType(currentInputType, defaultValue);
 
-        select.addEventListener('change', (e) => {
-            const newType = e.target.value;
-            
-            // Remove existing input
-            if (currentInputElement) {
-                container.removeChild(currentInputElement);
-            }
+        // Combine elements
+        container.appendChild(label);
+        container.appendChild(select);
+        if (itemTypeSelect) {
+            container.appendChild(itemTypeSelect);
+        }
+        container.appendChild(currentInputElement);
 
-            // Create new input based on selected type
-            currentInputType = newType;
-            currentInputElement = this.createInputBasedOnType(newType, defaultValue);
-            container.appendChild(currentInputElement);
-        });
-
-        return { select };
+        // Wrap in a card
+        return this.createCardWrapper(ui_displayed_name, container);
     }
 
     // ... (rest of the class remains the same)
