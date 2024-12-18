@@ -1,3 +1,4 @@
+// Modify the detectInputType method
 detectInputType(defaultValue) {
     if (defaultValue === null) return this.inputTypes.STRING;
 
@@ -6,68 +7,139 @@ detectInputType(defaultValue) {
         if (defaultValue.length === 0) return this.inputTypes.ARRAY;
         
         const firstItem = defaultValue[0];
-        const itemType = this.detectItemType(firstItem);
         
-        // Preserve array context by prefixing with ARRAY
-        return itemType === 'primitive' 
-            ? `${this.inputTypes.ARRAY}_of_${this.detectInputType(firstItem)}` 
-            : `${this.inputTypes.ARRAY}_of_${itemType}`;
+        // Specifically handle primitive and complex types
+        if (firstItem === null) return `${this.inputTypes.ARRAY}_of_${this.inputTypes.STRING}`;
+        
+        if (Array.isArray(firstItem)) {
+            return `${this.inputTypes.ARRAY}_of_${this.inputTypes.ARRAY}`;
+        }
+        
+        if (typeof firstItem === 'object') {
+            return `${this.inputTypes.ARRAY}_of_${this.inputTypes.OBJECT}`;
+        }
+        
+        // For primitive types
+        return `${this.inputTypes.ARRAY}_of_${typeof firstItem}`;
     }
     
-    if (typeof defaultValue === 'object') {
-        // Check if it's a plain object with nested structures
-        const objectEntries = Object.entries(defaultValue);
-        if (objectEntries.length === 0) return this.inputTypes.OBJECT;
-        
-        // Check if any value is complex
-        const hasComplexValue = objectEntries.some(([_, val]) => 
-            Array.isArray(val) || (typeof val === 'object' && val !== null)
-        );
-        
-        return hasComplexValue ? `${this.inputTypes.OBJECT}_with_complex_values` : this.inputTypes.OBJECT;
-    }
-    
-    if (typeof defaultValue === 'boolean') return this.inputTypes.BOOLEAN;
-    if (typeof defaultValue === 'number') return this.inputTypes.NUMBER;
-    
-    return this.inputTypes.STRING;
+    // Rest of the method remains the same...
 }
 
+// Update createDynamicInput to handle array type selection
+createDynamicInput(fieldName, fieldConfig) {
+    const { default: defaultValue, required, ui_displayed_name, example } = fieldConfig;
+    
+    // Container for the entire input
+    const container = document.createElement('div');
+    container.className = 'dynamic-input-wrapper';
 
+    // Label
+    const label = document.createElement('label');
+    label.htmlFor = fieldName;
+    label.className = `form-label ${required !== false ? 'required-label' : ''}`;
+    label.textContent = `${ui_displayed_name} ${required !== false ? '(required)' : '(optional)'}`;
 
+    // Current input type
+    let currentInputType = this.detectInputType(defaultValue);
+    let currentInputElement;
 
+    // Custom type selector to handle nested array types
+    const createTypeSelector = (initialType) => {
+        const select = document.createElement('select');
+        select.className = 'form-select mb-2';
 
+        // Special handling for array types
+        if (initialType.startsWith(`${this.inputTypes.ARRAY}_of_`)) {
+            // First dropdown for array
+            const arrayOption = document.createElement('option');
+            arrayOption.value = this.inputTypes.ARRAY;
+            arrayOption.textContent = 'Array';
+            arrayOption.selected = true;
+            select.appendChild(arrayOption);
 
+            // Second dropdown for inner type
+            const innerType = initialType.split('_of_')[1];
+            const itemTypeSelect = document.createElement('select');
+            itemTypeSelect.className = 'form-select mt-2';
 
+            // Populate inner type options
+            Object.values(this.inputTypes).forEach(type => {
+                const option = document.createElement('option');
+                option.value = type;
+                option.textContent = type.charAt(0).toUpperCase() + type.slice(1);
+                if (type === innerType) option.selected = true;
+                itemTypeSelect.appendChild(option);
+            });
 
+            // Event listener for inner type changes
+            itemTypeSelect.addEventListener('change', (e) => {
+                const newInnerType = e.target.value;
+                currentInputType = `${this.inputTypes.ARRAY}_of_${newInnerType}`;
+                
+                // Remove existing input
+                if (currentInputElement) {
+                    container.removeChild(currentInputElement);
+                }
 
+                // Create new input based on selected type
+                currentInputElement = this.createInputBasedOnType(currentInputType, defaultValue);
+                container.appendChild(currentInputElement);
+            });
 
+            select.addEventListener('change', (e) => {
+                if (e.target.value === this.inputTypes.ARRAY) {
+                    container.insertBefore(itemTypeSelect, select.nextSibling);
+                } else {
+                    if (itemTypeSelect.parentNode) {
+                        container.removeChild(itemTypeSelect);
+                    }
+                }
+            });
 
+            return { select, itemTypeSelect };
+        }
 
+        // Regular type selector for non-array types
+        Object.values(this.inputTypes).forEach(type => {
+            const option = document.createElement('option');
+            option.value = type;
+            option.textContent = type.charAt(0).toUpperCase() + type.slice(1);
+            if (type === initialType) option.selected = true;
+            select.appendChild(option);
+        });
 
+        select.addEventListener('change', (e) => {
+            const newType = e.target.value;
+            
+            // Remove existing input
+            if (currentInputElement) {
+                container.removeChild(currentInputElement);
+            }
 
+            // Create new input based on selected type
+            currentInputType = newType;
+            currentInputElement = this.createInputBasedOnType(newType, defaultValue);
+            container.appendChild(currentInputElement);
+        });
 
-createInputBasedOnType(type, defaultValue, depth = 0) {
-    const MAX_DEPTH = 3;
-    if (depth > MAX_DEPTH) {
-        console.warn('Maximum nesting depth reached');
-        return this.createStringInput(JSON.stringify(defaultValue), () => {});
-    }
-
-    const onChangeCallback = (value) => {
-        console.log('Value changed:', value);
+        return { select };
     };
 
-    // Handle array of specific types
-    if (type.startsWith(`${this.inputTypes.ARRAY}_of_`)) {
-        const itemType = type.split('_of_')[1];
-        return this.createNestedArrayInput(
-            defaultValue, 
-            onChangeCallback, 
-            depth, 
-            itemType
-        );
-    }
+    // Create type selector
+    const { select, itemTypeSelect } = createTypeSelector(currentInputType);
 
-    // Rest of the method remains the same...
+    // Initial input
+    currentInputElement = this.createInputBasedOnType(currentInputType, defaultValue);
+
+    // Combine elements
+    container.appendChild(label);
+    container.appendChild(select);
+    if (itemTypeSelect) {
+        container.appendChild(itemTypeSelect);
+    }
+    container.appendChild(currentInputElement);
+
+    // Wrap in a card
+    return this.createCardWrapper(ui_displayed_name, container);
 }
