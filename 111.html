@@ -1,5 +1,4 @@
 <script>
-    // Configuration Input Type Handler
     class ConfigInputHandler {
         constructor(containerSelector) {
             this.container = document.querySelector(containerSelector);
@@ -272,20 +271,20 @@
         // Detect input type based on default value
         // Recursive type detection for nested structures
         detectInputType(defaultValue) {
-            if (value === null) return this.inputTypes.STRING;
+            if (defaultValue === null) return this.inputTypes.STRING;
         
-            if (Array.isArray(value)) {
+            if (Array.isArray(defaultValue)) {
                 // Check first item to determine array type
-                if (value.length === 0) return this.inputTypes.ARRAY;
+                if (defaultValue.length === 0) return this.inputTypes.ARRAY;
                 
-                const firstItem = value[0];
+                const firstItem = defaultValue[0];
                 const itemType = this.detectItemType(firstItem);
                 return `${this.inputTypes.ARRAY}_of_${itemType}`;
             }
             
-            if (typeof value === 'object') {
+            if (typeof defaultValue === 'object') {
                 // Check if it's a plain object with nested structures
-                const objectEntries = Object.entries(value);
+                const objectEntries = Object.entries(defaultValue);
                 if (objectEntries.length === 0) return this.inputTypes.OBJECT;
                 
                 // Check if any value is complex
@@ -296,8 +295,8 @@
                 return hasComplexValue ? `${this.inputTypes.OBJECT}_with_complex_values` : this.inputTypes.OBJECT;
             }
             
-            if (typeof value === 'boolean') return this.inputTypes.BOOLEAN;
-            if (typeof value === 'number') return this.inputTypes.NUMBER;
+            if (typeof defaultValue === 'boolean') return this.inputTypes.BOOLEAN;
+            if (typeof defaultValue === 'number') return this.inputTypes.NUMBER;
             
             return this.inputTypes.STRING;
         }
@@ -581,15 +580,5 @@
             // Wrap in a card
             return this.createCardWrapper(ui_displayed_name, container);
         }
-    }    
+    }
 </script>
-
-
-
-Error: ReferenceError: value is not defined
-    at ConfigInputHandler.detectInputType ((index):757:13)
-    at ConfigInputHandler.createDynamicInput ((index):1039:41)
-    at (index):1081:51
-    at Array.forEach (<anonymous>)
-    at renderConfigurationForm ((index):1079:36)
-    at (index):1172:25
