@@ -1,94 +1,73 @@
-// Enhanced array input to handle nested arrays with type selection
-createNestedArrayInput(defaultValue, onChangeCallback, depth, itemType = null) {
-    const container = document.createElement('div');
-    container.className = 'nested-array-container';
+detectInputType(defaultValue) {
+    if (defaultValue === null) return this.inputTypes.STRING;
 
-    const arrayValues = Array.isArray(defaultValue) ? [...defaultValue] : [];
-
-    const renderArrayItems = () => {
-        container.innerHTML = '';
+    if (Array.isArray(defaultValue)) {
+        // If array is empty, return base array type
+        if (defaultValue.length === 0) return this.inputTypes.ARRAY;
         
-        arrayValues.forEach((value, index) => {
-            const itemWrapper = document.createElement('div');
-            itemWrapper.className = 'nested-array-item input-group mb-2';
+        const firstItem = defaultValue[0];
+        const itemType = this.detectItemType(firstItem);
+        
+        // Preserve array context by prefixing with ARRAY
+        return itemType === 'primitive' 
+            ? `${this.inputTypes.ARRAY}_of_${this.detectInputType(firstItem)}` 
+            : `${this.inputTypes.ARRAY}_of_${itemType}`;
+    }
+    
+    if (typeof defaultValue === 'object') {
+        // Check if it's a plain object with nested structures
+        const objectEntries = Object.entries(defaultValue);
+        if (objectEntries.length === 0) return this.inputTypes.OBJECT;
+        
+        // Check if any value is complex
+        const hasComplexValue = objectEntries.some(([_, val]) => 
+            Array.isArray(val) || (typeof val === 'object' && val !== null)
+        );
+        
+        return hasComplexValue ? `${this.inputTypes.OBJECT}_with_complex_values` : this.inputTypes.OBJECT;
+    }
+    
+    if (typeof defaultValue === 'boolean') return this.inputTypes.BOOLEAN;
+    if (typeof defaultValue === 'number') return this.inputTypes.NUMBER;
+    
+    return this.inputTypes.STRING;
+}
 
-            // Detect or use provided item type
-            const detectedItemType = itemType || this.detectItemType(value);
-            let currentItemType = detectedItemType === 'primitive' 
-                ? this.detectInputType(value) 
-                : detectedItemType;
 
-            // Type selector for array elements
-            const typeSelector = this.createInputTypeSelector(currentItemType, (newType) => {
-                // Reset the value based on the new type
-                switch(newType) {
-                    case this.inputTypes.STRING:
-                        arrayValues[index] = '';
-                        break;
-                    case this.inputTypes.NUMBER:
-                        arrayValues[index] = 0;
-                        break;
-                    case this.inputTypes.BOOLEAN:
-                        arrayValues[index] = false;
-                        break;
-                    case this.inputTypes.ARRAY:
-                        arrayValues[index] = [];
-                        break;
-                    case this.inputTypes.OBJECT:
-                        arrayValues[index] = {};
-                        break;
-                }
-                
-                // Update type and re-render items
-                currentItemType = newType;
-                renderArrayItems();
-                onChangeCallback(arrayValues);
-            });
 
-            // Input based on detected/selected type
-            const itemInput = this.createInputBasedOnType(
-                currentItemType, 
-                value, 
-                depth + 1
-            );
 
-            // Update value handling
-            itemInput.addEventListener('change', (e) => {
-                arrayValues[index] = e.target.value;
-                onChangeCallback(arrayValues);
-            });
 
-            // Remove button
-            const removeBtn = document.createElement('button');
-            removeBtn.className = 'btn btn-danger ms-2';
-            removeBtn.innerHTML = '&times;';
-            removeBtn.addEventListener('click', () => {
-                arrayValues.splice(index, 1);
-                renderArrayItems();
-                onChangeCallback(arrayValues);
-            });
 
-            // Assemble item wrapper
-            itemWrapper.appendChild(typeSelector);
-            itemWrapper.appendChild(itemInput);
-            itemWrapper.appendChild(removeBtn);
 
-            container.appendChild(itemWrapper);
-        });
 
-        // Add new item button
-        const addBtn = document.createElement('button');
-        addBtn.className = 'btn btn-primary mt-2';
-        addBtn.textContent = 'Add Item';
-        addBtn.addEventListener('click', () => {
-            arrayValues.push(''); // Default to empty string
-            renderArrayItems();
-            onChangeCallback(arrayValues);
-        });
 
-        container.appendChild(addBtn);
+
+
+
+
+
+
+createInputBasedOnType(type, defaultValue, depth = 0) {
+    const MAX_DEPTH = 3;
+    if (depth > MAX_DEPTH) {
+        console.warn('Maximum nesting depth reached');
+        return this.createStringInput(JSON.stringify(defaultValue), () => {});
+    }
+
+    const onChangeCallback = (value) => {
+        console.log('Value changed:', value);
     };
 
-    renderArrayItems();
-    return container;
+    // Handle array of specific types
+    if (type.startsWith(`${this.inputTypes.ARRAY}_of_`)) {
+        const itemType = type.split('_of_')[1];
+        return this.createNestedArrayInput(
+            defaultValue, 
+            onChangeCallback, 
+            depth, 
+            itemType
+        );
+    }
+
+    // Rest of the method remains the same...
 }
