@@ -1,139 +1,86 @@
-document.getElementById('configGenerationForm').addEventListener('submit', function(event) {
-    event.preventDefault();
-
-    const parsedData = {};
-    const selectedConfig = document.getElementById('configDropdown').value;
-    parsedData['config_name'] = selectedConfig;
-
-    // Select all dynamically generated inputs and containers
-    const dynamicFields = document.getElementById('dynamicFields');
+<div class="container-fluid px-4 mt-5">
+    <h2 class="mb-4">Generate Configuration</h2>
     
-    // Traverse through card wrappers
-    const cards = dynamicFields.querySelectorAll('.card');
+    <div class="card shadow-sm mb-4">
+        <div class="card-header bg-primary text-white">
+            <h5 class="card-title mb-0">Select Configuration</h5>
+        </div>
+        <div class="card-body">
+            <form id="configSelectionForm" method="GET" action="{% url 'generate_config:generate_config' %}">
+                <div class="mb-3">
+                    <label for="configDropdown" class="form-label">Choose Existing Configuration</label>
+                    <select class="form-select optimized-select" id="configDropdown" name="config_type" required>
+                        <option value="">Select Configuration Type</option>
+                        {% for config in configs_list %}
+                        <option value="{{ config.name }}">{{ config.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="d-grid">
+                    <button type="submit" class="btn btn-primary">
+                        Show Configuration
+                        <i class="bi bi-arrow-right-circle ms-2"></i>
+                    </button>
+                </div>
+            </form>
+
+            <!-- Add loading spinner -->
+            <div id="loadingSpinner" class="text-center mt-3" style="display: none;">
+                <div class="spinner-border text-primary" role="status">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
+                <p class="mt-2 text-primary">Loading configuration...</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="card shadow-sm mb-4">
+        <div class="card-body" id="configFormContainer" style="display: none;">
+            <form id="configGenerationForm" method="POST" action="{% url 'generate_config:generate_config' %}">
+                {% csrf_token %}
+                <div id="dynamicFields" class="row g-3"></div>
+                <input type="hidden" id="parsedData" name="parsedData">
+                <div class="mt-4">
+                    <button type="submit" class="btn btn-primary">Generate Config</button>
+                    <button type="reset" class="btn btn-secondary ms-2">Reset</button>
+                </div>
+            </form>
+        </div>
+    </div>
     
-    cards.forEach(card => {
-        // Get the card title (used as the field name)
-        const cardTitle = card.querySelector('.card-header').textContent.trim();
-        
-        // Find the input elements within this card
-        const inputs = card.querySelectorAll('input, select');
-        
-        // Special handling for different input types
-        if (inputs.length > 0) {
-            const typeSelector = card.querySelector('.form-select');
-            const selectedType = typeSelector ? typeSelector.value : 'string';
+</div>
+
+
+
+document.getElementById('configSelectionForm').addEventListener('submit', function(e) {
+            e.preventDefault();
             
-            let value;
-            
-            switch(selectedType) {
-                case 'array':
-                    // Handle array inputs
-                    value = handleArrayInput(card);
-                    break;
-                case 'object':
-                    // Handle object inputs
-                    value = handleObjectInput(card);
-                    break;
-                case 'boolean':
-                    value = inputs[0].value === 'true';
-                    break;
-                case 'number':
-                    value = Number(inputs[0].value);
-                    break;
-                default: // string
-                    value = inputs[0].value.trim();
-            }
-            
-            // Use card title as key, removing any "(required)" or "(optional)" text
-            const cleanedKey = cardTitle.replace(/\s*\(.*\)$/, '').toLowerCase().replace(/\s+/g, '_');
-            
-            parsedData[cleanedKey] = value;
-        }
-    });
+            const configType = document.getElementById('configDropdown').value;
+            const url = `{% url 'generate_config:generate_config' %}?config_type=${configType}`;
 
-    console.log('Parsed Configuration Data:', parsedData);
-    console.log('Parsed Data JSON:', JSON.stringify(parsedData, null, 2));
+            // Show loading spinner
+            // showLoading();
 
-    // Uncomment when ready for submission
-    /*
-    fetch(this.action, {
-        method: 'POST',
-        headers: {
-            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
-            'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(parsedData)
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.status === 'success') {
-            alert('Configuration generated successfully!');
-        } else {
-            alert('Error: ' + data.message);
-        }
-    })
-    .catch(error => {
-        console.error('Error:', error);
-    });
-    */
-});
-
-// Helper function to handle array inputs
-function handleArrayInput(card) {
-    const arrayContainer = card.querySelector('.nested-array-container');
-    if (!arrayContainer) return [];
-
-    const arrayItems = arrayContainer.querySelectorAll('.nested-array-item');
-    return Array.from(arrayItems).map(item => {
-        const input = item.querySelector('input, select');
-        return input ? parseValue(input.value) : null;
-    }).filter(item => item !== null);
-}
-
-// Helper function to handle object inputs
-function handleObjectInput(card) {
-    const objectContainer = card.querySelector('.nested-object-container');
-    if (!objectContainer) return {};
-
-    const objectItems = objectContainer.querySelectorAll('.nested-object-item');
-    const result = {};
-
-    objectItems.forEach(item => {
-        const keyInput = item.querySelector('input[placeholder="Key"]');
-        const valueInput = item.querySelector('input:not([placeholder="Key"]), select');
-
-        if (keyInput && valueInput) {
-            const key = keyInput.value.trim();
-            const value = parseValue(valueInput.value);
-            if (key) result[key] = value;
-        }
-    });
-
-    return result;
-}
-
-// Value parsing helper
-function parseValue(value) {
-    // Trim the value
-    value = value.trim();
-
-    // Parse boolean
-    if (value.toLowerCase() === 'true') return true;
-    if (value.toLowerCase() === 'false') return false;
-
-    // Parse number
-    if (!isNaN(value) && value !== '') {
-        return Number(value);
-    }
-
-    // Try JSON parsing
-    try {
-        if ((value.startsWith('[') && value.endsWith(']')) || 
-            (value.startsWith('{') && value.endsWith('}'))) {
-            return JSON.parse(value);
-        }
-    } catch {}
-
-    // Return as string
-    return value;
-}
+            // Show full-screen loading
+            showFullScreenLoading("Loading Configuration...");
+    
+            fetch(url)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.error) {
+                        alert(data.error);
+                        // hideLoading();
+                        hideFullScreenLoading();
+                    } else {
+                        renderConfigurationForm(data);
+                        // hideLoading();
+                        hideFullScreenLoading();
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    alert('An error occurred while fetching the configuration.');
+                    // hideLoading();
+                    hideFullScreenLoading();
+                });
+        });
