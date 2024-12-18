@@ -1,701 +1,200 @@
-<script>
-    class ConfigInputHandler {
-        constructor(containerSelector) {
-            this.container = document.querySelector(containerSelector);
-            this.inputTypes = {
-                STRING: 'string',
-                ARRAY: 'array',
-                OBJECT: 'object',
-                BOOLEAN: 'boolean',
-                NUMBER: 'number'
-            };
-        }
-    
-        // Create card wrapper for inputs
-        createCardWrapper(title, content) {
-            const card = document.createElement('div');
-            card.className = 'card mb-3 shadow-sm';
-    
-            const cardHeader = document.createElement('div');
-            cardHeader.className = 'card-header bg-light d-flex justify-content-between align-items-center';
-            cardHeader.textContent = title;
-    
-            const cardBody = document.createElement('div');
-            cardBody.className = 'card-body';
-            cardBody.appendChild(content);
-    
-            card.appendChild(cardHeader);
-            card.appendChild(cardBody);
-    
-            return card;
-        }
-    
-        // Create reorderable list
-        createArrayInput(defaultValue, onChangeCallback) {
-            const container = document.createElement('div');
-            container.className = 'reorderable-list-container';
-    
-            // List to store array values
-            const arrayValues = Array.isArray(defaultValue) ? [...defaultValue] : [];
-    
-            // Function to render array items
-            const renderArrayItems = () => {
-                container.innerHTML = ''; // Clear existing items
-                
-                arrayValues.forEach((value, index) => {
-                    const itemWrapper = document.createElement('div');
-                    itemWrapper.className = 'input-group mb-2 align-items-center';
-    
-                    // Move up button
-                    const moveUpBtn = document.createElement('button');
-                    moveUpBtn.className = 'btn btn-outline-secondary me-1';
-                    moveUpBtn.innerHTML = '↑';
-                    moveUpBtn.type = 'button';
-                    moveUpBtn.disabled = index === 0;
-                    moveUpBtn.addEventListener('click', () => {
-                        // Swap current item with the one above
-                        [arrayValues[index], arrayValues[index-1]] = [arrayValues[index-1], arrayValues[index]];
-                        renderArrayItems();
-                        onChangeCallback(arrayValues);
-                    });
-    
-                    // Move down button
-                    const moveDownBtn = document.createElement('button');
-                    moveDownBtn.className = 'btn btn-outline-secondary me-2';
-                    moveDownBtn.innerHTML = '↓';
-                    moveDownBtn.type = 'button';
-                    moveDownBtn.disabled = index === arrayValues.length - 1;
-                    moveDownBtn.addEventListener('click', () => {
-                        // Swap current item with the one below
-                        [arrayValues[index], arrayValues[index+1]] = [arrayValues[index+1], arrayValues[index]];
-                        renderArrayItems();
-                        onChangeCallback(arrayValues);
-                    });
-    
-                    // Input for list item
-                    const input = document.createElement('input');
-                    input.type = 'text';
-                    input.className = 'form-control';
-                    input.value = value?.toString() || '';
-    
-                    // Update value in arrayValues
-                    input.addEventListener('input', (e) => {
-                        arrayValues[index] = e.target.value;
-                        onChangeCallback(arrayValues);
-                    });
-    
-                    // Remove button
-                    const removeBtn = document.createElement('button');
-                    removeBtn.className = 'btn btn-danger ms-2';
-                    removeBtn.innerHTML = '&times;';
-                    removeBtn.type = 'button';
-                    removeBtn.addEventListener('click', () => {
-                        arrayValues.splice(index, 1);
-                        renderArrayItems();
-                        onChangeCallback(arrayValues);
-                    });
-    
-                    // Assemble item
-                    itemWrapper.appendChild(moveUpBtn);
-                    itemWrapper.appendChild(moveDownBtn);
-                    itemWrapper.appendChild(input);
-                    itemWrapper.appendChild(removeBtn);
-    
-                    container.appendChild(itemWrapper);
-                });
-    
-                // Add new item button
-                const addBtn = document.createElement('button');
-                addBtn.className = 'btn btn-primary mt-2';
-                addBtn.textContent = 'Add Item';
-                addBtn.type = 'button';
-                addBtn.addEventListener('click', () => {
-                    arrayValues.push('');
-                    renderArrayItems();
-                    onChangeCallback(arrayValues);
-                });
-    
-                container.appendChild(addBtn);
-            };
-    
-            renderArrayItems();
-            return container;
-        }
-    
-        // Existing methods for other input types (simplified)
-        createInputTypeSelector(currentType, onChangeCallback) {
-            const select = document.createElement('select');
-            select.className = 'form-select mb-2';
-    
-            Object.values(this.inputTypes).forEach(type => {
-                const option = document.createElement('option');
-                option.value = type;
-                option.textContent = type.charAt(0).toUpperCase() + type.slice(1);
-                if (type === currentType) option.selected = true;
-                select.appendChild(option);
-            });
-    
-            select.addEventListener('change', (e) => {
-                onChangeCallback(e.target.value);
-            });
-    
-            return select;
-        }
-    
-        // Simplified methods for other input types
-        createStringInput(defaultValue, onChangeCallback) {
-            const input = document.createElement('input');
-            input.type = 'text';
-            input.className = 'form-control';
-            input.value = defaultValue?.toString() || '';
-            input.addEventListener('input', (e) => {
-                onChangeCallback(e.target.value);
-            });
-            return input;
-        }
-    
-        createBooleanInput(defaultValue, onChangeCallback) {
-            const select = document.createElement('select');
-            select.className = 'form-select';
-    
-            ['true', 'false'].forEach(value => {
-                const option = document.createElement('option');
-                option.value = value;
-                option.textContent = value.charAt(0).toUpperCase() + value.slice(1);
-                if (value === defaultValue.toString()) option.selected = true;
-                select.appendChild(option);
-            });
-    
-            select.addEventListener('change', (e) => {
-                onChangeCallback(e.target.value === 'true');
-            });
-    
-            return select;
-        }
-    
-        createNumberInput(defaultValue, onChangeCallback) {
-            const input = document.createElement('input');
-            input.type = 'number';
-            input.className = 'form-control';
-            input.value = defaultValue || 0;
-            input.addEventListener('input', (e) => {
-                onChangeCallback(Number(e.target.value));
-            });
-            return input;
-        }
-    
-        createObjectInput(defaultValue, onChangeCallback) {
-            const container = document.createElement('div');
-            container.className = 'object-input-container';
-    
-            // List to store object key-value pairs
-            const objectValues = typeof defaultValue === 'object' && defaultValue !== null 
-                ? Object.entries(defaultValue).map(([k, v]) => ({ key: k, value: v })) 
-                : [];
-    
-            // Function to render object items
-            const renderObjectItems = () => {
-                container.innerHTML = ''; // Clear existing items
-                
-                objectValues.forEach((item, index) => {
-                    const itemWrapper = document.createElement('div');
-                    itemWrapper.className = 'input-group mb-2';
-    
-                    // Key input
-                    const keyInput = document.createElement('input');
-                    keyInput.type = 'text';
-                    keyInput.className = 'form-control';
-                    keyInput.placeholder = 'Key';
-                    keyInput.value = item.key;
-    
-                    // Value input
-                    const valueInput = document.createElement('input');
-                    valueInput.type = 'text';
-                    valueInput.className = 'form-control';
-                    valueInput.placeholder = 'Value';
-                    valueInput.value = item.value?.toString() || '';
-    
-                    // Update key
-                    keyInput.addEventListener('input', (e) => {
-                        objectValues[index].key = e.target.value;
-                        onChangeCallback(objectValues.reduce((acc, curr) => {
-                            if (curr.key) acc[curr.key] = curr.value;
-                            return acc;
-                        }, {}));
-                    });
-    
-                    // Update value
-                    valueInput.addEventListener('input', (e) => {
-                        objectValues[index].value = e.target.value;
-                        onChangeCallback(objectValues.reduce((acc, curr) => {
-                            if (curr.key) acc[curr.key] = curr.value;
-                            return acc;
-                        }, {}));
-                    });
-    
-                    // Remove button
-                    const removeBtn = document.createElement('button');
-                    removeBtn.className = 'btn btn-danger';
-                    removeBtn.innerHTML = '&times;';
-                    removeBtn.addEventListener('click', () => {
-                        objectValues.splice(index, 1);
-                        renderObjectItems();
-                        onChangeCallback(objectValues.reduce((acc, curr) => {
-                            if (curr.key) acc[curr.key] = curr.value;
-                            return acc;
-                        }, {}));
-                    });
-    
-                    itemWrapper.appendChild(keyInput);
-                    itemWrapper.appendChild(valueInput);
-                    itemWrapper.appendChild(removeBtn);
-                    container.appendChild(itemWrapper);
-                });
-    
-                // Add new item button
-                const addBtn = document.createElement('button');
-                addBtn.className = 'btn btn-primary mt-2';
-                addBtn.textContent = 'Add Key-Value Pair';
-                addBtn.addEventListener('click', () => {
-                    objectValues.push({ key: '', value: '' });
-                    renderObjectItems();
-                });
-    
-                container.appendChild(addBtn);
-            };
-    
-            renderObjectItems();
-            return container;
-        }
-    
-        // Detect input type based on default value
-        // Recursive type detection for nested structures
-        detectInputType(defaultValue) {
-            if (defaultValue === null) return this.inputTypes.STRING;
-        
-            if (Array.isArray(defaultValue)) {
-                // If array is empty, return base array type
-                if (defaultValue.length === 0) return this.inputTypes.ARRAY;
-                
-                const firstItem = defaultValue[0];
-                
-                // Specifically handle primitive and complex types
-                if (firstItem === null) return `${this.inputTypes.ARRAY}_of_${this.inputTypes.STRING}`;
-                
-                if (Array.isArray(firstItem)) {
-                    return `${this.inputTypes.ARRAY}_of_${this.inputTypes.ARRAY}`;
-                }
-                
-                if (typeof firstItem === 'object') {
-                    return `${this.inputTypes.ARRAY}_of_${this.inputTypes.OBJECT}`;
-                }
-                
-                // For primitive types
-                return `${this.inputTypes.ARRAY}_of_${typeof firstItem}`;
-            }
-            
-            if (typeof defaultValue === 'object') {
-                // Check if it's a plain object with nested structures
-                const objectEntries = Object.entries(defaultValue);
-                if (objectEntries.length === 0) return this.inputTypes.OBJECT;
-                
-                // Check if any value is complex
-                const hasComplexValue = objectEntries.some(([_, val]) => 
-                    Array.isArray(val) || (typeof val === 'object' && val !== null)
-                );
-                
-                return hasComplexValue ? `${this.inputTypes.OBJECT}_with_complex_values` : this.inputTypes.OBJECT;
-            }
-            
-            if (typeof defaultValue === 'boolean') return this.inputTypes.BOOLEAN;
-            if (typeof defaultValue === 'number') return this.inputTypes.NUMBER;
-            
-            return this.inputTypes.STRING;
-        }
+class ConfigInputHandler {
+    constructor(containerSelector) {
+        this.container = document.querySelector(containerSelector);
+        this.inputTypes = {
+            STRING: 'string',
+            ARRAY: 'array',
+            OBJECT: 'object',
+            BOOLEAN: 'boolean',
+            NUMBER: 'number'
+        };
+    }
 
-        // Method to detect individual item type
-        detectItemType(item) {
-            if (item === null) return 'primitive';
-            if (Array.isArray(item)) return this.inputTypes.ARRAY;
-            if (typeof item === 'object') return this.inputTypes.OBJECT;
-            return typeof item;
-        }
-    
-        // Create input based on type
-        // Recursive input creation for nested structures
-        createInputBasedOnType(type, defaultValue, depth = 0) {
-            const MAX_DEPTH = 3;
-            if (depth > MAX_DEPTH) {
-                console.warn('Maximum nesting depth reached');
-                return this.createStringInput(JSON.stringify(defaultValue), () => {});
-            }
-    
-            const onChangeCallback = (value) => {
-                console.log('Value changed:', value);
-            };
-    
-            // Handle array of specific types
-            if (type.startsWith(`${this.inputTypes.ARRAY}_of_`)) {
-                const itemType = type.split('_of_')[1];
-                return this.createNestedArrayInput(
-                    defaultValue, 
-                    onChangeCallback, 
-                    depth, 
-                    itemType
-                );
-            }
-    
-            // Handle complex nested objects
-            if (type === `${this.inputTypes.OBJECT}_with_complex_values`) {
-                return this.createNestedObjectInput(
-                    defaultValue, 
-                    onChangeCallback, 
-                    depth
-                );
-            }
-    
-            // Original type handling remains the same
-            switch(type) {
-                case this.inputTypes.STRING:
-                    return this.createStringInput(defaultValue, onChangeCallback);
-                case this.inputTypes.ARRAY:
-                    return this.createNestedArrayInput(defaultValue, onChangeCallback, depth);
-                case this.inputTypes.OBJECT:
-                    return this.createNestedObjectInput(defaultValue, onChangeCallback, depth);
-                case this.inputTypes.BOOLEAN:
-                    return this.createBooleanInput(defaultValue, onChangeCallback);
-                case this.inputTypes.NUMBER:
-                    return this.createNumberInput(defaultValue, onChangeCallback);
-                default:
-                    return this.createStringInput(defaultValue, onChangeCallback);
-            }
-        }
+    // Create type selector with proper array handling
+    createTypeSelector(initialType, innerType = 'string') {
+        const select = document.createElement('select');
+        select.className = 'form-select mb-2';
 
-        // Enhanced array input to handle nested arrays
-        createNestedArrayInput(defaultValue, onChangeCallback, depth, itemType = null) {
-            const container = document.createElement('div');
-            container.className = 'nested-array-container';
-    
-            const arrayValues = Array.isArray(defaultValue) ? [...defaultValue] : [];
-    
-            const renderArrayItems = () => {
-                container.innerHTML = '';
-                
-                arrayValues.forEach((value, index) => {
-                    const itemWrapper = document.createElement('div');
-                    itemWrapper.className = 'nested-array-item input-group mb-2';
-    
-                    // Detect or use provided item type
-                    const detectedItemType = itemType || this.detectItemType(value);
-                    let currentItemType = detectedItemType === 'primitive' 
-                        ? this.detectInputType(value) 
-                        : detectedItemType;
-    
-                    // Type selector for array elements
-                    const typeSelector = this.createInputTypeSelector(currentItemType, (newType) => {
-                        // Reset the value based on the new type
-                        switch(newType) {
-                            case this.inputTypes.STRING:
-                                arrayValues[index] = '';
-                                break;
-                            case this.inputTypes.NUMBER:
-                                arrayValues[index] = 0;
-                                break;
-                            case this.inputTypes.BOOLEAN:
-                                arrayValues[index] = false;
-                                break;
-                            case this.inputTypes.ARRAY:
-                                arrayValues[index] = [];
-                                break;
-                            case this.inputTypes.OBJECT:
-                                arrayValues[index] = {};
-                                break;
-                        }
-                        
-                        // Update type and re-render items
-                        currentItemType = newType;
-                        renderArrayItems();
-                        onChangeCallback(arrayValues);
-                    });
-    
-                    // Input based on detected/selected type
-                    const itemInput = this.createInputBasedOnType(
-                        currentItemType, 
-                        value, 
-                        depth + 1
-                    );
-    
-                    // Update value handling
-                    itemInput.addEventListener('change', (e) => {
-                        arrayValues[index] = e.target.value;
-                        onChangeCallback(arrayValues);
-                    });
-    
-                    // Remove button
-                    const removeBtn = document.createElement('button');
-                    removeBtn.className = 'btn btn-danger ms-2';
-                    removeBtn.innerHTML = '&times;';
-                    removeBtn.addEventListener('click', () => {
-                        arrayValues.splice(index, 1);
-                        renderArrayItems();
-                        onChangeCallback(arrayValues);
-                    });
-    
-                    // Assemble item wrapper
-                    itemWrapper.appendChild(typeSelector);
-                    itemWrapper.appendChild(itemInput);
-                    itemWrapper.appendChild(removeBtn);
-    
-                    container.appendChild(itemWrapper);
-                });
-    
-                // Add new item button
-                const addBtn = document.createElement('button');
-                addBtn.className = 'btn btn-primary mt-2';
-                addBtn.textContent = 'Add Item';
-                addBtn.addEventListener('click', () => {
-                    arrayValues.push(''); // Default to empty string
-                    renderArrayItems();
-                    onChangeCallback(arrayValues);
-                });
-    
-                container.appendChild(addBtn);
-            };
-    
-            renderArrayItems();
-            return container;
-        }
-    
-        // Enhanced object input to handle nested objects
-        createNestedObjectInput(defaultValue, onChangeCallback, depth) {
-            const container = document.createElement('div');
-            container.className = 'nested-object-container';
-    
-            // Ensure defaultValue is an object
-            const objectValues = typeof defaultValue === 'object' && defaultValue !== null 
-                ? Object.entries(defaultValue).map(([k, v]) => ({ key: k, value: v })) 
-                : [];
-    
-            const renderObjectItems = () => {
-                container.innerHTML = ''; // Clear existing items
-                
-                objectValues.forEach((item, index) => {
-                    const itemWrapper = document.createElement('div');
-                    itemWrapper.className = 'nested-object-item input-group mb-2';
-    
-                    // Key input
-                    const keyInput = document.createElement('input');
-                    keyInput.type = 'text';
-                    keyInput.className = 'form-control me-2';
-                    keyInput.placeholder = 'Key';
-                    keyInput.value = item.key;
-    
-                    // Detect type for this specific object value
-                    const valueType = this.detectInputType(item.value);
-    
-                    // Input type selector for nested values
-                    const typeSelector = this.createInputTypeSelector(valueType, (newType) => {
-                        // Reset the value based on the new type
-                        switch(newType) {
-                            case this.inputTypes.STRING:
-                                objectValues[index].value = '';
-                                break;
-                            case this.inputTypes.NUMBER:
-                                objectValues[index].value = 0;
-                                break;
-                            case this.inputTypes.BOOLEAN:
-                                objectValues[index].value = false;
-                                break;
-                            case this.inputTypes.ARRAY:
-                                objectValues[index].value = [];
-                                break;
-                            case this.inputTypes.OBJECT:
-                                objectValues[index].value = {};
-                                break;
-                        }
-                        renderObjectItems();
-                        onChangeCallback(objectValues.reduce((acc, curr) => {
-                            if (curr.key) acc[curr.key] = curr.value;
-                            return acc;
-                        }, {}));
-                    });
-    
-                    // Create value input based on detected type
-                    const valueInput = this.createInputBasedOnType(valueType, item.value, depth + 1);
-    
-                    // Update key and value events
-                    keyInput.addEventListener('input', (e) => {
-                        objectValues[index].key = e.target.value;
-                        onChangeCallback(objectValues.reduce((acc, curr) => {
-                            if (curr.key) acc[curr.key] = curr.value;
-                            return acc;
-                        }, {}));
-                    });
-    
-                    if (valueInput) {
-                        valueInput.addEventListener('change', (e) => {
-                            objectValues[index].value = e.target.value;
-                            onChangeCallback(objectValues.reduce((acc, curr) => {
-                                if (curr.key) acc[curr.key] = curr.value;
-                                return acc;
-                            }, {}));
-                        });
-                    }
-    
-                    // Remove button
-                    const removeBtn = document.createElement('button');
-                    removeBtn.className = 'btn btn-danger ms-2';
-                    removeBtn.innerHTML = '&times;';
-                    removeBtn.addEventListener('click', () => {
-                        objectValues.splice(index, 1);
-                        renderObjectItems();
-                        onChangeCallback(objectValues.reduce((acc, curr) => {
-                            if (curr.key) acc[curr.key] = curr.value;
-                            return acc;
-                        }, {}));
-                    });
-    
-                    // Assemble item
-                    itemWrapper.appendChild(keyInput);
-                    itemWrapper.appendChild(typeSelector);
-                    itemWrapper.appendChild(valueInput);
-                    itemWrapper.appendChild(removeBtn);
-    
-                    container.appendChild(itemWrapper);
-                });
-    
-                // Add new item button
-                const addBtn = document.createElement('button');
-                addBtn.className = 'btn btn-primary mt-2';
-                addBtn.textContent = 'Add Key-Value Pair';
-                addBtn.addEventListener('click', () => {
-                    objectValues.push({ key: '', value: '' });
-                    renderObjectItems();
-                });
-    
-                container.appendChild(addBtn);
-            };
-    
-            renderObjectItems();
-            return container;
-        }
-    
-        // Create dynamic input with card wrapper
-        createDynamicInput(fieldName, fieldConfig) {
-            const { default: defaultValue, required, ui_displayed_name, example } = fieldConfig;
+        // Add all basic types
+        Object.values(this.inputTypes).forEach(type => {
+            const option = document.createElement('option');
+            option.value = type;
+            option.textContent = type.charAt(0).toUpperCase() + type.slice(1);
+            if (type === initialType) option.selected = true;
+            select.appendChild(option);
+        });
+
+        select.addEventListener('change', (e) => {
+            const newType = e.target.value;
             
-            // Container for the entire input
-            const container = document.createElement('div');
-            container.className = 'dynamic-input-wrapper';
-    
-            // Label
-            const label = document.createElement('label');
-            label.htmlFor = fieldName;
-            label.className = `form-label ${required !== false ? 'required-label' : ''}`;
-            label.textContent = `${ui_displayed_name} ${required !== false ? '(required)' : '(optional)'}`;
-    
-            // Current input type
-            let currentInputType = this.detectInputType(defaultValue);
-            let currentInputElement;
-    
-            // Custom type selector to handle nested array types
-            const createTypeSelector = (initialType) => {
-                const select = document.createElement('select');
-                select.className = 'form-select mb-2';
-    
-                // Special handling for array types
-                if (initialType.startsWith(`${this.inputTypes.ARRAY}_of_`)) {
-                    // First dropdown for array
-                    const arrayOption = document.createElement('option');
-                    arrayOption.value = this.inputTypes.ARRAY;
-                    arrayOption.textContent = 'Array';
-                    arrayOption.selected = true;
-                    select.appendChild(arrayOption);
-    
-                    // Second dropdown for inner type
-                    const innerType = initialType.split('_of_')[1];
-                    const itemTypeSelect = document.createElement('select');
-                    itemTypeSelect.className = 'form-select mt-2';
-    
-                    // Populate inner type options
-                    Object.values(this.inputTypes).forEach(type => {
-                        const option = document.createElement('option');
-                        option.value = type;
-                        option.textContent = type.charAt(0).toUpperCase() + type.slice(1);
-                        if (type === innerType) option.selected = true;
-                        itemTypeSelect.appendChild(option);
-                    });
-    
-                    // Event listener for inner type changes
-                    itemTypeSelect.addEventListener('change', (e) => {
-                        const newInnerType = e.target.value;
-                        currentInputType = `${this.inputTypes.ARRAY}_of_${newInnerType}`;
-                        
-                        // Remove existing input
-                        if (currentInputElement) {
-                            container.removeChild(currentInputElement);
-                        }
-    
-                        // Create new input based on selected type
-                        currentInputElement = this.createInputBasedOnType(currentInputType, defaultValue);
-                        container.appendChild(currentInputElement);
-                    });
-    
-                    select.addEventListener('change', (e) => {
-                        if (e.target.value === this.inputTypes.ARRAY) {
-                            container.insertBefore(itemTypeSelect, select.nextSibling);
-                        } else {
-                            if (itemTypeSelect.parentNode) {
-                                container.removeChild(itemTypeSelect);
-                            }
-                        }
-                    });
-    
-                    return { select, itemTypeSelect };
-                }
-    
-                // Regular type selector for non-array types
-                Object.values(this.inputTypes).forEach(type => {
-                    const option = document.createElement('option');
-                    option.value = type;
-                    option.textContent = type.charAt(0).toUpperCase() + type.slice(1);
-                    if (type === initialType) option.selected = true;
-                    select.appendChild(option);
-                });
-    
-                select.addEventListener('change', (e) => {
-                    const newType = e.target.value;
-                    
-                    // Remove existing input
-                    if (currentInputElement) {
-                        container.removeChild(currentInputElement);
-                    }
-    
-                    // Create new input based on selected type
-                    currentInputType = newType;
-                    currentInputElement = this.createInputBasedOnType(newType, defaultValue);
-                    container.appendChild(currentInputElement);
-                });
-    
-                return { select };
-            };
-    
-            // Create type selector
-            const { select, itemTypeSelect } = createTypeSelector(currentInputType);
-    
-            // Initial input
-            currentInputElement = this.createInputBasedOnType(currentInputType, defaultValue);
-    
-            // Combine elements
-            container.appendChild(label);
-            container.appendChild(select);
-            if (itemTypeSelect) {
-                container.appendChild(itemTypeSelect);
+            // Remove existing input and any unwanted dropdowns
+            if (currentInputElement) {
+                container.removeChild(currentInputElement);
             }
+
+            // Create new input based on selected type
+            currentInputType = newType;
+            currentInputElement = this.createInputBasedOnType(newType, defaultValue, innerType);
             container.appendChild(currentInputElement);
-    
-            // Wrap in a card
-            return this.createCardWrapper(ui_displayed_name, container);
+        });
+
+        return select;
+    }
+
+    // Updated detectInputType to handle arrays properly
+    detectInputType(defaultValue) {
+        if (defaultValue === null) return this.inputTypes.STRING;
+        
+        if (Array.isArray(defaultValue)) {
+            return this.inputTypes.ARRAY;
+        }
+        
+        if (typeof defaultValue === 'object') return this.inputTypes.OBJECT;
+        if (typeof defaultValue === 'boolean') return this.inputTypes.BOOLEAN;
+        if (typeof defaultValue === 'number') return this.inputTypes.NUMBER;
+        
+        return this.inputTypes.STRING;
+    }
+
+    // Helper method to detect inner type of array
+    detectArrayInnerType(array) {
+        if (!array || array.length === 0) return 'string'; // default
+        
+        const firstItem = array[0];
+        if (typeof firstItem === 'number') return 'number';
+        if (typeof firstItem === 'boolean') return 'boolean';
+        if (typeof firstItem === 'object') return 'object';
+        return 'string';
+    }
+
+    createInputBasedOnType(type, defaultValue, innerType = null) {
+        const onChangeCallback = (value) => {
+            console.log('Value changed:', value);
+        };
+
+        if (type === this.inputTypes.ARRAY) {
+            // If innerType not provided, detect it from defaultValue
+            const actualInnerType = innerType || this.detectArrayInnerType(defaultValue);
+            return this.createArrayInput(defaultValue, onChangeCallback, actualInnerType);
+        }
+
+        switch(type) {
+            case this.inputTypes.STRING:
+                return this.createStringInput(defaultValue, onChangeCallback);
+            case this.inputTypes.OBJECT:
+                return this.createObjectInput(defaultValue, onChangeCallback);
+            case this.inputTypes.BOOLEAN:
+                return this.createBooleanInput(defaultValue, onChangeCallback);
+            case this.inputTypes.NUMBER:
+                return this.createNumberInput(defaultValue, onChangeCallback);
+            default:
+                return this.createStringInput(defaultValue, onChangeCallback);
         }
     }
-</script>
+
+    createArrayInput(defaultValue, onChangeCallback, itemType = 'string') {
+        const container = document.createElement('div');
+        container.className = 'array-input-container';
+
+        const arrayValues = Array.isArray(defaultValue) ? [...defaultValue] : [];
+
+        const renderArrayItems = () => {
+            container.innerHTML = '';
+            
+            arrayValues.forEach((value, index) => {
+                const itemWrapper = document.createElement('div');
+                itemWrapper.className = 'input-group mb-2';
+
+                // Create appropriate input based on itemType
+                let itemInput;
+                switch(itemType) {
+                    case 'number':
+                        itemInput = this.createNumberInput(value, (newValue) => {
+                            arrayValues[index] = newValue;
+                            onChangeCallback(arrayValues);
+                        });
+                        break;
+                    case 'boolean':
+                        itemInput = this.createBooleanInput(value, (newValue) => {
+                            arrayValues[index] = newValue;
+                            onChangeCallback(arrayValues);
+                        });
+                        break;
+                    case 'object':
+                        itemInput = this.createObjectInput(value, (newValue) => {
+                            arrayValues[index] = newValue;
+                            onChangeCallback(arrayValues);
+                        });
+                        break;
+                    default: // string
+                        itemInput = this.createStringInput(value, (newValue) => {
+                            arrayValues[index] = newValue;
+                            onChangeCallback(arrayValues);
+                        });
+                }
+
+                // Move buttons
+                const moveUpBtn = document.createElement('button');
+                moveUpBtn.className = 'btn btn-outline-secondary';
+                moveUpBtn.innerHTML = '↑';
+                moveUpBtn.disabled = index === 0;
+                moveUpBtn.addEventListener('click', () => {
+                    [arrayValues[index], arrayValues[index-1]] = [arrayValues[index-1], arrayValues[index]];
+                    renderArrayItems();
+                    onChangeCallback(arrayValues);
+                });
+
+                const moveDownBtn = document.createElement('button');
+                moveDownBtn.className = 'btn btn-outline-secondary';
+                moveDownBtn.innerHTML = '↓';
+                moveDownBtn.disabled = index === arrayValues.length - 1;
+                moveDownBtn.addEventListener('click', () => {
+                    [arrayValues[index], arrayValues[index+1]] = [arrayValues[index+1], arrayValues[index]];
+                    renderArrayItems();
+                    onChangeCallback(arrayValues);
+                });
+
+                // Remove button
+                const removeBtn = document.createElement('button');
+                removeBtn.className = 'btn btn-danger ms-2';
+                removeBtn.innerHTML = '×';
+                removeBtn.addEventListener('click', () => {
+                    arrayValues.splice(index, 1);
+                    renderArrayItems();
+                    onChangeCallback(arrayValues);
+                });
+
+                itemWrapper.appendChild(moveUpBtn);
+                itemWrapper.appendChild(moveDownBtn);
+                itemWrapper.appendChild(itemInput);
+                itemWrapper.appendChild(removeBtn);
+                container.appendChild(itemWrapper);
+            });
+
+            // Add new item button
+            const addBtn = document.createElement('button');
+            addBtn.className = 'btn btn-primary mt-2';
+            addBtn.textContent = 'Add Item';
+            addBtn.addEventListener('click', () => {
+                // Add appropriate default value based on type
+                let defaultVal;
+                switch(itemType) {
+                    case 'number': defaultVal = 0; break;
+                    case 'boolean': defaultVal = false; break;
+                    case 'object': defaultVal = {}; break;
+                    default: defaultVal = ''; break;
+                }
+                arrayValues.push(defaultVal);
+                renderArrayItems();
+                onChangeCallback(arrayValues);
+            });
+
+            container.appendChild(addBtn);
+        };
+
+        renderArrayItems();
+        return container;
+    }
+
+    // Rest of the methods remain the same...
+}
