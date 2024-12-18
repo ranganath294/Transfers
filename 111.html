@@ -9,22 +9,26 @@
             <form id="configSelectionForm" method="GET" action="{% url 'generate_config:generate_config' %}">
                 <div class="mb-3">
                     <label for="configDropdown" class="form-label">Choose Existing Configuration</label>
-                    <select class="form-select optimized-select" id="configDropdown" name="config_type" required>
+                    <select class="form-select optimized-select" id="configDropdown" name="config_type">
                         <option value="">Select Configuration Type</option>
                         {% for config in configs_list %}
                         <option value="{{ config.name }}">{{ config.name }}</option>
                         {% endfor %}
                     </select>
                 </div>
-                <div class="d-grid">
-                    <button type="submit" class="btn btn-primary">
+                <div class="d-grid gap-2">
+                    <button type="submit" id="showConfigBtn" class="btn btn-primary">
                         Show Configuration
                         <i class="bi bi-arrow-right-circle ms-2"></i>
+                    </button>
+                    <button type="button" id="newConfigBtn" class="btn btn-outline-primary">
+                        Create a New Config
+                        <i class="bi bi-plus-circle ms-2"></i>
                     </button>
                 </div>
             </form>
 
-            <!-- Add loading spinner -->
+            <!-- Loading spinner -->
             <div id="loadingSpinner" class="text-center mt-3" style="display: none;">
                 <div class="spinner-border text-primary" role="status">
                     <span class="visually-hidden">Loading...</span>
@@ -34,53 +38,49 @@
         </div>
     </div>
 
-    <div class="card shadow-sm mb-4">
-        <div class="card-body" id="configFormContainer" style="display: none;">
-            <form id="configGenerationForm" method="POST" action="{% url 'generate_config:generate_config' %}">
-                {% csrf_token %}
-                <div id="dynamicFields" class="row g-3"></div>
-                <input type="hidden" id="parsedData" name="parsedData">
-                <div class="mt-4">
-                    <button type="submit" class="btn btn-primary">Generate Config</button>
-                    <button type="reset" class="btn btn-secondary ms-2">Reset</button>
-                </div>
-            </form>
-        </div>
-    </div>
-    
+    <!-- Rest of the HTML remains the same -->
 </div>
 
-
-
+<script>
 document.getElementById('configSelectionForm').addEventListener('submit', function(e) {
-            e.preventDefault();
-            
-            const configType = document.getElementById('configDropdown').value;
-            const url = `{% url 'generate_config:generate_config' %}?config_type=${configType}`;
+    e.preventDefault();
+    handleConfigSubmission(false);
+});
 
-            // Show loading spinner
-            // showLoading();
+document.getElementById('newConfigBtn').addEventListener('click', function(e) {
+    handleConfigSubmission(true);
+});
 
-            // Show full-screen loading
-            showFullScreenLoading("Loading Configuration...");
-    
-            fetch(url)
-                .then(response => response.json())
-                .then(data => {
-                    if (data.error) {
-                        alert(data.error);
-                        // hideLoading();
-                        hideFullScreenLoading();
-                    } else {
-                        renderConfigurationForm(data);
-                        // hideLoading();
-                        hideFullScreenLoading();
-                    }
-                })
-                .catch(error => {
-                    console.error('Error:', error);
-                    alert('An error occurred while fetching the configuration.');
-                    // hideLoading();
-                    hideFullScreenLoading();
-                });
+function handleConfigSubmission(isNewConfig) {
+    const configDropdown = document.getElementById('configDropdown');
+    const configType = isNewConfig ? 'default' : configDropdown.value;
+
+    // Validate dropdown for existing config scenario
+    if (!isNewConfig && configType === '') {
+        alert('Please select a configuration type.');
+        return;
+    }
+
+    const url = `{% url 'generate_config:generate_config' %}?config_type=${configType}`;
+
+    // Show full-screen loading
+    showFullScreenLoading("Loading Configuration...");
+
+    fetch(url)
+        .then(response => response.json())
+        .then(data => {
+            if (data.error) {
+                alert(data.error);
+                hideFullScreenLoading();
+            } else {
+                renderConfigurationForm(data);
+                hideFullScreenLoading();
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('An error occurred while fetching the configuration.');
+            hideFullScreenLoading();
         });
+}
+</script>
