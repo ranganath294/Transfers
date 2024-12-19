@@ -1,214 +1,166 @@
-const parsedData = {};
-            const formElements = this.elements;
-            console.log(formElements)
-
-            // Add the selected configuration type to parsedData
-            const selectedConfig = document.getElementById('configDropdown').value;
-            parsedData['config_name'] = selectedConfig;  // Add this line to include the selected configuration
-    
-            for (let element of formElements) {
-                if (element.name && element.name !== 'csrfmiddlewaretoken') {
-                    try {
-                        // Attempt to parse the input value
-                        const value = element.value.trim();
-                        
-                        if (value.startsWith('[') || value.startsWith('{')) {
-                            // Parse JSON for arrays and objects
-                            parsedData[element.name] = JSON.parse(value);
-                        } else if (value === 'true' || value === 'false' || value === 'True' || value === 'False') {
-                            // Parse boolean
-                            parsedData[element.name] = (value === 'true' || value === 'True');
-                        } else if (!isNaN(value) && value !== '') {
-                            // Parse number
-                            parsedData[element.name] = Number(value);
-                        } else {
-                            // Keep as string
-                            parsedData[element.name] = value;
-                        }
-                    } catch (error) {
-                        console.error(`Error parsing ${element.name}:`, error);
-                        parsedData[element.name] = element.value;
-                    }
-                }
-            }
-
-
-
-
-
+// Helper function to get data type rules
 function getDataTypeRules(datatype) {
-        const rules = {
-            'str': 'Enter text without quotes, or use "" for empty string',
-            'list': 'Enter comma-separated values without quotes/brackets, or use "" for empty list',
-            'dict': 'Enter a valid JSON object, use {} for empty object',
-            'bool': 'Enter true or false',
-            'int': 'Enter a whole number, or use "" for null',
-            'float': 'Enter a decimal number, or use "" for null'
-        };
-        return `Rules: ${rules[datatype] || 'Enter a valid value'}`;
-    }
+    const rules = {
+        'str': 'Enter text without quotes, or use "" for empty string',
+        'list': 'Enter comma-separated values without quotes/brackets, or use "" for empty list',
+        'dict': 'Enter a valid JSON object, use {} for empty object',
+        'bool': 'Enter true or false',
+        'int': 'Enter a whole number, or use "" for null',
+        'float': 'Enter a decimal number, or use "" for null'
+    };
+    return `Rules: ${rules[datatype] || 'Enter a valid value'}`;
+}
 
-    // Function to validate input based on datatype
-    function validateInput(input) {
-        const value = input.value.trim();
-        const datatype = input.dataset.datatype;
-        const validationMessage = document.getElementById(`${input.name}-validation`);
-
-        // If validation message element doesn't exist, create it
-        let messageElement = validationMessage;
-        if (!messageElement) {
-            messageElement = document.createElement('div');
-            messageElement.className = 'invalid-feedback';
-            messageElement.id = `${input.name}-validation`;
-            input.parentNode.insertBefore(messageElement, input.nextSibling);
-        }
-
-        // Check for intentionally empty value with quotes
-        if (value === '""') {
-            input.classList.remove('is-invalid');
-            input.classList.add('is-valid');
-            validationMessage.style.display = 'none';
-            return true;
-        }
-
-        // Check if field is empty (not intentionally empty)
-        if (!value) {
-            input.classList.add('is-invalid');
-            input.classList.remove('is-valid');
-            validationMessage.textContent = 'This field is required. Use "" for empty value.';
-            validationMessage.style.display = 'block';
-            return false;
-        }
-
-        try {
-            switch (datatype) {
-                case 'str':
-                    if (value.includes('"') || value.includes("'")) {
-                        throw new Error('Quotes are only allowed as "" to indicate empty value');
-                    }
-                    break;
-                    
-                case 'list':
-                    if (value.includes('"') || value.includes("'") || value.includes('[') || value.includes(']')) {
-                        throw new Error('Use comma-separated values without quotes/brackets, or "" for empty list');
-                    }
-                    break;
-                    
-                case 'dict':
-                    if (value.includes('""')) {
-                        throw new Error('Use {} for empty object, not ""');
-                    }
-                    JSON.parse(value);
-                    break;
-                    
-                case 'bool':
-                    if (!['true', 'false'].includes(value.toLowerCase())) {
-                        throw new Error('Value must be true or false');
-                    }
-                    break;
-                    
-                case 'int':
-                    if (!Number.isInteger(Number(value))) {
-                        throw new Error('Value must be a whole number, or "" for null');
-                    }
-                    break;
-                    
-                case 'float':
-                    if (isNaN(Number(value))) {
-                        throw new Error('Value must be a number, or "" for null');
-                    }
-                    break;
-            }
-            
-            input.classList.remove('is-invalid');
-            input.classList.add('is-valid');
-            validationMessage.style.display = 'none';
-            return true;
-        } catch (error) {
-            input.classList.remove('is-valid');
-            input.classList.add('is-invalid');
-            validationMessage.textContent = error.message;
-            validationMessage.style.display = 'block';
-            return false;
-        }
-    }
-
-    // Function to parse value based on datatype
-    function parseValue(value, datatype) {
-        const trimmedValue = value.trim();
+// Improved validation function
+function validateInput(input) {
+    if (!input || !input.value) return false;
     
-        // Handle intentionally empty values marked with ""
-        if (trimmedValue === '""') {
-            switch (datatype) {
-                case 'list':
-                    return [];
-                case 'dict':
-                    return {};
-                case 'int':
-                case 'float':
-                    return null;
-                case 'str':
-                    return '';
-                default:
-                    return '';
-            }
-        }
+    const value = input.value.trim();
+    const datatype = input.dataset.datatype;
+    
+    // Handle empty value case
+    if (value === '""') return true;
+    if (!value) return false;
 
-        // Parse non-empty values
+    try {
         switch (datatype) {
+            case 'str':
+                return !(value.includes('"') || value.includes("'"));
+                
             case 'list':
-                return trimmedValue === '' ? [] : trimmedValue;
+                if (value === '') return true;
+                // Allow simple comma-separated values
+                return !(/["'\[\]]/.test(value));
+                
             case 'dict':
-                return trimmedValue === '{}' ? {} : JSON.parse(trimmedValue);
+                if (value === '{}') return true;
+                JSON.parse(value);
+                return true;
+                
+            case 'bool':
+                return ['true', 'false'].includes(value.toLowerCase());
+                
+            case 'int':
+                return Number.isInteger(Number(value));
+                
+            case 'float':
+                return !isNaN(Number(value));
+                
+            default:
+                return true;
+        }
+    } catch (error) {
+        return false;
+    }
+}
+
+// Improved parse function
+function parseValue(value, datatype) {
+    if (!value) return null;
+    
+    const trimmedValue = value.trim();
+    
+    // Handle explicitly empty values
+    if (trimmedValue === '""') {
+        switch (datatype) {
+            case 'str': return '';
+            case 'list': return [];
+            case 'dict': return {};
+            case 'int': return null;
+            case 'float': return null;
+            default: return '';
+        }
+    }
+
+    try {
+        switch (datatype) {
+            case 'str':
+                return trimmedValue;
+                
+            case 'list':
+                if (trimmedValue === '') return [];
+                return trimmedValue.split(',').map(item => item.trim());
+                
+            case 'dict':
+                if (trimmedValue === '{}') return {};
+                return JSON.parse(trimmedValue);
+                
             case 'bool':
                 return trimmedValue.toLowerCase() === 'true';
+                
             case 'int':
-                return parseInt(trimmedValue);
+                return parseInt(trimmedValue, 10);
+                
             case 'float':
                 return parseFloat(trimmedValue);
+                
             default:
                 return trimmedValue;
         }
+    } catch (error) {
+        console.error(`Error parsing ${datatype}:`, error);
+        return trimmedValue;
+    }
+}
+
+// Main form submission handler
+function handleFormSubmission(form) {
+    const parsedData = {};
+    let isValid = true;
+    let firstInvalidInput = null;
+
+    // Add the selected configuration
+    const selectedConfig = document.getElementById('configDropdown')?.value;
+    if (selectedConfig) {
+        parsedData['config_name'] = selectedConfig;
     }
 
-
-const formElements = this.elements;
-            let isValid = true;
-            let firstInvalidInput = null;
-            console.log(formElements)
-
-            const parsedData = {};
-            // Add the selected configuration type to parsedData
-            const selectedConfig = document.getElementById('configDropdown').value;
-            parsedData['config_name'] = selectedConfig;  // Add this line to include the selected configuration
-
-            // Validate all inputs
-            for (let element of formElements) {
-                if (element.name && element.name !== 'csrfmiddlewaretoken') {
-                    console.log(element.name)
-                    console.log(element.value)
-                    if (!validateInput(element)) {
-                        console.log(element.name)
-                        isValid = false;
-                        if (!firstInvalidInput) {
-                            firstInvalidInput = element;
-                        }
-                    }
+    // Validate and collect form data
+    for (let element of form.elements) {
+        if (element.name && element.name !== 'csrfmiddlewaretoken') {
+            // Validate
+            if (!validateInput(element)) {
+                isValid = false;
+                if (!firstInvalidInput) {
+                    firstInvalidInput = element;
+                }
+                
+                // Add validation feedback
+                const validationMessage = document.getElementById(`${element.name}-validation`) 
+                    || document.createElement('div');
+                validationMessage.className = 'invalid-feedback';
+                validationMessage.id = `${element.name}-validation`;
+                validationMessage.textContent = getDataTypeRules(element.dataset.datatype);
+                validationMessage.style.display = 'block';
+                
+                element.classList.add('is-invalid');
+                element.classList.remove('is-valid');
+                
+                if (!document.getElementById(`${element.name}-validation`)) {
+                    element.parentNode.insertBefore(validationMessage, element.nextSibling);
+                }
+            } else {
+                element.classList.remove('is-invalid');
+                element.classList.add('is-valid');
+                const validationMessage = document.getElementById(`${element.name}-validation`);
+                if (validationMessage) {
+                    validationMessage.style.display = 'none';
                 }
             }
+        }
+    }
 
-            if (!isValid) {
-                firstInvalidInput.focus();
-                return;
-            }
+    if (!isValid) {
+        firstInvalidInput?.focus();
+        return null;
+    }
 
-            // Parse and add form data
-            for (let element of formElements) {
-                if (element.name && element.name !== 'csrfmiddlewaretoken') {
-                    parsedData[element.name] = parseValue(
-                        element.value.trim(),
-                        element.dataset.datatype
-                    );
-                }
-            }
-            console.log(parsedData)
+    // Parse valid form data
+    for (let element of form.elements) {
+        if (element.name && element.name !== 'csrfmiddlewaretoken') {
+            parsedData[element.name] = parseValue(element.value, element.dataset.datatype);
+        }
+    }
+
+    return parsedData;
+}
