@@ -1,118 +1,27 @@
-// Function to render the configuration form
-function renderConfigurationForm(configData) {
-    // Function to render input based on data type
-    function renderInput(fieldName, fieldConfig) {
-        const inputWrapper = document.createElement('div');
-        inputWrapper.className = 'col-md-6 mb-3';
-
-        // Create label
-        const label = document.createElement('label');
-        label.htmlFor = fieldName;
-        label.className = `form-label ${fieldConfig.required !== false ? 'required-label' : ''}`;
-        label.textContent = `${fieldConfig.ui_displayed_name} ${fieldConfig.required !== false ? '(required)' : '(optional)'}`;
-        inputWrapper.appendChild(label);
-
-        // Create input or textarea based on value type
-        let inputElement;
-        if (fieldConfig.datatype === 'dict') {
-            inputElement = document.createElement('textarea');
-            inputElement.value = JSON.stringify(fieldConfig.default, null, 2);
-        } else {
-            inputElement = document.createElement('input');
-            inputElement.type = 'text';
-            inputElement.value = fieldConfig.default;
-        }
-
-        inputElement.id = fieldName;
-        inputElement.name = fieldName;
-        inputElement.className = 'form-control';
-        inputElement.placeholder = fieldConfig.datatype === 'list' ? 
-            'Enter comma-separated values or leave empty' : 
-            `Enter ${fieldConfig.datatype} value or leave empty`;
-        
-        // Store datatype as data attribute
-        inputElement.dataset.datatype = fieldConfig.datatype;
-        
-        if (fieldConfig.required !== false) {
-            inputElement.required = true;
-        }
-
-        inputWrapper.appendChild(inputElement);
-
-        // Example and instruction text
-        const exampleText = document.createElement('small');
-        exampleText.className = 'form-text text-muted mb-1';
-        exampleText.textContent = `Example: ${fieldConfig.default}`;
-        inputWrapper.appendChild(exampleText);
-
-        // Add validation message container
-        const validationMessage = document.createElement('div');
-        validationMessage.className = 'invalid-feedback';
-        validationMessage.id = `${fieldName}-validation`;
-        inputWrapper.appendChild(validationMessage);
-
-        // Add datatype rules
-        const datatypeRules = document.createElement('small');
-        datatypeRules.className = 'form-text text-muted';
-        datatypeRules.textContent = getDataTypeRules(fieldConfig.datatype);
-        inputWrapper.appendChild(datatypeRules);
-
-        return inputWrapper;
-    }
-
-    const dynamicFieldsContainer = document.getElementById('dynamicFields');
-    dynamicFieldsContainer.innerHTML = '';
-
-    Object.entries(configData).forEach(([fieldName, fieldConfig]) => {
-        if (fieldConfig.show) {
-            dynamicFieldsContainer.appendChild(renderInput(fieldName, fieldConfig));
-        }
-    });
-
-    document.getElementById('configFormContainer').style.display = 'block';
-}
-
-// Function to get datatype rules
-function getDataTypeRules(datatype) {
-    const rules = {
-        'str': 'Enter text without quotes (e.g., hello world) or leave empty',
-        'list': 'Enter comma-separated values without quotes (e.g., value1,value2,value3) or leave empty',
-        'dict': 'Enter a valid JSON object or leave empty',
-        'bool': 'Enter true or false',
-        'int': 'Enter a whole number or leave empty',
-        'float': 'Enter a decimal number or leave empty'
-    };
-    return `Rules: ${rules[datatype] || 'Enter a valid value'}`;
-}
-
 // Function to validate input based on datatype
 function validateInput(input) {
     const value = input.value.trim();
     const datatype = input.dataset.datatype;
     const validationMessage = document.getElementById(`${input.name}-validation`);
 
-    // Allow empty values for all types except boolean
-    if (value === '' && datatype !== 'bool') {
-        input.classList.remove('is-invalid', 'is-valid');
-        validationMessage.style.display = 'none';
-        return true;
-    }
-
     try {
         switch (datatype) {
             case 'str':
+                // Allow empty string but not quotes
                 if (value.includes('"') || value.includes("'")) {
                     throw new Error('String should not contain quotes');
                 }
                 break;
                 
             case 'list':
-                if (value.includes('"') || value.includes("'") || value.includes('[') || value.includes(']')) {
+                // Allow empty string or valid comma-separated values
+                if (value && (value.includes('"') || value.includes("'") || value.includes('[') || value.includes(']'))) {
                     throw new Error('Enter comma-separated values without quotes or brackets');
                 }
                 break;
                 
             case 'dict':
+                // Allow empty string or valid JSON
                 if (value) {
                     JSON.parse(value);
                 }
@@ -125,12 +34,14 @@ function validateInput(input) {
                 break;
                 
             case 'int':
+                // Allow empty string or valid integer
                 if (value && !Number.isInteger(Number(value))) {
                     throw new Error('Value must be a whole number');
                 }
                 break;
                 
             case 'float':
+                // Allow empty string or valid number
                 if (value && isNaN(Number(value))) {
                     throw new Error('Value must be a number');
                 }
@@ -150,11 +61,24 @@ function validateInput(input) {
     }
 }
 
+// Function to get datatype rules
+function getDataTypeRules(datatype) {
+    const rules = {
+        'str': 'Enter text without quotes, or leave empty for empty string',
+        'list': 'Enter comma-separated values without quotes or brackets, or leave empty for empty list',
+        'dict': 'Enter a valid JSON object, or leave empty for empty object',
+        'bool': 'Enter true or false',
+        'int': 'Enter a whole number, or leave empty for null',
+        'float': 'Enter a decimal number, or leave empty for null'
+    };
+    return `Rules: ${rules[datatype] || 'Enter a valid value'}`;
+}
+
 // Function to parse value based on datatype
 function parseValue(value, datatype) {
     const trimmedValue = value.trim();
     
-    // Handle empty values
+    // Handle intentionally empty values
     if (trimmedValue === '') {
         switch (datatype) {
             case 'list':
@@ -167,7 +91,7 @@ function parseValue(value, datatype) {
             case 'str':
                 return '';
             case 'bool':
-                return false; // default value for boolean
+                return false;
             default:
                 return trimmedValue;
         }
@@ -189,81 +113,3 @@ function parseValue(value, datatype) {
             return trimmedValue;
     }
 }
-
-// Modify the form submission handler
-document.getElementById('configGenerationForm').addEventListener('submit', function(event) {
-    event.preventDefault();
-
-    const formElements = this.elements;
-    let isValid = true;
-    let firstInvalidInput = null;
-
-    // Validate all inputs
-    for (let element of formElements) {
-        if (element.name && element.name !== 'csrfmiddlewaretoken') {
-            if (!validateInput(element)) {
-                isValid = false;
-                if (!firstInvalidInput) {
-                    firstInvalidInput = element;
-                }
-            }
-        }
-    }
-
-    if (!isValid) {
-        firstInvalidInput.focus();
-        return;
-    }
-
-    // Prepare data for submission
-    const parsedData = {
-        config_name: document.getElementById('configDropdown').value
-    };
-
-    // Parse and add form data
-    for (let element of formElements) {
-        if (element.name && element.name !== 'csrfmiddlewaretoken') {
-            parsedData[element.name] = parseValue(
-                element.value.trim(),
-                element.dataset.datatype
-            );
-        }
-    }
-
-    // Show loading spinner
-    showFullScreenLoading("Generating config...");
-
-    // Submit the form
-    fetch(this.action, {
-        method: 'POST',
-        headers: {
-            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
-            'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(parsedData)
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.status === 'success') {
-            hideFullScreenLoading();
-            setTimeout(() => {
-                alert('Config generated successfully! \nRedirecting...');
-                window.location.reload();
-            }, 1000);
-        } else {
-            alert('Error: ' + data.message);
-            hideFullScreenLoading();
-        }
-    })
-    .catch(error => {
-        console.error('Error:', error);
-        hideFullScreenLoading();
-    });
-});
-
-// Add real-time validation
-document.getElementById('dynamicFields').addEventListener('input', function(event) {
-    if (event.target.name && event.target.name !== 'csrfmiddlewaretoken') {
-        validateInput(event.target);
-    }
-});
