@@ -14,11 +14,9 @@ function renderConfigurationForm(configData) {
 
         // Create input or textarea based on value type
         let inputElement;
-        if (fieldConfig.datatype === 'list' || fieldConfig.datatype === 'dict') {
+        if (fieldConfig.datatype === 'dict') {
             inputElement = document.createElement('textarea');
-            inputElement.value = fieldConfig.datatype === 'list' ? 
-                (Array.isArray(fieldConfig.default) ? fieldConfig.default.join(',') : '') :
-                JSON.stringify(fieldConfig.default, null, 2);
+            inputElement.value = JSON.stringify(fieldConfig.default, null, 2);
         } else {
             inputElement = document.createElement('input');
             inputElement.type = 'text';
@@ -29,8 +27,8 @@ function renderConfigurationForm(configData) {
         inputElement.name = fieldName;
         inputElement.className = 'form-control';
         inputElement.placeholder = fieldConfig.datatype === 'list' ? 
-            'Enter comma-separated values' : 
-            `Enter ${fieldConfig.datatype} value`;
+            'Enter comma-separated values or leave empty' : 
+            `Enter ${fieldConfig.datatype} value or leave empty`;
         
         // Store datatype as data attribute
         inputElement.dataset.datatype = fieldConfig.datatype;
@@ -44,23 +42,7 @@ function renderConfigurationForm(configData) {
         // Example and instruction text
         const exampleText = document.createElement('small');
         exampleText.className = 'form-text text-muted mb-1';
-        
-        let defaultValue = fieldConfig.default;
-        if (Array.isArray(defaultValue) && defaultValue.length > 3) {
-            defaultValue = defaultValue.slice(0, 3);
-            defaultValue = fieldConfig.datatype === 'list' ? defaultValue.join(',') : JSON.stringify(defaultValue);
-        } else if (typeof defaultValue === 'object' && defaultValue !== null) {
-            const keys = Object.keys(defaultValue);
-            if (keys.length > 3) {
-                defaultValue = keys.slice(0, 3).reduce((obj, key) => {
-                    obj[key] = defaultValue[key];
-                    return obj;
-                }, {});
-            }
-            defaultValue = JSON.stringify(defaultValue);
-        }
-
-        exampleText.textContent = `Example: ${defaultValue}`;
+        exampleText.textContent = `Example: ${fieldConfig.default}`;
         inputWrapper.appendChild(exampleText);
 
         // Add validation message container
@@ -93,12 +75,12 @@ function renderConfigurationForm(configData) {
 // Function to get datatype rules
 function getDataTypeRules(datatype) {
     const rules = {
-        'str': 'Enter text without quotes (e.g., hello world)',
-        'list': 'Enter comma-separated values without quotes (e.g., value1,value2,value3)',
-        'dict': 'Enter a valid JSON object',
+        'str': 'Enter text without quotes (e.g., hello world) or leave empty',
+        'list': 'Enter comma-separated values without quotes (e.g., value1,value2,value3) or leave empty',
+        'dict': 'Enter a valid JSON object or leave empty',
         'bool': 'Enter true or false',
-        'int': 'Enter a whole number',
-        'float': 'Enter a decimal number'
+        'int': 'Enter a whole number or leave empty',
+        'float': 'Enter a decimal number or leave empty'
     };
     return `Rules: ${rules[datatype] || 'Enter a valid value'}`;
 }
@@ -108,6 +90,13 @@ function validateInput(input) {
     const value = input.value.trim();
     const datatype = input.dataset.datatype;
     const validationMessage = document.getElementById(`${input.name}-validation`);
+
+    // Allow empty values for all types except boolean
+    if (value === '' && datatype !== 'bool') {
+        input.classList.remove('is-invalid', 'is-valid');
+        validationMessage.style.display = 'none';
+        return true;
+    }
 
     try {
         switch (datatype) {
@@ -121,15 +110,12 @@ function validateInput(input) {
                 if (value.includes('"') || value.includes("'") || value.includes('[') || value.includes(']')) {
                     throw new Error('Enter comma-separated values without quotes or brackets');
                 }
-                // Validate that it's properly comma-separated
-                const items = value.split(',').map(item => item.trim());
-                if (items.some(item => item === '')) {
-                    throw new Error('Invalid list format');
-                }
                 break;
                 
             case 'dict':
-                JSON.parse(value);
+                if (value) {
+                    JSON.parse(value);
+                }
                 break;
                 
             case 'bool':
@@ -139,13 +125,13 @@ function validateInput(input) {
                 break;
                 
             case 'int':
-                if (!Number.isInteger(Number(value))) {
+                if (value && !Number.isInteger(Number(value))) {
                     throw new Error('Value must be a whole number');
                 }
                 break;
                 
             case 'float':
-                if (isNaN(Number(value))) {
+                if (value && isNaN(Number(value))) {
                     throw new Error('Value must be a number');
                 }
                 break;
@@ -166,19 +152,41 @@ function validateInput(input) {
 
 // Function to parse value based on datatype
 function parseValue(value, datatype) {
+    const trimmedValue = value.trim();
+    
+    // Handle empty values
+    if (trimmedValue === '') {
+        switch (datatype) {
+            case 'list':
+                return [];
+            case 'dict':
+                return {};
+            case 'int':
+            case 'float':
+                return null;
+            case 'str':
+                return '';
+            case 'bool':
+                return false; // default value for boolean
+            default:
+                return trimmedValue;
+        }
+    }
+
+    // Parse non-empty values
     switch (datatype) {
         case 'list':
-            return value.split(',').map(item => item.trim());
+            return trimmedValue; // Return as is since it's already comma-separated
         case 'dict':
-            return JSON.parse(value);
+            return JSON.parse(trimmedValue);
         case 'bool':
-            return value.toLowerCase() === 'true';
+            return trimmedValue.toLowerCase() === 'true';
         case 'int':
-            return parseInt(value);
+            return parseInt(trimmedValue);
         case 'float':
-            return parseFloat(value);
+            return parseFloat(trimmedValue);
         default:
-            return value;
+            return trimmedValue;
     }
 }
 
