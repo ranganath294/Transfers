@@ -1,10 +1,9 @@
 function validateInput(input) {
     const value = input.value.trim();
     const datatype = input.dataset.datatype;
-    const validationMessage = document.getElementById(`${input.name}-validation`);
-
-    // If validation message element doesn't exist, create it
-    let messageElement = validationMessage;
+    
+    // Ensure validation message element exists
+    let messageElement = document.getElementById(`${input.name}-validation`);
     if (!messageElement) {
         messageElement = document.createElement('div');
         messageElement.className = 'invalid-feedback';
@@ -12,7 +11,26 @@ function validateInput(input) {
         input.parentNode.insertBefore(messageElement, input.nextSibling);
     }
 
-    // Check for intentionally empty value with quotes
+    // First check if input is required
+    const isRequired = input.hasAttribute('required');
+    
+    // Handle empty values
+    if (!value) {
+        if (isRequired) {
+            input.classList.add('is-invalid');
+            input.classList.remove('is-valid');
+            messageElement.textContent = 'This field is required. Use "" for empty value.';
+            messageElement.style.display = 'block';
+            return false;
+        } else {
+            input.classList.remove('is-invalid');
+            input.classList.add('is-valid');
+            messageElement.style.display = 'none';
+            return true;
+        }
+    }
+
+    // Handle explicit empty string case (""), treating it as a valid empty value
     if (value === '""') {
         input.classList.remove('is-invalid');
         input.classList.add('is-valid');
@@ -20,34 +38,32 @@ function validateInput(input) {
         return true;
     }
 
-    // Check if field is empty (not intentionally empty)
-    if (!value) {
-        input.classList.add('is-invalid');
-        input.classList.remove('is-valid');
-        messageElement.textContent = 'This field is required. Use "" for empty value.';
-        messageElement.style.display = 'block';
-        return false;
-    }
-
     try {
         switch (datatype) {
             case 'str':
-                if (value.includes('"') || value.includes("'")) {
-                    throw new Error('Quotes are only allowed as "" to indicate empty value');
+                // Allow empty string but not other quoted strings
+                if (value !== '""' && (value.includes('"') || value.includes("'"))) {
+                    throw new Error('String should not contain quotes unless using "" for empty string');
                 }
                 break;
                 
             case 'list':
-                if (value.includes('"') || value.includes("'") || value.includes('[') || value.includes(']')) {
+                // Allow empty list or comma-separated values
+                if (value !== '""' && (value.includes('"') || value.includes("'") || value.includes('[') || value.includes(']'))) {
                     throw new Error('Use comma-separated values without quotes/brackets, or "" for empty list');
                 }
                 break;
                 
             case 'dict':
-                if (value.includes('""')) {
+                // Allow empty object or valid JSON
+                if (value === '""') {
                     throw new Error('Use {} for empty object, not ""');
                 }
-                JSON.parse(value);
+                try {
+                    JSON.parse(value);
+                } catch (e) {
+                    throw new Error('Invalid JSON format. Use proper JSON object format or {}');
+                }
                 break;
                 
             case 'bool':
@@ -57,22 +73,28 @@ function validateInput(input) {
                 break;
                 
             case 'int':
-                if (!Number.isInteger(Number(value))) {
+                if (value !== '""' && !Number.isInteger(Number(value))) {
                     throw new Error('Value must be a whole number, or "" for null');
                 }
                 break;
                 
             case 'float':
-                if (isNaN(Number(value))) {
+                if (value !== '""' && isNaN(Number(value))) {
                     throw new Error('Value must be a number, or "" for null');
                 }
                 break;
+                
+            default:
+                // For unknown datatypes, accept any non-empty value
+                break;
         }
         
+        // If we get here, validation passed
         input.classList.remove('is-invalid');
         input.classList.add('is-valid');
         messageElement.style.display = 'none';
         return true;
+        
     } catch (error) {
         input.classList.remove('is-valid');
         input.classList.add('is-invalid');
