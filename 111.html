@@ -1,105 +1,889 @@
-function validateInput(input) {
-    const value = input.value.trim();
-    const datatype = input.dataset.datatype;
+{% extends "generate_config/base.html" %}
+{% load static %}
+
+{% block content %}
+
+<div class="container-fluid px-4 mt-5">
+    <h2 class="mb-4">Generate Configuration</h2>
     
-    // Ensure validation message element exists
-    let messageElement = document.getElementById(`${input.name}-validation`);
-    if (!messageElement) {
-        messageElement = document.createElement('div');
-        messageElement.className = 'invalid-feedback';
-        messageElement.id = `${input.name}-validation`;
-        input.parentNode.insertBefore(messageElement, input.nextSibling);
+    <div class="card shadow-sm mb-4">
+        <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+            <h5 class="card-title mb-0" >Select Configuration</h5>
+            <!-- <span class="badge bg-light text-primary">Configuration Manager</span> -->
+        </div>
+        <div class="card-body">
+            <form id="configSelectionForm" method="GET" action="{% url 'generate_config:generate_config' %}">
+                <div class="mb-4">
+                    <label for="configDropdown" class="form-label">Choose Existing Configuration</label>
+                    <select class="form-select optimized-select" id="configDropdown" name="config_type">
+                        <option value="">Select Configuration Type</option>
+                        {% for config in configs_list %}
+                        <option value="{{ config.name }}">{{ config.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="row g-2">
+                    <div class="col-12 col-md-6 mb-2">
+                        <button type="submit" id="showConfigBtn" class="btn btn-primary w-100">
+                            <i class="bi bi-arrow-right-circle me-2"></i>
+                            Show Configuration
+                        </button>
+                    </div>
+                    <div class="col-12 col-md-6 mb-2">
+                        <button type="button" id="newConfigBtn" class="btn btn-primary w-100">
+                            <i class="bi bi-plus-circle me-2"></i>
+                            Create a New Config
+                        </button>
+                    </div>
+                </div>
+            </form>
+
+            <!-- Add loading spinner -->
+            <div id="loadingSpinner" class="text-center mt-3" style="display: none;">
+                <div class="spinner-border text-primary" role="status">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
+                <p class="mt-2 text-primary">Loading configuration...</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="card shadow-sm mb-4">
+        <div class="card-body" id="configFormContainer" style="display: none;">
+            <form id="configGenerationForm" method="POST" action="{% url 'generate_config:generate_config' %}">
+                {% csrf_token %}
+                <div id="dynamicFields" class="row g-3"></div>
+                <input type="hidden" id="parsedData" name="parsedData">
+                <div class="mt-4">
+                    <button type="submit" class="btn btn-primary">Generate Config</button>
+                    <button type="reset" class="btn btn-secondary ms-2">Reset</button>
+                </div>
+            </form>
+        </div>
+    </div>
+    
+</div>
+
+<style>
+    /*
+    #loadingSpinner {
+        opacity: 0;
+        transition: opacity 0.3s ease-in-out;
+    }
+     */
+
+    /*
+    #loadingSpinner {
+        transition: display 0.3s ease-in-out;
+    }
+    */
+    
+    /*
+    #loadingSpinner.show {
+        opacity: 1;
+    }
+    
+    #configFormContainer {
+        transition: display 0.3s ease-in-out;
+    }
+    
+    .spinner-border {
+        width: 3rem;
+        height: 3rem;
+    }
+    */
+</style>
+
+<style>
+    /* Full-screen loading overlay */
+    #fullScreenLoader {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(0, 0, 0, 0.5); /* Semi-transparent background */
+        z-index: 9999; /* Ensure it's on top of everything */
+        display: flex;
+        justify-content: center;
+        align-items: center;
     }
 
-    // First check if input is required
-    const isRequired = input.hasAttribute('required');
+    #fullScreenLoader .spinner-container {
+        background-color: white;
+        padding: 2rem;
+        border-radius: 10px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    }
+
+    #fullScreenLoader .spinner-border {
+        width: 4rem;
+        height: 4rem;
+        border-width: 0.25em;
+    }
+
+    #fullScreenLoader .loading-text {
+        margin-top: 1rem;
+        color: #333;
+        font-weight: bold;
+    }
+</style>
+
+<style>
+    .required-label::after {
+        content: " *";
+        color: red;
+    }
+    .form-text.text-muted {
+        color: #6c757d !important;
+        word-wrap: break-word;
+        overflow-wrap: break-word;
+        white-space: normal;
+        width: 100%;
+        display: block;
+    }
+
+    /* Responsive Adjustments */
+    @media (max-width: 768px) {
+        .container-fluid {
+            padding-left: 10px !important;
+            padding-right: 10px !important;
+        }
+        
+        #dynamicFields .col-md-6 {
+            flex: 0 0 100%;
+            max-width: 100%;
+        }
+        
+        .btn {
+            margin-bottom: 10px;
+            width: 100%;
+        }
+        
+        .btn:not(:first-child) {
+            margin-left: 0 !important;
+        }
+        
+        h2 {
+            font-size: 1.5rem;
+        }
+        
+        .form-control {
+            font-size: 14px;
+        }
+        
+        .form-text.text-muted {
+            font-size: 12px;
+        }
+    }
+
+    /* Ensure textarea and inputs are consistent */
+    textarea.form-control, input.form-control {
+        min-height: 38px;
+    }
+</style>
+
+<style>
+    .optimized-select-wrapper {
+        position: relative;
+        width: 100%;
+    }
     
-    // Handle empty values
-    if (!value) {
-        if (isRequired) {
-            input.classList.add('is-invalid');
-            input.classList.remove('is-valid');
-            messageElement.textContent = 'This field is required. Use "" for empty value.';
-            messageElement.style.display = 'block';
-            return false;
-        } else {
+    .optimized-select-button {
+        width: 100%;
+        text-align: left;
+        cursor: pointer;
+    }
+    
+    .optimized-select-dropdown {
+        display: none;
+        position: absolute;
+        top: 100%;
+        left: 0;
+        right: 0;
+        background: white;
+        border: 1px solid #dee2e6;
+        border-radius: 0.375rem;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        z-index: 1000;
+        margin-top: 0.25rem;
+    }
+    
+    .optimized-select-search {
+        width: 100%;
+        padding: 0.5rem;
+        border-bottom: 1px solid #dee2e6;
+        border-radius: 0.375rem 0.375rem 0 0;
+    }
+    
+    .optimized-select-options {
+        overflow-y: auto;
+        position: relative;
+        border-radius: 0 0 0.375rem 0.375rem;
+    }
+    
+    .virtual-scroll-container {
+        position: relative;
+    }
+    
+    .optimized-select-option {
+        padding: 0.5rem 1rem;
+        cursor: pointer;
+        position: absolute;
+        width: 100%;
+        display: flex;
+        align-items: center;
+    }
+    
+    .optimized-select-option:hover {
+        background-color: #f8f9fa;
+    }
+    
+    .optimized-select-options::-webkit-scrollbar {
+        width: 6px;
+    }
+    
+    .optimized-select-options::-webkit-scrollbar-track {
+        background: #f1f1f1;
+        border-radius: 3px;
+    }
+    
+    .optimized-select-options::-webkit-scrollbar-thumb {
+        background: #888;
+        border-radius: 3px;
+    }
+    
+    .optimized-select-options::-webkit-scrollbar-thumb:hover {
+        background: #555;
+    }
+</style>
+
+<script>
+    // Custom select with virtual scrolling and search that can be reused
+    class OptimizedSelect {
+        constructor(originalSelect, options = {}) {
+            if(originalSelect.dataset.initialized){
+                return;
+            }
+
+          this.originalSelect = originalSelect;
+          this.options = options;
+          this.itemHeight = 35;
+          this.visibleItems = 8;
+          this.allOptions = Array.from(originalSelect.options).map(opt => ({
+            value: opt.value,
+            label: opt.text
+          }));
+          this.isOpen = false;
+
+          originalSelect.dataset.initialized = 'true';
+      
+          this.init();
+        }
+      
+        init() {
+          // Create wrapper
+          this.wrapper = document.createElement('div');
+          this.wrapper.className = 'optimized-select-wrapper';
+          this.wrapper.id = `${this.elementId}-wrapper`;
+      
+          // Create custom select button
+          this.button = document.createElement('button');
+          this.button.className = 'optimized-select-button form-select';
+          this.button.id = `${this.elementId}-button`;
+          this.button.type = 'button'; // Prevent form submission
+          this.button.textContent = this.originalSelect.selectedOptions[0]?.text || 'Choose...';
+      
+          // Create dropdown container
+          this.dropdown = document.createElement('div');
+          this.dropdown.className = 'optimized-select-dropdown';
+          this.dropdown.id = `${this.elementId}-dropdown`;
+      
+          // Create search input
+          this.searchInput = document.createElement('input');
+          this.searchInput.className = 'optimized-select-search form-control';
+          this.searchInput.id = `${this.elementId}-search`;
+          this.searchInput.placeholder = 'Search...';
+      
+          // Create options container
+          this.optionsContainer = document.createElement('div');
+          this.optionsContainer.className = 'optimized-select-options';
+          this.optionsContainer.id = `${this.elementId}-options`;
+          this.optionsContainer.style.height = `${this.itemHeight * this.visibleItems}px`;
+      
+          // Create virtual scroll container
+          this.virtualScroll = document.createElement('div');
+          this.virtualScroll.className = 'virtual-scroll-container';
+          this.virtualScroll.id = `${this.elementId}-virtual-scroll`;
+      
+          // Assemble the components
+          this.dropdown.appendChild(this.searchInput);
+          this.dropdown.appendChild(this.optionsContainer);
+          this.optionsContainer.appendChild(this.virtualScroll);
+          this.wrapper.appendChild(this.button);
+          this.wrapper.appendChild(this.dropdown);
+      
+          // Insert custom select after original
+          this.originalSelect.style.display = 'none';
+          this.originalSelect.parentNode.insertBefore(this.wrapper, this.originalSelect.nextSibling);
+      
+          this.addEventListeners();
+          this.filterAndRenderOptions();
+        }
+      
+        addEventListeners() {
+          // Toggle dropdown with improved handling
+          this.button.addEventListener('mousedown', (e) => {
+            e.preventDefault(); // Prevent focus issues
+            this.toggleDropdown();
+          });
+      
+          // Handle search
+          this.searchInput.addEventListener('input', () => {
+            this.filterAndRenderOptions();
+          });
+      
+          // Prevent search input from closing dropdown
+          this.searchInput.addEventListener('mousedown', (e) => {
+            e.stopPropagation();
+          });
+      
+          // Handle scroll
+          this.optionsContainer.addEventListener('scroll', () => {
+            this.renderVisibleOptions();
+          });
+      
+          // Close dropdown when clicking outside
+          document.addEventListener('mousedown', (e) => {
+            if (!this.wrapper.contains(e.target)) {
+              this.closeDropdown();
+            }
+          });
+      
+          // Prevent dropdown from closing when clicking inside
+          this.dropdown.addEventListener('mousedown', (e) => {
+            e.stopPropagation();
+          });
+        }
+      
+        toggleDropdown() {
+          if (this.isOpen) {
+            this.closeDropdown();
+          } else {
+            this.openDropdown();
+          }
+        }
+      
+        openDropdown() {
+          this.isOpen = true;
+          this.dropdown.style.display = 'block';
+          this.searchInput.focus();
+          this.filterAndRenderOptions();
+        }
+      
+        closeDropdown() {
+          this.isOpen = false;
+          this.dropdown.style.display = 'none';
+          this.searchInput.value = '';
+          this.filterAndRenderOptions();
+        }
+      
+        filterAndRenderOptions() {
+          const searchTerm = this.searchInput.value.toLowerCase();
+          this.filteredOptions = this.allOptions.filter(option => 
+            option.label.toLowerCase().includes(searchTerm)
+          );
+      
+          // Reset scroll position
+          this.optionsContainer.scrollTop = 0;
+          this.virtualScroll.style.height = `${this.filteredOptions.length * this.itemHeight}px`;
+          this.renderVisibleOptions();
+        }
+      
+        renderVisibleOptions() {
+          const scrollTop = this.optionsContainer.scrollTop;
+          const startIndex = Math.floor(scrollTop / this.itemHeight);
+          const endIndex = startIndex + this.visibleItems + 2;
+      
+          this.virtualScroll.innerHTML = '';
+      
+          this.filteredOptions.slice(startIndex, endIndex).forEach((option, index) => {
+            const optionEl = document.createElement('div');
+            optionEl.className = 'optimized-select-option';
+            optionEl.textContent = option.label;
+            optionEl.style.position = 'absolute';
+            optionEl.style.top = `${(startIndex + index) * this.itemHeight}px`;
+            optionEl.style.height = `${this.itemHeight}px`;
+      
+            optionEl.addEventListener('mousedown', (e) => {
+              e.preventDefault(); // Prevent focus issues
+              this.selectOption(option);
+            });
+      
+            this.virtualScroll.appendChild(optionEl);
+          });
+        }
+      
+        selectOption(option) {
+          // Update original select
+          this.originalSelect.value = option.value;
+          this.originalSelect.dispatchEvent(new Event('change'));
+      
+          // Update custom select
+          this.button.textContent = option.label;
+          this.closeDropdown();
+        }
+      }
+</script>
+
+<script>
+    // Function to render the configuration form
+    function renderConfigurationForm(configData) {
+        // Function to render input based on data type
+        function renderInput(fieldName, fieldConfig) {
+            const inputWrapper = document.createElement('div');
+            inputWrapper.className = 'col-md-6 mb-3';
+    
+            // Create label
+            const label = document.createElement('label');
+            label.htmlFor = fieldName;
+            label.className = `form-label ${fieldConfig.required !== false ? 'required-label' : ''}`;
+            label.textContent = `${fieldConfig.ui_displayed_name} ${fieldConfig.required !== false ? '(required)' : '(optional)'}`;
+            inputWrapper.appendChild(label);
+    
+            // Create input or textarea based on value type
+            let inputElement;
+            /*
+            if (Array.isArray(fieldConfig.default)) {
+                inputElement = document.createElement('textarea');
+                inputElement.value = JSON.stringify(fieldConfig.default, null, 2);
+            } else if (typeof fieldConfig.default === 'object' && fieldConfig.default !== null) {
+                inputElement = document.createElement('textarea');
+                inputElement.value = JSON.stringify(fieldConfig.default, null, 2);
+            } else {
+                inputElement = document.createElement('input');
+                inputElement.type = 'text';
+                inputElement.value = fieldConfig.default;
+            }
+            
+
+            if (fieldConfig.datatype === 'list' || fieldConfig.datatype === 'dict') {
+                inputElement = document.createElement('textarea');
+                inputElement.value = fieldConfig.datatype === 'list' ? 
+                    (fieldConfig.default) :
+                    JSON.stringify(fieldConfig.default, null, 2);
+            } else {
+                inputElement = document.createElement('input');
+                inputElement.type = 'text';
+                inputElement.value = fieldConfig.default;
+            }
+            */
+
+            if (fieldConfig.datatype === 'dict') {
+                inputElement = document.createElement('textarea');
+                inputElement.value = JSON.stringify(fieldConfig.default, null, 2);
+            } else {
+                inputElement = document.createElement('input');
+                inputElement.type = 'text';
+                inputElement.value = fieldConfig.default;
+            }
+    
+            inputElement.id = fieldName;
+            inputElement.name = fieldName;
+            inputElement.className = 'form-control';
+            // inputElement.placeholder = JSON.stringify(fieldConfig.default);
+            inputElement.placeholder = fieldConfig.datatype === 'dict' ? 'Enter JSON object or {}' : 'Enter value or "" for empty';
+            
+            // Store datatype as data attribute
+            inputElement.dataset.datatype = fieldConfig.datatype;
+                
+            if (fieldConfig.required !== false) {
+                inputElement.required = true;
+            }
+    
+            inputWrapper.appendChild(inputElement);
+    
+            // Example text
+            const exampleText = document.createElement('small');
+            exampleText.className = 'form-text text-muted';
+    
+            let defaultValue = fieldConfig.default;
+    
+            if (Array.isArray(defaultValue) && defaultValue.length > 3) {
+                defaultValue = defaultValue.slice(0, 3);
+                // defaultValue = JSON.stringify(defaultValue)
+                defaultValue = fieldConfig.datatype === 'list' ? defaultValue.join(',') : JSON.stringify(defaultValue);
+            } else if (typeof defaultValue === 'object' && defaultValue !== null) {
+                const keys = Object.keys(defaultValue);
+                if (keys.length > 3) {
+                    defaultValue = keys.slice(0, 3).reduce((obj, key) => {
+                        obj[key] = defaultValue[key];
+                        return obj;
+                    }, {});
+                }
+                defaultValue = JSON.stringify(defaultValue)
+            }
+    
+            // exampleText.textContent = `Example: ${defaultValue}`;
+            exampleText.textContent = "Example: " + defaultValue;
+            inputWrapper.appendChild(exampleText);
+
+            // Add validation message container
+            const validationMessage = document.createElement('div');
+            validationMessage.className = 'invalid-feedback';
+            validationMessage.id = `${fieldName}-validation`;
+            inputWrapper.appendChild(validationMessage);
+
+            // Add datatype rules
+            const datatypeRules = document.createElement('small');
+            datatypeRules.className = 'form-text text-muted';
+            datatypeRules.textContent = getDataTypeRules(fieldConfig.datatype);
+            inputWrapper.appendChild(datatypeRules);
+    
+            return inputWrapper;
+        }
+    
+        const dynamicFieldsContainer = document.getElementById('dynamicFields');
+        dynamicFieldsContainer.innerHTML = ''; // Clear existing fields
+    
+        // Render fields based on config data
+        Object.entries(configData).forEach(([fieldName, fieldConfig]) => {
+            if (fieldConfig.show) {
+                dynamicFieldsContainer.appendChild(renderInput(fieldName, fieldConfig));
+            }
+        });
+    
+        // Show the form container
+        document.getElementById('configFormContainer').style.display = 'block';
+    }
+
+    // Function to get datatype rules
+    function getDataTypeRules(datatype) {
+        const rules = {
+            'str': 'Enter text without quotes, or use "" for empty string',
+            'list': 'Enter comma-separated values without quotes/brackets, or use "" for empty list',
+            'dict': 'Enter a valid JSON object, use {} for empty object',
+            'bool': 'Enter true or false',
+            'int': 'Enter a whole number, or use "" for null',
+            'float': 'Enter a decimal number, or use "" for null'
+        };
+        return `Rules: ${rules[datatype] || 'Enter a valid value'}`;
+    }
+
+    // Function to validate input based on datatype
+    function validateInput(input) {
+        const value = input.value.trim();
+        const datatype = input.dataset.datatype;
+        const validationMessage = document.getElementById(`${input.name}-validation`);
+
+        // If validation message element doesn't exist, create it
+        let messageElement = validationMessage;
+        if (!messageElement) {
+            messageElement = document.createElement('div');
+            messageElement.className = 'invalid-feedback';
+            messageElement.id = `${input.name}-validation`;
+            input.parentNode.insertBefore(messageElement, input.nextSibling);
+        }
+
+        // Check for intentionally empty value with quotes
+        if (value === '""') {
             input.classList.remove('is-invalid');
             input.classList.add('is-valid');
-            messageElement.style.display = 'none';
+            validationMessage.style.display = 'none';
             return true;
         }
-    }
 
-    // Handle explicit empty string case (""), treating it as a valid empty value
-    if (value === '""') {
-        input.classList.remove('is-invalid');
-        input.classList.add('is-valid');
-        messageElement.style.display = 'none';
-        return true;
-    }
+        // Check if field is empty (not intentionally empty)
+        if (!value) {
+            input.classList.add('is-invalid');
+            input.classList.remove('is-valid');
+            validationMessage.textContent = 'This field is required. Use "" for empty value.';
+            validationMessage.style.display = 'block';
+            return false;
+        }
 
-    try {
-        switch (datatype) {
-            case 'str':
-                // Allow empty string but not other quoted strings
-                if (value !== '""' && (value.includes('"') || value.includes("'"))) {
-                    throw new Error('String should not contain quotes unless using "" for empty string');
-                }
-                break;
-                
-            case 'list':
-                // Allow empty list or comma-separated values
-                if (value !== '""' && (value.includes('"') || value.includes("'") || value.includes('[') || value.includes(']'))) {
-                    throw new Error('Use comma-separated values without quotes/brackets, or "" for empty list');
-                }
-                break;
-                
-            case 'dict':
-                // Allow empty object or valid JSON
-                if (value === '""') {
-                    throw new Error('Use {} for empty object, not ""');
-                }
-                try {
+        try {
+            switch (datatype) {
+                case 'str':
+                    if (value.includes('"') || value.includes("'")) {
+                        throw new Error('Quotes are only allowed as "" to indicate empty value');
+                    }
+                    break;
+                    
+                case 'list':
+                    if (value.includes('"') || value.includes("'") || value.includes('[') || value.includes(']')) {
+                        throw new Error('Use comma-separated values without quotes/brackets, or "" for empty list');
+                    }
+                    break;
+                    
+                case 'dict':
+                    if (value.includes('""')) {
+                        throw new Error('Use {} for empty object, not ""');
+                    }
                     JSON.parse(value);
-                } catch (e) {
-                    throw new Error('Invalid JSON format. Use proper JSON object format or {}');
-                }
-                break;
-                
+                    break;
+                    
+                case 'bool':
+                    if (!['true', 'false'].includes(value.toLowerCase())) {
+                        throw new Error('Value must be true or false');
+                    }
+                    break;
+                    
+                case 'int':
+                    if (!Number.isInteger(Number(value))) {
+                        throw new Error('Value must be a whole number, or "" for null');
+                    }
+                    break;
+                    
+                case 'float':
+                    if (isNaN(Number(value))) {
+                        throw new Error('Value must be a number, or "" for null');
+                    }
+                    break;
+            }
+            
+            input.classList.remove('is-invalid');
+            input.classList.add('is-valid');
+            validationMessage.style.display = 'none';
+            return true;
+        } catch (error) {
+            input.classList.remove('is-valid');
+            input.classList.add('is-invalid');
+            validationMessage.textContent = error.message;
+            validationMessage.style.display = 'block';
+            return false;
+        }
+    }
+
+    // Function to parse value based on datatype
+    function parseValue(value, datatype) {
+        const trimmedValue = value.trim();
+    
+        // Handle intentionally empty values marked with ""
+        if (trimmedValue === '""') {
+            switch (datatype) {
+                case 'list':
+                    return [];
+                case 'dict':
+                    return {};
+                case 'int':
+                case 'float':
+                    return null;
+                case 'str':
+                    return '';
+                default:
+                    return '';
+            }
+        }
+
+        // Parse non-empty values
+        switch (datatype) {
+            case 'list':
+                return trimmedValue === '' ? [] : trimmedValue;
+            case 'dict':
+                return trimmedValue === '{}' ? {} : JSON.parse(trimmedValue);
             case 'bool':
-                if (!['true', 'false'].includes(value.toLowerCase())) {
-                    throw new Error('Value must be true or false');
-                }
-                break;
-                
+                return trimmedValue.toLowerCase() === 'true';
             case 'int':
-                if (value !== '""' && !Number.isInteger(Number(value))) {
-                    throw new Error('Value must be a whole number, or "" for null');
-                }
-                break;
-                
+                return parseInt(trimmedValue);
             case 'float':
-                if (value !== '""' && isNaN(Number(value))) {
-                    throw new Error('Value must be a number, or "" for null');
-                }
-                break;
-                
+                return parseFloat(trimmedValue);
             default:
-                // For unknown datatypes, accept any non-empty value
-                break;
+                return trimmedValue;
+        }
+    }
+    
+    /*
+    const loadingSpinner = document.getElementById('loadingSpinner');
+    const configFormContainer = document.getElementById('configFormContainer');
+
+    // Function to show loading state
+    function showLoading() {
+        loadingSpinner.style.display = 'block';
+        // Force a reflow to ensure the transition works
+        loadingSpinner.offsetHeight;
+        loadingSpinner.classList.add('show');
+        configFormContainer.style.display = 'none';
+    }
+
+    // Function to hide loading state
+    function hideLoading() {
+        loadingSpinner.classList.remove('show');
+        setTimeout(() => {
+            loadingSpinner.style.display = 'none';
+        }, 300); // Match the transition duration
+    }
+    */
+
+    // Function to show full-screen loading
+    function showFullScreenLoading(text) {
+        // Create full-screen loader if it doesn't exist
+        if (!document.getElementById('fullScreenLoader')) {
+            const loaderDiv = document.createElement('div');
+            loaderDiv.id = 'fullScreenLoader';
+            loaderDiv.innerHTML = `
+                <div class="spinner-container">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                    <div class="loading-text">Processing...</div>
+                </div>
+            `;
+            document.body.appendChild(loaderDiv);
         }
         
-        // If we get here, validation passed
-        input.classList.remove('is-invalid');
-        input.classList.add('is-valid');
-        messageElement.style.display = 'none';
-        return true;
+        // Show the loader
+        const fullScreenLoader = document.getElementById('fullScreenLoader');
+        fullScreenLoader.style.display = 'flex';
         
-    } catch (error) {
-        input.classList.remove('is-valid');
-        input.classList.add('is-invalid');
-        messageElement.textContent = error.message;
-        messageElement.style.display = 'block';
-        return false;
+        // Update the loading text
+        const loadingText = fullScreenLoader.querySelector('.loading-text');
+        loadingText.textContent = text || 'Processing...';
     }
-}
+
+    // Function to hide full-screen loading
+    function hideFullScreenLoading() {
+        const fullScreenLoader = document.getElementById('fullScreenLoader');
+        if (fullScreenLoader) {
+            fullScreenLoader.style.display = 'none';
+        }
+    }
+    
+    document.addEventListener('DOMContentLoaded', function() {
+        // Initialize optimized selects for all elements with the 'optimized-select' class
+        document.querySelectorAll('.optimized-select:not([data-modal])').forEach(select => {
+            new OptimizedSelect(select);
+        });
+        // Handle configuration selection form submission
+        document.getElementById('configSelectionForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            handleConfigSubmission(false);
+        });
+        
+        document.getElementById('newConfigBtn').addEventListener('click', function(e) {
+            handleConfigSubmission(true);
+        });
+
+        function handleConfigSubmission(isNewConfig) {
+            const configDropdown = document.getElementById('configDropdown');
+            const configType = isNewConfig ? 'default' : configDropdown.value;
+        
+            // Validate dropdown for existing config scenario
+            if (!isNewConfig && configType === '') {
+                alert('Please select a configuration type.');
+                return;
+            }
+        
+            const url = `{% url 'generate_config:generate_config' %}?config_type=${configType}`;
+        
+            // Show full-screen loading
+            showFullScreenLoading("Loading Configuration...");
+        
+            fetch(url)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.error) {
+                        alert(data.error);
+                        hideFullScreenLoading();
+                    } else {
+                        renderConfigurationForm(data);
+                        hideFullScreenLoading();
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    alert('An error occurred while fetching the configuration.');
+                    hideFullScreenLoading();
+                });
+        }
+
+        // Add real-time validation
+        document.getElementById('dynamicFields').addEventListener('input', function(event) {
+            if (event.target.name && event.target.name !== 'csrfmiddlewaretoken') {
+                validateInput(event.target);
+            }
+        });
+    
+        // Handle configuration generation form submission
+        document.getElementById('configGenerationForm').addEventListener('submit', function(event) {
+            event.preventDefault();
+    
+            const formElements = this.elements;
+            let isValid = true;
+            let firstInvalidInput = null;
+            console.log(formElements)
+
+            // Validate all inputs
+            for (let element of formElements) {
+                if (element.name && element.name !== 'csrfmiddlewaretoken') {
+                    console.log(element.name)
+                    if (!validateInput(element)) {
+                        isValid = false;
+                        if (!firstInvalidInput) {
+                            firstInvalidInput = element;
+                        }
+                    }
+                }
+            }
+
+            if (!isValid) {
+                firstInvalidInput.focus();
+                return;
+            }
+
+            // Prepare data for submission
+            const parsedData = {
+                config_name: document.getElementById('configDropdown').value
+            };
+
+            // Parse and add form data
+            for (let element of formElements) {
+                if (element.name && element.name !== 'csrfmiddlewaretoken') {
+                    parsedData[element.name] = parseValue(
+                        element.value.trim(),
+                        element.dataset.datatype
+                    );
+                }
+            }
+
+            // Show full-screen loading
+            showFullScreenLoading("Generating config...");
+            
+            // Submit via AJAX
+            fetch(this.action, {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(parsedData)
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    hideFullScreenLoading();
+
+                    setTimeout(() => {
+                        alert('Config generated successfully! \nRedirecting...');
+                    }, 1000);
+                    
+                    // Hard refresh the page
+                    window.location.reload();
+                } else {
+                    alert('Error: ' + data.message);
+                }
+                hideFullScreenLoading();
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                hideFullScreenLoading();
+            });
+        });
+    });
+</script>
+
+{% endblock %}
