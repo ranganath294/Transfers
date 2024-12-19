@@ -4,27 +4,42 @@ function validateInput(input) {
     const datatype = input.dataset.datatype;
     const validationMessage = document.getElementById(`${input.name}-validation`);
 
+    // Check for intentionally empty value with quotes
+    if (value === '""') {
+        input.classList.remove('is-invalid');
+        input.classList.add('is-valid');
+        validationMessage.style.display = 'none';
+        return true;
+    }
+
+    // Check if field is empty (not intentionally empty)
+    if (!value) {
+        input.classList.add('is-invalid');
+        input.classList.remove('is-valid');
+        validationMessage.textContent = 'This field is required. Use "" for empty value.';
+        validationMessage.style.display = 'block';
+        return false;
+    }
+
     try {
         switch (datatype) {
             case 'str':
-                // Allow empty string but not quotes
                 if (value.includes('"') || value.includes("'")) {
-                    throw new Error('String should not contain quotes');
+                    throw new Error('Quotes are only allowed as "" to indicate empty value');
                 }
                 break;
                 
             case 'list':
-                // Allow empty string or valid comma-separated values
-                if (value && (value.includes('"') || value.includes("'") || value.includes('[') || value.includes(']'))) {
-                    throw new Error('Enter comma-separated values without quotes or brackets');
+                if (value.includes('"') || value.includes("'") || value.includes('[') || value.includes(']')) {
+                    throw new Error('Use comma-separated values without quotes/brackets, or "" for empty list');
                 }
                 break;
                 
             case 'dict':
-                // Allow empty string or valid JSON
-                if (value) {
-                    JSON.parse(value);
+                if (value.includes('""')) {
+                    throw new Error('Use {} for empty object, not ""');
                 }
+                JSON.parse(value);
                 break;
                 
             case 'bool':
@@ -34,16 +49,14 @@ function validateInput(input) {
                 break;
                 
             case 'int':
-                // Allow empty string or valid integer
-                if (value && !Number.isInteger(Number(value))) {
-                    throw new Error('Value must be a whole number');
+                if (!Number.isInteger(Number(value))) {
+                    throw new Error('Value must be a whole number, or "" for null');
                 }
                 break;
                 
             case 'float':
-                // Allow empty string or valid number
-                if (value && isNaN(Number(value))) {
-                    throw new Error('Value must be a number');
+                if (isNaN(Number(value))) {
+                    throw new Error('Value must be a number, or "" for null');
                 }
                 break;
         }
@@ -64,12 +77,12 @@ function validateInput(input) {
 // Function to get datatype rules
 function getDataTypeRules(datatype) {
     const rules = {
-        'str': 'Enter text without quotes, or leave empty for empty string',
-        'list': 'Enter comma-separated values without quotes or brackets, or leave empty for empty list',
-        'dict': 'Enter a valid JSON object, or leave empty for empty object',
+        'str': 'Enter text without quotes, or use "" for empty string',
+        'list': 'Enter comma-separated values without quotes/brackets, or use "" for empty list',
+        'dict': 'Enter a valid JSON object, use {} for empty object',
         'bool': 'Enter true or false',
-        'int': 'Enter a whole number, or leave empty for null',
-        'float': 'Enter a decimal number, or leave empty for null'
+        'int': 'Enter a whole number, or use "" for null',
+        'float': 'Enter a decimal number, or use "" for null'
     };
     return `Rules: ${rules[datatype] || 'Enter a valid value'}`;
 }
@@ -78,8 +91,8 @@ function getDataTypeRules(datatype) {
 function parseValue(value, datatype) {
     const trimmedValue = value.trim();
     
-    // Handle intentionally empty values
-    if (trimmedValue === '') {
+    // Handle intentionally empty values marked with ""
+    if (trimmedValue === '""') {
         switch (datatype) {
             case 'list':
                 return [];
@@ -90,19 +103,17 @@ function parseValue(value, datatype) {
                 return null;
             case 'str':
                 return '';
-            case 'bool':
-                return false;
             default:
-                return trimmedValue;
+                return '';
         }
     }
 
     // Parse non-empty values
     switch (datatype) {
         case 'list':
-            return trimmedValue; // Return as is since it's already comma-separated
+            return trimmedValue === '' ? [] : trimmedValue;
         case 'dict':
-            return JSON.parse(trimmedValue);
+            return trimmedValue === '{}' ? {} : JSON.parse(trimmedValue);
         case 'bool':
             return trimmedValue.toLowerCase() === 'true';
         case 'int':
@@ -112,4 +123,15 @@ function parseValue(value, datatype) {
         default:
             return trimmedValue;
     }
+}
+
+// Add placeholder text to show empty value format
+function renderInput(fieldName, fieldConfig) {
+    // ... (previous code remains the same)
+
+    inputElement.placeholder = fieldConfig.datatype === 'dict' ? 
+        'Enter JSON object or {}' : 
+        'Enter value or "" for empty';
+
+    // ... (rest of the function remains the same)
 }
