@@ -1,1 +1,94 @@
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+{% extends "generate_config/base.html" %}
+{% load static %}
+
+<!-- [Previous content remains the same until the card-body div] -->
+
+<div class="card shadow-sm mb-4">
+    <div class="card-body" id="configFormContainer" style="display: none;">
+        <!-- Add alert for default configuration -->
+        <div id="defaultConfigAlert" class="alert alert-info alert-dismissible fade show mb-4" role="alert" style="display: none;">
+            <div class="d-flex align-items-center">
+                <i class="bi bi-info-circle-fill me-2"></i>
+                <div>
+                    <strong>Default Configuration Loaded</strong>
+                    <p class="mb-0">These are default values. Please review and modify each field according to your requirements before generating the configuration.</p>
+                </div>
+            </div>
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+        
+        <form id="configGenerationForm" method="POST" action="{% url 'generate_config:generate_config' %}">
+            {% csrf_token %}
+            <div id="dynamicFields" class="row g-3"></div>
+            <input type="hidden" id="parsedData" name="parsedData">
+            <div class="mt-4">
+                <button type="submit" class="btn btn-primary">Generate Config</button>
+                <button type="reset" class="btn btn-secondary ms-2">Reset</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- [Previous scripts remain the same until handleConfigSubmission function] -->
+
+<script>
+    function handleConfigSubmission(isNewConfig) {
+        const configDropdown = document.getElementById('configDropdown');
+        const configType = isNewConfig ? 'default' : configDropdown.value;
+    
+        // Validate dropdown for existing config scenario
+        if (!isNewConfig && configType === '') {
+            alert('Please select a configuration type.');
+            return;
+        }
+    
+        const url = `{% url 'generate_config:generate_config' %}?config_type=${configType}`;
+    
+        showFullScreenLoading("Loading Configuration...");
+    
+        fetch(url)
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'error') {
+                    let alertMessage = 'An error occurred while fetching the configuration.\n';
+                    if (data.error_msg) {
+                        alertMessage += data.error_msg;
+                    }
+                    alert(alertMessage);
+                    hideFullScreenLoading();
+                } else {
+                    renderConfigurationForm(data);
+                    
+                    // Show default config alert if it's a new config
+                    const defaultConfigAlert = document.getElementById('defaultConfigAlert');
+                    if (isNewConfig) {
+                        defaultConfigAlert.style.display = 'block';
+                        
+                        // Scroll to the alert
+                        defaultConfigAlert.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    } else {
+                        defaultConfigAlert.style.display = 'none';
+                    }
+                    
+                    hideFullScreenLoading();
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                hideFullScreenLoading();
+            });
+    }
+    
+    document.addEventListener('DOMContentLoaded', function() {
+        // Initialize Bootstrap alert dismiss functionality
+        document.querySelectorAll('.alert .btn-close').forEach(button => {
+            button.addEventListener('click', function() {
+                this.closest('.alert').style.display = 'none';
+            });
+        });
+        
+        // [Rest of the event listeners remain the same]
+    });
+</script>
+
+{% endblock %}
