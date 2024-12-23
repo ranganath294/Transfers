@@ -1,21 +1,22 @@
-exampleText.textContent = "Example: " + defaultValue;
-            if (fieldName != "si_image_list"){
-                inputWrapper.appendChild(exampleText);
-            }
-            else{
-                const infoMessage = document.createElement('small');
-                infoMessage.className = 'form-text text-muted';
-                
-                // Create the info icon
-                const infoIcon = document.createElement('i');
-                infoIcon.className = 'bi bi-info-circle-fill';
-                infoIcon.style.marginRight = '5px'; // Add some space between the icon and the text
-
-                // Set the text content
-                const textNode = document.createTextNode('Get the image list from cnssboard');
-
-                // Append the icon and text to the info message
-                infoMessage.appendChild(infoIcon);
-                infoMessage.appendChild(textNode);
-                inputWrapper.appendChild(infoMessage);
-            }
+if (fieldName === "si_image_list") {
+    const infoMessage = document.createElement('small');
+    infoMessage.className = 'form-text text-muted d-flex align-items-center';
+    
+    // Create the info icon
+    const infoIcon = document.createElement('i');
+    infoIcon.className = 'bi bi-info-circle-fill me-2';
+    
+    // Create text content
+    const textSpan = document.createElement('span');
+    textSpan.textContent = 'Get the image list from cnssboard';
+    
+    // Append icon and text to message
+    infoMessage.appendChild(infoIcon);
+    infoMessage.appendChild(textSpan);
+    inputWrapper.appendChild(infoMessage);
+} else {
+    const exampleText = document.createElement('small');
+    exampleText.className = 'form-text text-muted';
+    exampleText.textContent = "Example: " + defaultValue;
+    inputWrapper.appendChild(exampleText);
+}
