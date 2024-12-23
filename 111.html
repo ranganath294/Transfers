@@ -64,35 +64,6 @@
     
 </div>
 
-<style>
-    /*
-    #loadingSpinner {
-        opacity: 0;
-        transition: opacity 0.3s ease-in-out;
-    }
-     */
-
-    /*
-    #loadingSpinner {
-        transition: display 0.3s ease-in-out;
-    }
-    */
-    
-    /*
-    #loadingSpinner.show {
-        opacity: 1;
-    }
-    
-    #configFormContainer {
-        transition: display 0.3s ease-in-out;
-    }
-    
-    .spinner-border {
-        width: 3rem;
-        height: 3rem;
-    }
-    */
-</style>
 
 <style>
     /* Full-screen loading overlay */
@@ -457,31 +428,7 @@
     
             // Create input or textarea based on value type
             let inputElement;
-            /*
-            if (Array.isArray(fieldConfig.default)) {
-                inputElement = document.createElement('textarea');
-                inputElement.value = JSON.stringify(fieldConfig.default, null, 2);
-            } else if (typeof fieldConfig.default === 'object' && fieldConfig.default !== null) {
-                inputElement = document.createElement('textarea');
-                inputElement.value = JSON.stringify(fieldConfig.default, null, 2);
-            } else {
-                inputElement = document.createElement('input');
-                inputElement.type = 'text';
-                inputElement.value = fieldConfig.default;
-            }
             
-
-            if (fieldConfig.datatype === 'list' || fieldConfig.datatype === 'dict') {
-                inputElement = document.createElement('textarea');
-                inputElement.value = fieldConfig.datatype === 'list' ? 
-                    (fieldConfig.default) :
-                    JSON.stringify(fieldConfig.default, null, 2);
-            } else {
-                inputElement = document.createElement('input');
-                inputElement.type = 'text';
-                inputElement.value = fieldConfig.default;
-            }
-            */
 
             if (fieldConfig.datatype === 'dict') {
                 inputElement = document.createElement('textarea');
