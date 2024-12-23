@@ -1,176 +1,21 @@
-{% extends "generate_config/base.html" %}
-{% load static %}
-
-{% block content %}
-
-<div class="container-fluid px-4 mt-5">
-    <h2 class="mb-4">Generate Configuration</h2>
-    
-    <div class="card shadow-sm mb-4">
-        <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
-            <h5 class="card-title mb-0" >Select Configuration</h5>
-        </div>
-        <div class="card-body">
-            <form id="configSelectionForm" method="GET" action="{% url 'generate_config:generate_config' %}">
-                <div class="mb-4">
-                    <label for="configDropdown" class="form-label">Choose Existing Configuration</label>
-                    <select class="form-select optimized-select" id="configDropdown" name="config_type">
-                        <option value="">Select Configuration Type</option>
-                        {% for config in configs_list %}
-                        <option value="{{ config.name }}">{{ config.name }}</option>
-                        {% endfor %}
-                    </select>
-                </div>
-                <div class="row g-2">
-                    <div class="col-12 col-md-6 mb-2">
-                        <button type="submit" id="showConfigBtn" class="btn btn-primary w-100">
-                            <i class="bi bi-arrow-right-circle me-2"></i>
-                            Load existing config
-                        </button>
-                    </div>
-                    <div class="col-12 col-md-6 mb-2">
-                        <button type="button" id="newConfigBtn" class="btn btn-primary w-100">
-                            <i class="bi bi-plus-circle me-2"></i>
-                            Create a new config
-                        </button>
-                    </div>
-                </div>
-            </form>
-
-            <div id="loadingSpinner" class="text-center mt-3" style="display: none;">
-                <div class="spinner-border text-primary" role="status">
-                    <span class="visually-hidden">Loading...</span>
-                </div>
-                <p class="mt-2 text-primary">Loading configuration...</p>
-            </div>
-        </div>
-    </div>
-
-    <div class="card shadow-sm mb-4">
-        <div class="card-body" id="configFormContainer" style="display: none;">
-            <form id="configGenerationForm" method="POST" action="{% url 'generate_config:generate_config' %}">
-                {% csrf_token %}
-                <div id="dynamicFields" class="row g-3"></div>
-                <input type="hidden" id="parsedData" name="parsedData">
-                <div class="mt-4">
-                    <button type="submit" class="btn btn-primary">Generate Config</button>
-                    <button type="reset" class="btn btn-secondary ms-2">Reset</button>
-                </div>
-            </form>
-        </div>
-    </div>
-</div>
-
-<!-- [Previous styles remain unchanged] -->
-
-<script>
-    // [Previous OptimizedSelect class and other functions remain unchanged]
-
-    document.addEventListener('DOMContentLoaded', function() {
-        // Initialize optimized selects
-        document.querySelectorAll('.optimized-select:not([data-modal])').forEach(select => {
-            new OptimizedSelect(select);
-        });
-
-        // Handle configuration selection form submission
-        document.getElementById('configSelectionForm').addEventListener('submit', function(e) {
-            e.preventDefault();
-            handleConfigSubmission(false);
-        });
-        
-        // Handle new config button click
-        document.getElementById('newConfigBtn').addEventListener('click', function(e) {
-            // Reset the dropdown both visually and in value
-            const configDropdown = document.getElementById('configDropdown');
-            configDropdown.value = ''; // Reset the actual select element
-            
-            // Reset the OptimizedSelect custom button text
-            const customButton = document.querySelector('.optimized-select-button');
-            if (customButton) {
-                customButton.textContent = 'Select Configuration Type';
+exampleText.textContent = "Example: " + defaultValue;
+            if (fieldName != "si_image_list"){
+                inputWrapper.appendChild(exampleText);
             }
-            
-            handleConfigSubmission(true);
-        });
+            else{
+                const infoMessage = document.createElement('small');
+                infoMessage.className = 'form-text text-muted';
+                
+                // Create the info icon
+                const infoIcon = document.createElement('i');
+                infoIcon.className = 'bi bi-info-circle-fill';
+                infoIcon.style.marginRight = '5px'; // Add some space between the icon and the text
 
-        function handleConfigSubmission(isNewConfig) {
-            const configDropdown = document.getElementById('configDropdown');
-            const configType = isNewConfig ? 'default' : configDropdown.value;
-        
-            // Validate dropdown for existing config scenario
-            if (!isNewConfig && configType === '') {
-                alert('Please select a configuration type.');
-                return;
+                // Set the text content
+                const textNode = document.createTextNode('Get the image list from cnssboard');
+
+                // Append the icon and text to the info message
+                infoMessage.appendChild(infoIcon);
+                infoMessage.appendChild(textNode);
+                inputWrapper.appendChild(infoMessage);
             }
-        
-            const url = `{% url 'generate_config:generate_config' %}?config_type=${configType}`;
-        
-            showFullScreenLoading("Loading Configuration...");
-        
-            fetch(url)
-                .then(response => response.json())
-                .then(data => {
-                    if (data.status === 'error') {
-                        let alertMessage = 'An error occurred while fetching the configuration.\n';
-                        if (data.error_msg) {
-                            alertMessage += data.error_msg;
-                        }
-                        alert(alertMessage);
-                        hideFullScreenLoading();
-                    } else {
-                        renderConfigurationForm(data);
-                        hideFullScreenLoading();
-                    }
-                })
-                .catch(error => {
-                    console.error('Error:', error);
-                });
-        }
-
-        // Handle real-time validation
-        document.getElementById('dynamicFields').addEventListener('input', function(event) {
-            if (event.target.name && event.target.name !== 'csrfmiddlewaretoken') {
-                validateInput(event.target);
-            }
-        });
-    
-        // Handle configuration generation form submission
-        document.getElementById('configGenerationForm').addEventListener('submit', function(event) {
-            const parsedData = handleFormSubmission(event);
-            if(!parsedData) return;
-            
-            // Get the current dropdown value for config_name
-            parsedData.config_name = document.getElementById('configDropdown').value || 'default';
-            
-            showFullScreenLoading("Generating config...");
-            
-            fetch(this.action, {
-                method: 'POST',
-                headers: {
-                    'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify(parsedData)
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.status === 'success') {
-                    hideFullScreenLoading();
-                    setTimeout(() => {
-                        alert('Config generated successfully! \nRedirecting...');
-                        window.location.reload();
-                    }, 1000);
-                } else {
-                    alert('Error: ' + data.error_msg);
-                    hideFullScreenLoading();
-                }
-            })
-            .catch(error => {
-                console.error('Error:', error);
-                hideFullScreenLoading();
-            });
-        });
-    });
-</script>
-
-{% endblock %}
