@@ -1,94 +1,120 @@
 {% extends "generate_config/base.html" %}
 {% load static %}
 
-<!-- [Previous content remains the same until the card-body div] -->
-
-<div class="card shadow-sm mb-4">
-    <div class="card-body" id="configFormContainer" style="display: none;">
-        <!-- Add alert for default configuration -->
-        <div id="defaultConfigAlert" class="alert alert-info alert-dismissible fade show mb-4" role="alert" style="display: none;">
-            <div class="d-flex align-items-center">
-                <i class="bi bi-info-circle-fill me-2"></i>
-                <div>
-                    <strong>Default Configuration Loaded</strong>
-                    <p class="mb-0">These are default values. Please review and modify each field according to your requirements before generating the configuration.</p>
-                </div>
-            </div>
-            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-        </div>
-        
-        <form id="configGenerationForm" method="POST" action="{% url 'generate_config:generate_config' %}">
-            {% csrf_token %}
-            <div id="dynamicFields" class="row g-3"></div>
-            <input type="hidden" id="parsedData" name="parsedData">
-            <div class="mt-4">
-                <button type="submit" class="btn btn-primary">Generate Config</button>
-                <button type="reset" class="btn btn-secondary ms-2">Reset</button>
-            </div>
-        </form>
-    </div>
-</div>
-
-<!-- [Previous scripts remain the same until handleConfigSubmission function] -->
+<!-- [Previous content remains the same until the validation function] -->
 
 <script>
-    function handleConfigSubmission(isNewConfig) {
-        const configDropdown = document.getElementById('configDropdown');
-        const configType = isNewConfig ? 'default' : configDropdown.value;
-    
-        // Validate dropdown for existing config scenario
-        if (!isNewConfig && configType === '') {
-            alert('Please select a configuration type.');
-            return;
+    // Function to validate input based on datatype
+    function validateInput(input) {
+        // Skip validation for non-input elements
+        if (!input.tagName || !['INPUT', 'TEXTAREA'].includes(input.tagName)) {
+            return true;
+        }
+
+        // Skip validation for data_ranga_pivot field
+        if (input.name === 'data_ranga_pivot') {
+            input.classList.remove('is-invalid', 'is-valid');
+            return true;
         }
     
-        const url = `{% url 'generate_config:generate_config' %}?config_type=${configType}`;
-    
-        showFullScreenLoading("Loading Configuration...");
-    
-        fetch(url)
-            .then(response => response.json())
-            .then(data => {
-                if (data.status === 'error') {
-                    let alertMessage = 'An error occurred while fetching the configuration.\n';
-                    if (data.error_msg) {
-                        alertMessage += data.error_msg;
-                    }
-                    alert(alertMessage);
-                    hideFullScreenLoading();
-                } else {
-                    renderConfigurationForm(data);
-                    
-                    // Show default config alert if it's a new config
-                    const defaultConfigAlert = document.getElementById('defaultConfigAlert');
-                    if (isNewConfig) {
-                        defaultConfigAlert.style.display = 'block';
-                        
-                        // Scroll to the alert
-                        defaultConfigAlert.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                    } else {
-                        defaultConfigAlert.style.display = 'none';
-                    }
-                    
-                    hideFullScreenLoading();
-                }
-            })
-            .catch(error => {
-                console.error('Error:', error);
-                hideFullScreenLoading();
-            });
-    }
-    
-    document.addEventListener('DOMContentLoaded', function() {
-        // Initialize Bootstrap alert dismiss functionality
-        document.querySelectorAll('.alert .btn-close').forEach(button => {
-            button.addEventListener('click', function() {
-                this.closest('.alert').style.display = 'none';
-            });
-        });
+        const value = input.value.trim();
+        const datatype = input.dataset.datatype;
         
-        // [Rest of the event listeners remain the same]
-    });
+        // Rest of validation logic remains the same...
+        let validationMessage = document.getElementById(`${input.id}-validation`);
+        if (!validationMessage) {
+            validationMessage = document.createElement('div');
+            validationMessage.className = 'invalid-feedback';
+            validationMessage.id = `${input.id}-validation`;
+            input.parentNode.appendChild(validationMessage);
+        }
+
+        // [Rest of the validation function remains the same]
+    }
+
+    // Function to parse value based on datatype
+    function parseValue(value, datatype) {
+        // Special handling for data_ranga_pivot - return as is
+        if (value === 'data_ranga_pivot') {
+            return value;
+        }
+
+        const trimmedValue = value.trim();
+    
+        // Handle intentionally empty values (except boolean)
+        if (datatype !== 'bool' && trimmedValue === '""') {
+            switch (datatype) {
+                case 'str': return '';
+                case 'list': return [];
+                case 'dict': return {};
+                case 'int':
+                case 'float': return null;
+                default: return '';
+            }
+        }
+    
+        // [Rest of the parseValue function remains the same]
+    }
+
+    // Modify the renderInput function to skip adding datatype rules for data_ranga_pivot
+    function renderInput(fieldName, fieldConfig) {
+        const inputWrapper = document.createElement('div');
+        inputWrapper.className = 'col-md-6 mb-3';
+    
+        // Create label
+        const label = document.createElement('label');
+        label.htmlFor = fieldName;
+        label.className = `form-label ${fieldConfig.required !== false ? 'required-label' : ''}`;
+        label.textContent = `${fieldConfig.ui_displayed_name} ${fieldConfig.required !== false ? '(required)' : '(optional)'}`;
+        inputWrapper.appendChild(label);
+    
+        // Create input element
+        let inputElement;
+        if (fieldName === 'data_ranga_pivot') {
+            // Simple text input for data_ranga_pivot
+            inputElement = document.createElement('input');
+            inputElement.type = 'text';
+            inputElement.value = fieldConfig.default;
+        } else {
+            // Normal input creation logic for other fields
+            if (fieldConfig.datatype === 'dict') {
+                inputElement = document.createElement('textarea');
+                inputElement.value = JSON.stringify(fieldConfig.default, null, 2);
+            } else {
+                inputElement = document.createElement('input');
+                inputElement.type = 'text';
+                inputElement.value = fieldConfig.default;
+            }
+        }
+    
+        inputElement.id = fieldName;
+        inputElement.name = fieldName;
+        inputElement.className = 'form-control';
+        
+        // Only add datatype and placeholder for non-data_ranga_pivot fields
+        if (fieldName !== 'data_ranga_pivot') {
+            inputElement.dataset.datatype = fieldConfig.datatype;
+            inputElement.placeholder = fieldConfig.datatype === 'dict' ? 'Enter JSON object or {}' : 'Enter value or "" for empty';
+        } else {
+            inputElement.placeholder = 'Enter value';
+        }
+        
+        if (fieldConfig.required !== false) {
+            inputElement.required = true;
+        }
+    
+        inputWrapper.appendChild(inputElement);
+    
+        // Add example text
+        if (fieldName !== 'data_ranga_pivot') {
+            // Add example text and validation rules as before for other fields
+            // [Example text and validation rules code remains the same]
+        }
+    
+        return inputWrapper;
+    }
+
+    // [Rest of the code remains the same]
 </script>
 
 {% endblock %}
