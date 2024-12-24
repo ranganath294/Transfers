@@ -53,15 +53,37 @@
         </div>
     </div>
 
-    <!-- Rest of the existing HTML code remains the same -->
-    <!-- ... -->
+    <div class="card shadow-sm mb-4">
+        <div class="card-body" id="configFormContainer" style="display: none;">
+            <!-- Modified alert with unique IDs -->
+            <div id="configAlertContainer" class="alert alert-info alert-dismissible fade show mb-4" role="alert" style="display: none;">
+                <div class="d-flex align-items-center">
+                    <i class="bi bi-info-circle-fill me-2"></i>
+                    <div>
+                        <strong id="configAlertTitle"></strong>
+                        <p class="mb-0" id="configAlertMessage"></p>
+                    </div>
+                </div>
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
 
+            <form id="configGenerationForm" method="POST" action="{% url 'generate_config:generate_config' %}">
+                {% csrf_token %}
+                <div id="dynamicFields" class="row g-3"></div>
+                <input type="hidden" id="parsedData" name="parsedData">
+                <div class="mt-4">
+                    <button type="submit" class="btn btn-primary">Generate Config</button>
+                    <button type="reset" class="btn btn-secondary ms-2">Reset</button>
+                </div>
+            </form>
+        </div>
+    </div>
 </div>
 
-<!-- Add this to your existing script section -->
+<!-- Update the script section -->
 <script>
     document.addEventListener('DOMContentLoaded', function() {
-        // ... (keep existing DOMContentLoaded code)
+        // ... (keep existing initialization code)
 
         // Add handler for the new "New from existing" button
         document.getElementById('newFromExistingBtn').addEventListener('click', function(e) {
@@ -76,7 +98,7 @@
             handleConfigSubmission(true, true);
         });
 
-        // Modify the handleConfigSubmission function to handle the new parameter
+        // Modified handleConfigSubmission function with unique ID references
         function handleConfigSubmission(isNewConfig, loadExisting = false) {
             const configDropdown = document.getElementById('configDropdown');
             let configType;
@@ -126,23 +148,24 @@
                     } else {
                         renderConfigurationForm(data);
 
-                        // Show default config alert if it's a new config
-                        const defaultConfigAlert = document.getElementById('defaultConfigAlert');
+                        // Show and update alert using unique IDs
+                        const alertContainer = document.getElementById('configAlertContainer');
+                        const alertTitle = document.getElementById('configAlertTitle');
+                        const alertMessage = document.getElementById('configAlertMessage');
+
                         if (isNewConfig) {
-                            defaultConfigAlert.style.display = 'block';
                             if (loadExisting) {
-                                defaultConfigAlert.querySelector('strong').textContent = 'Configuration Loaded from Existing';
-                                defaultConfigAlert.querySelector('p').textContent = 
-                                    'Values have been loaded from the selected configuration. You can modify these values to create a new configuration.';
+                                alertTitle.textContent = 'Configuration Loaded from Existing';
+                                alertMessage.textContent = 'Values have been loaded from the selected configuration. You can modify these values to create a new configuration.';
                             } else {
-                                defaultConfigAlert.querySelector('strong').textContent = 'Default Configuration Loaded';
-                                defaultConfigAlert.querySelector('p').textContent = 
-                                    'These are default values. Please review and modify each field according to your requirements before generating the configuration.';
+                                alertTitle.textContent = 'Default Configuration Loaded';
+                                alertMessage.textContent = 'These are default values. Please review and modify each field according to your requirements before generating the configuration.';
                             }
+                            alertContainer.style.display = 'block';
                             // Scroll to the alert
-                            defaultConfigAlert.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                            alertContainer.scrollIntoView({ behavior: 'smooth', block: 'start' });
                         } else {
-                            defaultConfigAlert.style.display = 'none';
+                            alertContainer.style.display = 'none';
                         }
 
                         hideFullScreenLoading();
