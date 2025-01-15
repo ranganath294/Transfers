@@ -2,14 +2,9 @@
 from django.shortcuts import render
 import pandas as pd
 from datetime import datetime
-import json
-from django.core.serializers.json import DjangoJSONEncoder
 
-def prepare_table_data(all_tc_df, phase_dates_df):
+def prepare_table_data(all_tc_df, phases, phase_dates_df):
     table_data = []
-    
-    # Get available phases dynamically from the data
-    phases = sorted(all_tc_df['Test Phase'].unique().tolist())
     
     def calculate_phase_metrics(df, phase):
         metrics = df[df['Test Phase'] == phase].groupby(['SP Name', 'Test Team'])['Result'].agg({
@@ -32,11 +27,9 @@ def prepare_table_data(all_tc_df, phase_dates_df):
         team_groups = sp_group.groupby('Test Team')
         
         for team_name, team_group in team_groups:
-            # Get phases available for this specific team
-            team_phases = sorted(team_group['Test Phase'].unique().tolist())
             team_phase_data = []
             
-            for phase in team_phases:
+            for phase in phases:
                 phase_metrics = phase_data[phase]
                 metrics = phase_metrics[
                     (phase_metrics['SP Name'] == sp_name) & 
@@ -55,38 +48,37 @@ def prepare_table_data(all_tc_df, phase_dates_df):
                     if pd.notna(date_value):
                         phase_date = date_value.strftime('%m-%d-%Y')
                 
-                if metrics:  # Only add phases that have actual data
-                    phase_info = {
-                        'phase': phase,
-                        'date': phase_date,
-                        'metrics': metrics[0]
+                phase_info = {
+                    'phase': phase,
+                    'date': phase_date,
+                    'metrics': metrics[0] if metrics else {
+                        'coverage': 0,
+                        'passed': 0,
+                        'failed': 0,
+                        'blocked': 0
                     }
-                    team_phase_data.append(phase_info)
+                }
+                team_phase_data.append(phase_info)
             
-            if team_phase_data:  # Only add teams that have phase data
-                sp_teams.append({
-                    'team_name': team_name,
-                    'phases': team_phase_data
-                })
-        
-        if sp_teams:  # Only add SPs that have teams with data
-            table_data.append({
-                'sp_name': sp_name,
-                'teams': sp_teams
+            sp_teams.append({
+                'team_name': team_name,
+                'phases': team_phase_data
             })
+        
+        table_data.append({
+            'sp_name': sp_name,
+            'teams': sp_teams
+        })
     
-    return table_data, phases
+    return table_data
 
 def active_sps_view(request):
     # Your existing data loading code here
-    # ...
+    phases = ["ES", "FC", "CS", "PI", "SIT"]  # Fixed phases
     
-    table_data, phases = prepare_table_data(all_tc_df, phase_dates_df)
-    # Convert the data to JSON-safe format
-    table_data_json = json.dumps(table_data, cls=DjangoJSONEncoder)
-    
+    table_data = prepare_table_data(all_tc_df, phases, phase_dates_df)
     context = {
-        'table_data_json': table_data_json,
+        'table_data': table_data,
         'phases': phases
     }
     return render(request, 'active_sps.html', context)
@@ -173,7 +165,7 @@ def active_sps_view(request):
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    const tableData = JSON.parse('{{ table_data_json|safe }}');
+    const tableData = {{ table_data|safe }};
     const tableBody = document.getElementById('tableBody');
     
     function formatPercent(value) {
@@ -188,41 +180,15 @@ document.addEventListener('DOMContentLoaded', function() {
             </td>
         `;
     }
-
-    // Debug logging
-    console.log('Table data:', tableData);
-    
-    if (!Array.isArray(tableData)) {
-        console.error('Table data is not an array:', tableData);
-        return;
-    }
     
     tableData.forEach(spData => {
-        if (!spData || !spData.teams || !Array.isArray(spData.teams)) {
-            console.error('Invalid SP data:', spData);
-            return;
-        }
-
         let firstSpRow = true;
-        let totalSpRows = spData.teams.reduce((sum, team) => {
-            return sum + (team.phases ? team.phases.length : 0);
-        }, 0);
+        let totalSpRows = spData.teams.length * 5;  // 5 fixed phases
         
         spData.teams.forEach(team => {
-            if (!team || !team.phases || !Array.isArray(team.phases)) {
-                console.error('Invalid team data:', team);
-                return;
-            }
-
             let firstTeamRow = true;
-            let teamRowspan = team.phases.length;
             
             team.phases.forEach((phase, phaseIndex) => {
-                if (!phase || !phase.metrics) {
-                    console.error('Invalid phase data:', phase);
-                    return;
-                }
-
                 let row = document.createElement('tr');
                 row.className = 'phase-row';
                 row.setAttribute('data-team', team.team_name);
@@ -241,7 +207,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 
                 if (firstTeamRow) {
                     let teamCell = document.createElement('td');
-                    teamCell.rowSpan = teamRowspan;
+                    teamCell.rowSpan = 5;  // 5 fixed phases
                     teamCell.textContent = team.team_name;
                     row.appendChild(teamCell);
                     firstTeamRow = false;
