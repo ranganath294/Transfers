@@ -1,269 +1,131 @@
-def create_acive_sp_reliability_table(phases, phase_dates_df):
-    # Function to calculate the coverage, pass, and fail counts and percentages
-    def calculate_coverage_pass_fail(df, phase):
-        phase_df = df[df['Test Phase'] == phase]
-        coverage_pass_fail = (phase_df.groupby(['SP Name', 'Test Team'])['Result']
-                            .apply(lambda x: (# len(x) - (x == 'Untested').sum(), 
-                                                # (x == 'Passed').sum(), 
-                                                # (x == 'Failed').sum(), 
-                                                # (x == 'Blocked').sum(), 
-                                                (x == 'Passed').sum() / len(x) * 100 + (x == 'Failed').sum() / len(x) * 100, 
-                                                (x == 'Passed').sum() / len(x) * 100 if len(x) > 0 else 0, 
-                                                (x == 'Failed').sum() / len(x) * 100 if len(x) > 0 else 0,
-                                                (x == 'Blocked').sum() / len(x) * 100 if len(x) > 0 else 0))
-                            .reset_index(name=f'{phase} Cov/Pass/Fail'))
-        return coverage_pass_fail
+{% extends 'base.html' %}
+{% block content %}
+<div class="container-fluid">
+    <div class="card">
+        <div class="card-body">
+            <div class="table-responsive">
+                <table id="activeSpsTable" class="table table-bordered table-hover">
+                    <thead class="thead-light">
+                        <tr>
+                            <th>SP Name</th>
+                            <th>Test Team</th>
+                            <th>Phase</th>
+                            <th>Date</th>
+                            <th>Coverage %</th>
+                            <th>Pass %</th>
+                            <th>Fail %</th>
+                            <th>Block %</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tableBody">
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
 
-    es_data = calculate_coverage_pass_fail(all_tc_df, 'ES')
-    fc_data = calculate_coverage_pass_fail(all_tc_df, 'FC')
-    cs_data = calculate_coverage_pass_fail(all_tc_df, 'CS')
-    mainline_regression_data = calculate_coverage_pass_fail(all_tc_df, 'Mainline_Regression')
-    post_cs_data = calculate_coverage_pass_fail(all_tc_df, 'Post-CS')
+<style>
+.table th {
+    background-color: #f8f9fa;
+    position: sticky;
+    top: 0;
+    z-index: 1;
+}
 
-    # Merge the results
-    merged_df = pd.merge(es_data, fc_data, on=['SP Name', 'Test Team'], how='outer')
-    merged_df = pd.merge(merged_df, cs_data, on=['SP Name', 'Test Team'], how='outer')
-    merged_df = pd.merge(merged_df, mainline_regression_data, on=['SP Name', 'Test Team'], how='outer')
-    merged_df = pd.merge(merged_df, post_cs_data, on=['SP Name', 'Test Team'], how='outer')
+.tooltip-cell {
+    position: relative;
+}
 
-    # Add date columns to merged_df
-    date_columns = phase_dates_df[['FirstCustomerSP', 'ES', 'FC', 'CS']].rename(columns={
-        'FirstCustomerSP': 'SP Name',
-        'ES': 'ES_Date',
-        'FC': 'FC_Date',
-        'CS': 'CS_Date'
-    })
-    merged_df = pd.merge(merged_df, date_columns, on='SP Name', how='left')
+.custom-tooltip {
+    visibility: hidden;
+    position: absolute;
+    z-index: 1000;
+    background-color: rgba(0, 0, 0, 0.8);
+    color: white;
+    padding: 5px 10px;
+    border-radius: 4px;
+    font-size: 12px;
+    bottom: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    white-space: nowrap;
+}
 
-    # Create a new DataFrame to handle the display of SP Name in a merged manner
-    display_df = merged_df.copy()
-    # display_df.to_csv('000_display_df.csv')
+.tooltip-cell:hover .custom-tooltip {
+    visibility: visible;
+}
 
-    # Convert the DataFrame to HTML and add custom CSS for vertical text alignment and column width
-    html_table_with_css = """
-    <style>
-        :root {
-            --header-bg-color: var(--background-color, #f2f2f2);
-            --header-text-color: var(--text-color, black);
-        }
-        table {
-            width: 100%;
-            border-collapse: collapse;
-        }
-        th, td {
-            border: 1px solid black;
-            padding: 8px;
-            text-align: left;
-            position: relative;
-        }
-        th {
-            background-color: var(--header-bg-color);
-            color: var(--header-text-color);
-        }
-        td.vertical-text {
-            vertical-align: middle;
-        }
-        td.sp-name, th.sp-name {
-            width: 15%; /* Adjust the width as needed */
-        }
-        td.test-team, th.test-team {
-            width: 15%; /* Adjust the width as needed */
-        }
-        .tooltip {
-            visibility: hidden;
-            background-color: black;
-            color: #fff;
-            text-align: center;
-            border-radius: 5px;
-            padding: 5px;
-            position: absolute;
-            z-index: 1;
-            bottom: 100%;
-            left: 50%;
-            margin-left: -60px;
-            opacity: 0;
-            transition: opacity 0.3s;
-        }
-        td:hover .tooltip {
-            visibility: visible;
-            opacity: 1;
-        }
-    </style>
-    <table>
-        <thead>
-            <tr>
-                <th class="sp-name">SP Name</th>
-                <th class="test-team">Test Team</th>
-                <th>Phase</th>
-                <th>Date</th>
-                <th>Cov %</th>
-                <th>Pass %</th>
-                <th>Fail %</th>
-                <th>Block %</th>
-            </tr>
-        </thead>
-        <tbody>
-    """
+.metric-cell {
+    cursor: default;
+}
 
-    sp_execution_data_page_url = "SP_Execution_Data"
+.phase-row:nth-child(odd) {
+    background-color: rgba(0, 0, 0, 0.02);
+}
+</style>
 
-    for name, group in display_df.groupby('SP Name'):
-        first_row_sp = True
-        for i, row in group.iterrows():
-            first_row_team = True
-            for phase in phases:
-                if pd.isna(row[f'{phase} Cov/Pass/Fail']):
-                    # total, cov, pas, fai, block, cov_perc, pas_perc, fai_perc, block_perc = "NA", "NA", "NA", "NA", "NA", "NA", "NA", "NA", "NA"
-                    cov_perc, pas_perc, fai_perc, block_perc = "NA", "NA", "NA", "NA"
-                    if name in phase_dates_df['FirstCustomerSP'].values and phase in ["ES", "CS", "FC"]:
-                        dates_row = phase_dates_df[phase_dates_df['FirstCustomerSP'] == name]
-                        phase_date = dates_row[phase].values[0]
-                        if pd.notna(phase_date) and phase_date != "":
-                            phase_date = pd.to_datetime(phase_date).strftime('%m-%d-%Y') 
-                            cov_perc, pas_perc, fai_perc, block_perc = "0", "0", "0", "0"
-                        else: 
-                            phase_date = "NA"
-                    else:
-                        phase_date = "NA"
-                    
-                    # phase_date = ""
-                else:
-                    # total = len(all_tc_df[(all_tc_df['SP Name'] == name) & (all_tc_df['Test Team'] == row['Test Team']) & (all_tc_df['Test Phase'] == phase)])
-                    # cov, pas, fai, block, cov_perc, pas_perc, fai_perc, block_perc = row[f'{phase} Cov/Pass/Fail']
-                    cov_perc, pas_perc, fai_perc, block_perc = row[f'{phase} Cov/Pass/Fail']
-                    phase_date = row.get(f'{phase}_Date', "")
-                    if pd.notna(phase_date) and phase_date != "":
-                        phase_date = pd.to_datetime(phase_date).strftime('%m-%d-%Y')
-                    else:
-                        # Percentages Available but date not available
-                        phase_date = "NA"
-                
-                
-                # Format the values correctly
-                cov_perc_str = f"{cov_perc:.2f}" if isinstance(cov_perc, float) else cov_perc
-                pas_perc_str = f"{pas_perc:.1f}" if isinstance(pas_perc, float) else pas_perc
-                fai_perc_str = f"{fai_perc:.1f}" if isinstance(fai_perc, float) else fai_perc
-                block_perc_str = f"{block_perc:.1f}" if isinstance(block_perc, float) else block_perc
-                
-                # tooltip_text_total = f"{name} {row['Test Team']} {phase} Total {total}"
-                # tooltip_text_cov = f"{name} {row['Test Team']} {phase} Covered {cov}"
-                # tooltip_text_pas = f"{name} {row['Test Team']} {phase} Passed {pas}"
-                # tooltip_text_fai = f"{name} {row['Test Team']} {phase} Failed {fai}"
-                # tooltip_text_block = f"{name} {row['Test Team']} {phase} Blocked {block}"
-                tooltip_text_cov_perc = f"{name} {row['Test Team']} {phase} Coverage {cov_perc_str} %"
-                tooltip_text_pas_perc = f"{name} {row['Test Team']} {phase} Pass {pas_perc_str} %"
-                tooltip_text_fai_perc = f"{name} {row['Test Team']} {phase} Fail {fai_perc_str} %"
-                tooltip_text_block_perc = f"{name} {row['Test Team']} {phase} Block {block_perc_str} %"
-                
-                # if first_row_sp:
-                #     html_table_with_css += f"<tr><td class='sp-name' rowspan='{len(group) * len(phases)}'><a href='{sp_execution_data_page_url}?sp={name}' target='_blank'>{name}</a></td><td class='test-team' rowspan='{len(phases)}'>{row['Test Team']}</td><td>{phase}</td><td>{phase_date}</td><td>{total}<span class='tooltip'>{tooltip_text_total}</span></td><td>{cov}<span class='tooltip'>{tooltip_text_cov}</span></td><td>{pas}<span class='tooltip'>{tooltip_text_pas}</span></td><td>{fai}<span class='tooltip'>{tooltip_text_fai}</span></td><td>{block}<span class='tooltip'>{tooltip_text_block}</span></td><td>{cov_perc_str}<span class='tooltip'>{tooltip_text_cov_perc}</span></td><td>{pas_perc_str}<span class='tooltip'>{tooltip_text_pas_perc}</span></td><td>{fai_perc_str}<span class='tooltip'>{tooltip_text_fai_perc}</span></td><td>{block_perc_str}<span class='tooltip'>{tooltip_text_block_perc}</span></td></tr>"
-                #     first_row_sp = False
-                #     first_row_team = False
-                # elif first_row_team:
-                #     html_table_with_css += f"<tr><td class='test-team' rowspan='{len(phases)}'>{row['Test Team']}</td><td>{phase}</td><td>{phase_date}</td><td>{total}<span class='tooltip'>{tooltip_text_total}</span></td><td>{cov}<span class='tooltip'>{tooltip_text_cov}</span></td><td>{pas}<span class='tooltip'>{tooltip_text_pas}</span></td><td>{fai}<span class='tooltip'>{tooltip_text_fai}</span></td><td>{block}<span class='tooltip'>{tooltip_text_block}</span></td><td>{cov_perc_str}<span class='tooltip'>{tooltip_text_cov_perc}</span></td><td>{pas_perc_str}<span class='tooltip'>{tooltip_text_pas_perc}</span></td><td>{fai_perc_str}<span class='tooltip'>{tooltip_text_fai_perc}</span></td><td>{block_perc_str}<span class='tooltip'>{tooltip_text_block_perc}</span></td></tr>"
-                #     first_row_team = False
-                # else:
-                #     html_table_with_css += f"<tr><td>{phase}</td><td>{phase_date}</td><td>{total}<span class='tooltip'>{tooltip_text_total}</span></td><td>{cov}<span class='tooltip'>{tooltip_text_cov}</span></td><td>{pas}<span class='tooltip'>{tooltip_text_pas}</span></td><td>{fai}<span class='tooltip'>{tooltip_text_fai}</span></td><td>{block}<span class='tooltip'>{tooltip_text_block}</span></td><td>{cov_perc_str}<span class='tooltip'>{tooltip_text_cov_perc}</span></td><td>{pas_perc_str}<span class='tooltip'>{tooltip_text_pas_perc}</span></td><td>{fai_perc_str}<span class='tooltip'>{tooltip_text_fai_perc}</span></td><td>{block_perc_str}<span class='tooltip'>{tooltip_text_block_perc}</span></td></tr>"
-                
-                if first_row_sp:
-                    html_table_with_css += f"<tr><td class='sp-name' rowspan='{len(group) * len(phases)}'><a href='{sp_execution_data_page_url}?sp={name}' target='_blank'>{name}</a></td><td class='test-team' rowspan='{len(phases)}'>{row['Test Team']}</td><td>{phase}</td><td>{phase_date}</td><td>{cov_perc_str}<span class='tooltip'>{tooltip_text_cov_perc}</span></td><td>{pas_perc_str}<span class='tooltip'>{tooltip_text_pas_perc}</span></td><td>{fai_perc_str}<span class='tooltip'>{tooltip_text_fai_perc}</span></td><td>{block_perc_str}<span class='tooltip'>{tooltip_text_block_perc}</span></td></tr>"
-                    first_row_sp = False
-                    first_row_team = False
-                elif first_row_team:
-                    html_table_with_css += f"<tr><td class='test-team' rowspan='{len(phases)}'>{row['Test Team']}</td><td>{phase}</td><td>{phase_date}</td><td>{cov_perc_str}<span class='tooltip'>{tooltip_text_cov_perc}</span></td><td>{pas_perc_str}<span class='tooltip'>{tooltip_text_pas_perc}</span></td><td>{fai_perc_str}<span class='tooltip'>{tooltip_text_fai_perc}</span></td><td>{block_perc_str}<span class='tooltip'>{tooltip_text_block_perc}</span></td></tr>"
-                    first_row_team = False
-                else:
-                    html_table_with_css += f"<tr><td>{phase}</td><td>{phase_date}</td><td>{cov_perc_str}<span class='tooltip'>{tooltip_text_cov_perc}</span></td><td>{pas_perc_str}<span class='tooltip'>{tooltip_text_pas_perc}</span></td><td>{fai_perc_str}<span class='tooltip'>{tooltip_text_fai_perc}</span></td><td>{block_perc_str}<span class='tooltip'>{tooltip_text_block_perc}</span></td></tr>"
-
-    html_table_with_css += """
-        </tbody>
-    </table>
-    """
-
-    st.markdown(html_table_with_css, unsafe_allow_html=True)
-
-
-team_options = ["All", "BT", "WLAN"]
-selected_team = st.selectbox("Select Team", team_options)
-
-phase_options = ["All", "ES", "FC", "CS", "Mainline_Regression", "Post-CS"]
-selected_phase = st.selectbox("Select Test Phase", phase_options)
-
-# Get list of Active SPs
-# csv_file_location = r'\\cbp-service\mcc_sns\github\sns_reports\ref\df_sp_si.csv'
-csv_file_location = r"C:\Users\slua_ba1d0d3d85b6\Documents\WLAN_CSTSPBOT3.0_StreamLit\df_sp_si.csv"
-
-# Read the CSV file
-phase_dates_df = pd.read_csv(csv_file_location)
-# Convert the 'CS', 'ES', and 'FC' columns to datetime format
-phase_dates_df['CS'] = pd.to_datetime(phase_dates_df['CS'], format='%m/%d/%Y')
-phase_dates_df['ES'] = pd.to_datetime(phase_dates_df['ES'], format='%m/%d/%Y')
-phase_dates_df['FC'] = pd.to_datetime(phase_dates_df['FC'], format='%m/%d/%Y')
-# Get the current date
-current_date = datetime.now()
-# Filter rows where 'CS' date is greater than the current date
-filtered_df = phase_dates_df[phase_dates_df['CS'] > current_date]
-# Get the 'FirstCustomerSP' column for these rows
-csv_sps = filtered_df['FirstCustomerSP']
-
-distinct_sps_query = prepare_query(QueryType.DISTINCT_SPS)
-df_sps = load_cst_bot_data(distinct_sps_query)
-db_sps = df_sps["SP Name"].tolist()
-
-sps = [sp for sp in csv_sps if sp in db_sps]
-
-# Print the result
-# print(sps)
-
-# Initialize an empty DataFrame to hold all test case results
-all_tc_df = pd.DataFrame()
-
-# List to track missing files
-missing_sps = []
-
-# Load test case results for all SPs
-for sp_name in sps:
-    sp_tc_results_file = f"ref\\{sp_name}_TC_results.csv"
-    if os.path.exists(sp_tc_results_file):
-        try:
-            tc_df = pd.read_csv(sp_tc_results_file, low_memory=False)
-            print(f"File read successfully for {sp_name}.")
-        except pd.errors.DtypeWarning as e:
-            print(f"DtypeWarning encountered for {sp_name}: {e}")
-    else:
-        print(f"File not found for {sp_name}, creating file: {sp_tc_results_file}")
-        query = prepare_query(QueryType.EXECUTION_RESULTS, sp_name)
-        tc_df = load_cst_bot_data(query)
-        missing_sps.append((sp_name, tc_df))
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const tableData = {{ table_data|safe }};
+    const tableBody = document.getElementById('tableBody');
     
-    def get_phase_date(row):
-        if row['Test Phase'] == 'ES':
-            date_value = phase_dates_df.loc[phase_dates_df['FirstCustomerSP'] == sp_name, 'ES'].values[0]
-        elif row['Test Phase'] == 'FC':
-            date_value = phase_dates_df.loc[phase_dates_df['FirstCustomerSP'] == sp_name, 'FC'].values[0]
-        elif row['Test Phase'] == 'CS':
-            date_value = phase_dates_df.loc[phase_dates_df['FirstCustomerSP'] == sp_name, 'CS'].values[0]
-        else:
-            date_value = None
+    function formatPercent(value) {
+        return typeof value === 'number' ? value.toFixed(1) : 'NA';
+    }
+    
+    function createTooltipCell(content, tooltipText) {
+        return `
+            <td class="tooltip-cell metric-cell">
+                ${content}
+                <span class="custom-tooltip">${tooltipText}</span>
+            </td>
+        `;
+    }
+    
+    tableData.forEach(spData => {
+        let firstRowInGroup = true;
+        let spRowspan = spData.phases.length;
         
-        return date_value if pd.notna(date_value) else None
-    
-    tc_df['Phase_Date'] = tc_df.apply(get_phase_date, axis=1)
-
-    # Apply filtering based on selected team and phase
-    if selected_team != "All":
-        tc_df = tc_df[tc_df['Test Team'] == selected_team]
-    if selected_phase != "All":
-        tc_df = tc_df[tc_df['Test Phase'] == selected_phase]
-    
-    all_tc_df = pd.concat([all_tc_df, tc_df], ignore_index=True)
-
-# mpp_obj = SpPlanning(all_tc_df, "CSTBot Dashboard")
-# all_tc_df.to_csv("000_all_tc_df.csv")
-
-if selected_phase == "All":
-    phases = ['ES', 'FC', 'CS', 'Mainline_Regression', 'Post-CS']
-else:
-    phases = [selected_phase]
-
-SpPlanning.create_acive_sp_reliability_table(phases, phase_dates_df)
+        spData.phases.forEach((phase, index) => {
+            let row = '<tr class="phase-row">';
+            
+            if (firstRowInGroup) {
+                row += `
+                    <td rowspan="${spRowspan}">
+                        <a href="/sp-execution-data?sp=${spData.sp_name}" target="_blank">
+                            ${spData.sp_name}
+                        </a>
+                    </td>
+                    <td rowspan="${spRowspan}">${spData.test_team}</td>
+                `;
+            }
+            
+            row += `
+                <td>${phase.phase}</td>
+                <td>${phase.date}</td>
+                ${createTooltipCell(
+                    formatPercent(phase.metrics.coverage),
+                    `${spData.sp_name} ${spData.test_team} ${phase.phase} Coverage ${formatPercent(phase.metrics.coverage)}%`
+                )}
+                ${createTooltipCell(
+                    formatPercent(phase.metrics.passed),
+                    `${spData.sp_name} ${spData.test_team} ${phase.phase} Pass ${formatPercent(phase.metrics.passed)}%`
+                )}
+                ${createTooltipCell(
+                    formatPercent(phase.metrics.failed),
+                    `${spData.sp_name} ${spData.test_team} ${phase.phase} Fail ${formatPercent(phase.metrics.failed)}%`
+                )}
+                ${createTooltipCell(
+                    formatPercent(phase.metrics.blocked),
+                    `${spData.sp_name} ${spData.test_team} ${phase.phase} Block ${formatPercent(phase.metrics.blocked)}%`
+                )}
+            </tr>`;
+            
+            tableBody.insertAdjacentHTML('beforeend', row);
+            firstRowInGroup = false;
+        });
+    });
+});
+</script>
+{% endblock %}
