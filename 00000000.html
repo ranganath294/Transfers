@@ -9,6 +9,7 @@
         .navbar {
             background: linear-gradient(to right, #003366, #004a94);
             padding: 0.5rem 1rem;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
         }
 
         .navbar-brand img {
@@ -23,6 +24,62 @@
             text-transform: uppercase;
             font-weight: 500;
             white-space: nowrap;
+            transition: all 0.3s ease;
+        }
+
+        /* Dropdown styling */
+        .dropdown-menu {
+            margin-top: 0;
+            border: none;
+            border-radius: 4px;
+            background: #f8f9fa;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.15);
+            padding: 0.5rem 0;
+            min-width: 200px;
+            animation: fadeIn 0.2s ease-in;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .dropdown-item {
+            padding: 0.7rem 1.5rem;
+            font-size: 14px;
+            color: #2c3e50;
+            position: relative;
+            transition: all 0.2s ease;
+        }
+
+        .dropdown-item:hover {
+            background: linear-gradient(to right, #e8f0fe, #f8f9fa);
+            color: #004a94;
+            padding-left: 2rem;
+        }
+
+        .dropdown-item::before {
+            content: '';
+            position: absolute;
+            left: 0.7rem;
+            top: 50%;
+            width: 0;
+            height: 2px;
+            background: #004a94;
+            transform: translateY(-50%);
+            transition: width 0.2s ease;
+            opacity: 0;
+        }
+
+        .dropdown-item:hover::before {
+            width: 0.5rem;
+            opacity: 1;
         }
 
         /* Hover effects for desktop */
@@ -33,23 +90,12 @@
 
             .nav-link:hover {
                 background-color: rgba(255, 255, 255, 0.1);
+                transform: translateY(-1px);
             }
-        }
-
-        .dropdown-menu {
-            margin-top: 0;
-            border-radius: 0;
-            border: none;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-        }
-
-        .dropdown-item {
-            padding: 0.5rem 1rem;
-            font-size: 14px;
-        }
-
-        .dropdown-item:hover {
-            background-color: #f8f9fa;
+            
+            .nav-item.dropdown:hover .nav-link {
+                background: rgba(255, 255, 255, 0.15);
+            }
         }
 
         /* Medium screen adjustments */
@@ -74,23 +120,33 @@
                 background-color: #003366;
                 max-height: 80vh;
                 overflow-y: auto;
+                border-radius: 0 0 8px 8px;
             }
             
             .nav-link {
                 padding: 0.75rem 1rem !important;
                 font-size: 14px;
+                border-left: 3px solid transparent;
+                transition: all 0.3s ease;
+            }
+            
+            .nav-link:hover {
+                border-left: 3px solid #fff;
+                background: rgba(255, 255, 255, 0.1);
             }
             
             .dropdown-menu {
-                background-color: rgba(255, 255, 255, 0.05);
+                background-color: rgba(248, 249, 250, 0.05);
+                border-radius: 0;
+                margin: 0 1rem;
             }
             
             .dropdown-item {
-                color: white;
+                color: rgba(255, 255, 255, 0.9);
             }
             
             .dropdown-item:hover {
-                background-color: rgba(255, 255, 255, 0.1);
+                background: rgba(255, 255, 255, 0.1);
                 color: white;
             }
         }
@@ -106,6 +162,11 @@
         /* Ensure navbar items don't wrap inappropriately */
         .navbar-nav {
             flex-wrap: nowrap;
+        }
+
+        /* Active state for nav items */
+        .nav-item.active .nav-link {
+            background: rgba(255, 255, 255, 0.15);
         }
     </style>
 </head>
@@ -128,6 +189,8 @@
                         <ul class="dropdown-menu">
                             <li><a class="dropdown-item" href="#">Upload Report</a></li>
                             <li><a class="dropdown-item" href="#">Import History</a></li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li><a class="dropdown-item" href="#">Recent Imports</a></li>
                         </ul>
                     </li>
                     <li class="nav-item dropdown">
@@ -137,6 +200,8 @@
                         <ul class="dropdown-menu">
                             <li><a class="dropdown-item" href="#">Recent Tests</a></li>
                             <li><a class="dropdown-item" href="#">Search Results</a></li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li><a class="dropdown-item" href="#">Advanced Search</a></li>
                         </ul>
                     </li>
                     <li class="nav-item dropdown">
@@ -146,6 +211,8 @@
                         <ul class="dropdown-menu">
                             <li><a class="dropdown-item" href="#">Product List</a></li>
                             <li><a class="dropdown-item" href="#">Generate Report</a></li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li><a class="dropdown-item" href="#">Report Templates</a></li>
                         </ul>
                     </li>
                     <li class="nav-item">
