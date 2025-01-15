@@ -1,94 +1,23 @@
-# views.py
-from django.shortcuts import render
-import pandas as pd
-from datetime import datetime
-
-def prepare_table_data(all_tc_df, phases, phase_dates_df):
-    table_data = []
-    
-    def calculate_phase_metrics(df, phase):
-        metrics = df[df['Test Phase'] == phase].groupby(['SP Name', 'Test Team'])['Result'].agg({
-            'coverage': lambda x: ((x == 'Passed').sum() + (x == 'Failed').sum()) / len(x) * 100 if len(x) > 0 else 0,
-            'passed': lambda x: (x == 'Passed').sum() / len(x) * 100 if len(x) > 0 else 0,
-            'failed': lambda x: (x == 'Failed').sum() / len(x) * 100 if len(x) > 0 else 0,
-            'blocked': lambda x: (x == 'Blocked').sum() / len(x) * 100 if len(x) > 0 else 0
-        }).reset_index()
-        return metrics
-
-    # Calculate metrics for each phase
-    phase_data = {phase: calculate_phase_metrics(all_tc_df, phase) for phase in phases}
-    
-    # Group by SP Name first
-    sp_groups = all_tc_df.groupby('SP Name')
-    
-    for sp_name, sp_group in sp_groups:
-        sp_teams = []
-        # Then group by Test Team within each SP
-        team_groups = sp_group.groupby('Test Team')
-        
-        for team_name, team_group in team_groups:
-            team_phase_data = []
-            
-            for phase in phases:
-                phase_metrics = phase_data[phase]
-                metrics = phase_metrics[
-                    (phase_metrics['SP Name'] == sp_name) & 
-                    (phase_metrics['Test Team'] == team_name)
-                ].to_dict('records')
-                
-                phase_date = "NA"
-                if phase in ["ES", "FC", "CS"]:
-                    date_value = phase_dates_df.loc[
-                        phase_dates_df['FirstCustomerSP'] == sp_name, 
-                        phase
-                    ].iloc[0] if not phase_dates_df[
-                        phase_dates_df['FirstCustomerSP'] == sp_name
-                    ].empty else None
-                    
-                    if pd.notna(date_value):
-                        phase_date = date_value.strftime('%m-%d-%Y')
-                
-                phase_info = {
-                    'phase': phase,
-                    'date': phase_date,
-                    'metrics': metrics[0] if metrics else {
-                        'coverage': 0,
-                        'passed': 0,
-                        'failed': 0,
-                        'blocked': 0
-                    }
-                }
-                team_phase_data.append(phase_info)
-            
-            sp_teams.append({
-                'team_name': team_name,
-                'phases': team_phase_data
-            })
-        
-        table_data.append({
-            'sp_name': sp_name,
-            'teams': sp_teams
-        })
-    
-    return table_data
-
-def active_sps_view(request):
-    # Your existing data loading code here
-    phases = ["ES", "FC", "CS", "PI", "SIT"]  # Fixed phases
-    
-    table_data = prepare_table_data(all_tc_df, phases, phase_dates_df)
-    context = {
-        'table_data': table_data,
-        'phases': phases
-    }
-    return render(request, 'active_sps.html', context)
-
-# Template: active_sps.html
 {% extends 'base.html' %}
 {% block content %}
 <div class="container-fluid">
-    <div class="card">
+    <div class="card mb-3">
         <div class="card-body">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <div class="btn-group" role="group" aria-label="Test Team filters">
+                    <button type="button" class="btn btn-outline-primary team-filter active" data-team="all">All Teams</button>
+                    <button type="button" class="btn btn-outline-primary team-filter" data-team="BT">BT</button>
+                    <button type="button" class="btn btn-outline-primary team-filter" data-team="WLAN">WLAN</button>
+                </div>
+                <div class="btn-group" role="group" aria-label="Phase filters">
+                    <button type="button" class="btn btn-outline-secondary phase-filter active" data-phase="all">All Phases</button>
+                    <button type="button" class="btn btn-outline-secondary phase-filter" data-phase="ES">ES</button>
+                    <button type="button" class="btn btn-outline-secondary phase-filter" data-phase="FC">FC</button>
+                    <button type="button" class="btn btn-outline-secondary phase-filter" data-phase="CS">CS</button>
+                    <button type="button" class="btn btn-outline-secondary phase-filter" data-phase="Post-CS">Post-CS</button>
+                    <button type="button" class="btn btn-outline-secondary phase-filter" data-phase="Mainline_Regression">Mainline Regression</button>
+                </div>
+            </div>
             <div class="table-responsive">
                 <table id="activeSpsTable" class="table table-bordered table-hover">
                     <thead class="thead-light">
@@ -161,12 +90,26 @@ def active_sps_view(request):
 .highlighted-team {
     background-color: rgba(0, 123, 255, 0.1);
 }
+
+.btn-group {
+    margin-right: 10px;
+}
+
+.btn-group .btn {
+    margin-right: 2px;
+}
+
+.hidden-row {
+    display: none;
+}
 </style>
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     const tableData = {{ table_data|safe }};
     const tableBody = document.getElementById('tableBody');
+    let selectedTeam = 'all';
+    let selectedPhase = 'all';
     
     function formatPercent(value) {
         return typeof value === 'number' ? value.toFixed(1) : 'NA';
@@ -181,81 +124,119 @@ document.addEventListener('DOMContentLoaded', function() {
         `;
     }
     
-    tableData.forEach(spData => {
-        let firstSpRow = true;
-        let totalSpRows = spData.teams.length * 5;  // 5 fixed phases
+    function renderTable(filteredTeam = 'all', filteredPhase = 'all') {
+        tableBody.innerHTML = '';
         
-        spData.teams.forEach(team => {
-            let firstTeamRow = true;
+        tableData.forEach(spData => {
+            let firstSpRow = true;
+            const filteredTeams = spData.teams.filter(team => 
+                filteredTeam === 'all' || team.team_name === filteredTeam
+            );
             
-            team.phases.forEach((phase, phaseIndex) => {
-                let row = document.createElement('tr');
-                row.className = 'phase-row';
-                row.setAttribute('data-team', team.team_name);
+            filteredTeams.forEach(team => {
+                let firstTeamRow = true;
+                const filteredPhases = team.phases.filter(phase =>
+                    filteredPhase === 'all' || phase.phase === filteredPhase
+                );
                 
-                if (firstSpRow) {
-                    let spCell = document.createElement('td');
-                    spCell.rowSpan = totalSpRows;
-                    spCell.innerHTML = `
-                        <a href="/sp-execution-data?sp=${spData.sp_name}" target="_blank">
-                            ${spData.sp_name}
-                        </a>
-                    `;
-                    row.appendChild(spCell);
-                    firstSpRow = false;
-                }
+                if (filteredPhases.length === 0) return;
                 
-                if (firstTeamRow) {
-                    let teamCell = document.createElement('td');
-                    teamCell.rowSpan = 5;  // 5 fixed phases
-                    teamCell.textContent = team.team_name;
-                    row.appendChild(teamCell);
-                    firstTeamRow = false;
-                }
-                
-                row.insertAdjacentHTML('beforeend', `
-                    <td>${phase.phase}</td>
-                    <td>${phase.date}</td>
-                    ${createTooltipCell(
-                        formatPercent(phase.metrics.coverage),
-                        `${spData.sp_name} ${team.team_name} ${phase.phase} Coverage ${formatPercent(phase.metrics.coverage)}%`
-                    )}
-                    ${createTooltipCell(
-                        formatPercent(phase.metrics.passed),
-                        `${spData.sp_name} ${team.team_name} ${phase.phase} Pass ${formatPercent(phase.metrics.passed)}%`
-                    )}
-                    ${createTooltipCell(
-                        formatPercent(phase.metrics.failed),
-                        `${spData.sp_name} ${team.team_name} ${phase.phase} Fail ${formatPercent(phase.metrics.failed)}%`
-                    )}
-                    ${createTooltipCell(
-                        formatPercent(phase.metrics.blocked),
-                        `${spData.sp_name} ${team.team_name} ${phase.phase} Block ${formatPercent(phase.metrics.blocked)}%`
-                    )}
-                `);
-                
-                tableBody.appendChild(row);
+                filteredPhases.forEach((phase, phaseIndex) => {
+                    let row = document.createElement('tr');
+                    row.className = 'phase-row';
+                    row.setAttribute('data-team', team.team_name);
+                    row.setAttribute('data-phase', phase.phase);
+                    
+                    if (firstSpRow) {
+                        let spCell = document.createElement('td');
+                        spCell.rowSpan = filteredTeams.length * filteredPhases.length;
+                        spCell.innerHTML = `
+                            <a href="/sp-execution-data?sp=${spData.sp_name}" target="_blank">
+                                ${spData.sp_name}
+                            </a>
+                        `;
+                        row.appendChild(spCell);
+                        firstSpRow = false;
+                    }
+                    
+                    if (firstTeamRow) {
+                        let teamCell = document.createElement('td');
+                        teamCell.rowSpan = filteredPhases.length;
+                        teamCell.textContent = team.team_name;
+                        row.appendChild(teamCell);
+                        firstTeamRow = false;
+                    }
+                    
+                    row.insertAdjacentHTML('beforeend', `
+                        <td>${phase.phase}</td>
+                        <td>${phase.date}</td>
+                        ${createTooltipCell(
+                            formatPercent(phase.metrics.coverage),
+                            `${spData.sp_name} ${team.team_name} ${phase.phase} Coverage ${formatPercent(phase.metrics.coverage)}%`
+                        )}
+                        ${createTooltipCell(
+                            formatPercent(phase.metrics.passed),
+                            `${spData.sp_name} ${team.team_name} ${phase.phase} Pass ${formatPercent(phase.metrics.passed)}%`
+                        )}
+                        ${createTooltipCell(
+                            formatPercent(phase.metrics.failed),
+                            `${spData.sp_name} ${team.team_name} ${phase.phase} Fail ${formatPercent(phase.metrics.failed)}%`
+                        )}
+                        ${createTooltipCell(
+                            formatPercent(phase.metrics.blocked),
+                            `${spData.sp_name} ${team.team_name} ${phase.phase} Block ${formatPercent(phase.metrics.blocked)}%`
+                        )}
+                    `);
+                    
+                    tableBody.appendChild(row);
+                });
             });
+        });
+        
+        addRowHighlighting();
+    }
+    
+    function addRowHighlighting() {
+        const rows = document.querySelectorAll('.phase-row');
+        rows.forEach(row => {
+            row.addEventListener('mouseenter', () => {
+                const team = row.getAttribute('data-team');
+                document.querySelectorAll(`[data-team="${team}"]`).forEach(r => {
+                    r.classList.add('highlighted-team');
+                });
+            });
+            
+            row.addEventListener('mouseleave', () => {
+                const team = row.getAttribute('data-team');
+                document.querySelectorAll(`[data-team="${team}"]`).forEach(r => {
+                    r.classList.remove('highlighted-team');
+                });
+            });
+        });
+    }
+    
+    // Add event listeners for team filter buttons
+    document.querySelectorAll('.team-filter').forEach(button => {
+        button.addEventListener('click', () => {
+            document.querySelectorAll('.team-filter').forEach(btn => btn.classList.remove('active'));
+            button.classList.add('active');
+            selectedTeam = button.getAttribute('data-team');
+            renderTable(selectedTeam, selectedPhase);
         });
     });
     
-    // Add event listeners for team highlighting
-    const rows = document.querySelectorAll('.phase-row');
-    rows.forEach(row => {
-        row.addEventListener('mouseenter', () => {
-            const team = row.getAttribute('data-team');
-            document.querySelectorAll(`[data-team="${team}"]`).forEach(r => {
-                r.classList.add('highlighted-team');
-            });
-        });
-        
-        row.addEventListener('mouseleave', () => {
-            const team = row.getAttribute('data-team');
-            document.querySelectorAll(`[data-team="${team}"]`).forEach(r => {
-                r.classList.remove('highlighted-team');
-            });
+    // Add event listeners for phase filter buttons
+    document.querySelectorAll('.phase-filter').forEach(button => {
+        button.addEventListener('click', () => {
+            document.querySelectorAll('.phase-filter').forEach(btn => btn.classList.remove('active'));
+            button.classList.add('active');
+            selectedPhase = button.getAttribute('data-phase');
+            renderTable(selectedTeam, selectedPhase);
         });
     });
+    
+    // Initial render
+    renderTable();
 });
 </script>
 {% endblock %}
