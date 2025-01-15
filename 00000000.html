@@ -18,15 +18,22 @@
 
         .nav-link {
             color: white !important;
-            padding: 1rem !important;
+            padding: 0.75rem 1rem !important;
             font-size: 14px;
             text-transform: uppercase;
             font-weight: 500;
-            position: relative;
+            white-space: nowrap;
         }
 
-        .nav-link:hover {
-            background-color: rgba(255, 255, 255, 0.1);
+        /* Hover effects for desktop */
+        @media (min-width: 992px) {
+            .dropdown:hover .dropdown-menu {
+                display: block;
+            }
+
+            .nav-link:hover {
+                background-color: rgba(255, 255, 255, 0.1);
+            }
         }
 
         .dropdown-menu {
@@ -45,9 +52,33 @@
             background-color: #f8f9fa;
         }
 
+        /* Medium screen adjustments */
+        @media (max-width: 1200px) {
+            .nav-link {
+                padding: 0.75rem 0.6rem !important;
+                font-size: 13px;
+            }
+            
+            .navbar-brand {
+                font-size: 14px;
+            }
+            
+            .navbar-brand img {
+                height: 25px;
+            }
+        }
+
+        /* Mobile and tablet adjustments */
         @media (max-width: 991px) {
             .navbar-collapse {
                 background-color: #003366;
+                max-height: 80vh;
+                overflow-y: auto;
+            }
+            
+            .nav-link {
+                padding: 0.75rem 1rem !important;
+                font-size: 14px;
             }
             
             .dropdown-menu {
@@ -62,6 +93,19 @@
                 background-color: rgba(255, 255, 255, 0.1);
                 color: white;
             }
+        }
+
+        /* Container width adjustments */
+        @media (min-width: 992px) and (max-width: 1400px) {
+            .container-fluid {
+                padding-left: 0.5rem;
+                padding-right: 0.5rem;
+            }
+        }
+
+        /* Ensure navbar items don't wrap inappropriately */
+        .navbar-nav {
+            flex-wrap: nowrap;
         }
     </style>
 </head>
@@ -122,5 +166,21 @@
     </nav>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // Add hover functionality for desktop
+        document.addEventListener('DOMContentLoaded', function() {
+            if (window.innerWidth >= 992) {
+                const dropdowns = document.querySelectorAll('.dropdown');
+                dropdowns.forEach(dropdown => {
+                    dropdown.addEventListener('mouseenter', function() {
+                        this.querySelector('.dropdown-menu').style.display = 'block';
+                    });
+                    dropdown.addEventListener('mouseleave', function() {
+                        this.querySelector('.dropdown-menu').style.display = 'none';
+                    });
+                });
+            }
+        });
+    </script>
 </body>
 </html>
