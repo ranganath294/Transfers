@@ -2,6 +2,8 @@
 from django.shortcuts import render
 import pandas as pd
 from datetime import datetime
+import json
+from django.core.serializers.json import DjangoJSONEncoder
 
 def prepare_table_data(all_tc_df, phase_dates_df):
     table_data = []
@@ -80,8 +82,11 @@ def active_sps_view(request):
     # ...
     
     table_data, phases = prepare_table_data(all_tc_df, phase_dates_df)
+    # Convert the data to JSON-safe format
+    table_data_json = json.dumps(table_data, cls=DjangoJSONEncoder)
+    
     context = {
-        'table_data': table_data,
+        'table_data_json': table_data_json,
         'phases': phases
     }
     return render(request, 'active_sps.html', context)
@@ -168,7 +173,7 @@ def active_sps_view(request):
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    const tableData = {{ table_data|safe }};
+    const tableData = JSON.parse('{{ table_data_json|safe }}');
     const tableBody = document.getElementById('tableBody');
     
     function formatPercent(value) {
@@ -183,23 +188,48 @@ document.addEventListener('DOMContentLoaded', function() {
             </td>
         `;
     }
+
+    // Debug logging
+    console.log('Table data:', tableData);
+    
+    if (!Array.isArray(tableData)) {
+        console.error('Table data is not an array:', tableData);
+        return;
+    }
     
     tableData.forEach(spData => {
-        const spRowspan = spData.teams.reduce((sum, team) => sum + team.phases.length, 0);
+        if (!spData || !spData.teams || !Array.isArray(spData.teams)) {
+            console.error('Invalid SP data:', spData);
+            return;
+        }
+
         let firstSpRow = true;
+        let totalSpRows = spData.teams.reduce((sum, team) => {
+            return sum + (team.phases ? team.phases.length : 0);
+        }, 0);
         
         spData.teams.forEach(team => {
-            const teamRowspan = team.phases.length;
+            if (!team || !team.phases || !Array.isArray(team.phases)) {
+                console.error('Invalid team data:', team);
+                return;
+            }
+
             let firstTeamRow = true;
+            let teamRowspan = team.phases.length;
             
             team.phases.forEach((phase, phaseIndex) => {
+                if (!phase || !phase.metrics) {
+                    console.error('Invalid phase data:', phase);
+                    return;
+                }
+
                 let row = document.createElement('tr');
                 row.className = 'phase-row';
                 row.setAttribute('data-team', team.team_name);
                 
                 if (firstSpRow) {
                     let spCell = document.createElement('td');
-                    spCell.rowSpan = spRowspan;
+                    spCell.rowSpan = totalSpRows;
                     spCell.innerHTML = `
                         <a href="/sp-execution-data?sp=${spData.sp_name}" target="_blank">
                             ${spData.sp_name}
