@@ -1,3 +1,18 @@
+
+.highlighted-team {
+    background-color: rgba(0, 123, 255, 0.1) !important;
+}
+
+td[data-sp-cell="true"].highlighted-team,
+td[data-team-cell="true"].highlighted-team {
+    background-color: rgba(0, 123, 255, 0.1) !important;
+}
+
+
+
+
+
+
 document.addEventListener('DOMContentLoaded', function() {
     const tableData = {{ table_data|safe }};
     const tableBody = document.getElementById('tableBody');
