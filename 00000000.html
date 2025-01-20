@@ -1,92 +1,130 @@
 {% extends 'base.html' %}
 {% block content %}
-<div class="container-fluid py-4">
-    <div class="row justify-content-center">
-        <div class="col-12 col-xl-10">
-            <div class="card shadow-sm">
-                <div class="card-header bg-primary bg-gradient text-white py-3">
-                    <h1 class="h3 mb-0">Coverage Report</h1>
-                </div>
-                <div class="card-body">
-                    <div class="row g-3 mb-4">
-                        <div class="col-12 col-md-6">
-                            <div class="form-group">
-                                <label for="sp_name" class="form-label fw-bold">Select SP:</label>
-                                <div class="input-group">
-                                    <select id="sp_name" name="sp_name" class="form-select">
-                                        <option value="">--No SP Selected--</option>
-                                        {% for sp_name in sp_names %}
-                                            <option value="{{ sp_name }}" {% if sp_name == selected_sp %}selected{% endif %}>{{ sp_name }}</option>
-                                        {% endfor %}
-                                    </select>
-                                    <button id="getDataBtn" class="btn btn-success">
-                                        <i class="fas fa-sync-alt me-2"></i>Get Data
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="col-12 col-md-6">
-                            <label class="form-label fw-bold">Test Team Filters:</label>
-                            <div class="team-filter-container">
-                                <div class="btn-group w-100" role="group" aria-label="Test Team filters">
-                                    <input type="checkbox" class="btn-check team-filter" name="team-filter" id="all" value="all" checked>
-                                    <label class="btn btn-outline-primary" for="all">All Teams</label>
-                                    
-                                    <input type="checkbox" class="btn-check team-filter" name="team-filter" id="bt" value="BT">
-                                    <label class="btn btn-outline-primary" for="bt">BT</label>
-                                    
-                                    <input type="checkbox" class="btn-check team-filter" name="team-filter" id="wlan" value="WLAN">
-                                    <label class="btn btn-outline-primary" for="wlan">WLAN</label>
-                                </div>
-                            </div>
+<div class="container container-fluid">
+    <h1 class="page-title">Coverage Report</h1>
+    <div class="card mb-3">
+        <div class="card-body">
+            <div class="row mb-3">
+                <div class="col-md-6">
+                    <div class="form-group">
+                        <label for="sp_name" class="form-label">Select SP:</label>
+                        <div class="input-group">
+                            <select id="sp_name" name="sp_name" class="form-select">
+                                <option value="">--No SP Selected--</option>
+                                {% for sp_name in sp_names %}
+                                    <option value="{{ sp_name }}" {% if sp_name == selected_sp %}selected{% endif %}>{{ sp_name }}</option>
+                                {% endfor %}
+                            </select>
+                            <button id="getDataBtn" class="btn btn-primary">Get Data</button>
                         </div>
                     </div>
+                </div>
+            </div>
+            
+            <div id="teamFilters" style="display: none;" class="mb-3">
+                <div class="btn-group" role="group" aria-label="Test Team filters">
+                    <input type="checkbox" class="btn-check team-filter" name="team-filter" id="all" value="all" checked>
+                    <label class="btn btn-outline-primary" for="all">All Teams</label>
+                    
+                    <input type="checkbox" class="btn-check team-filter" name="team-filter" id="bt" value="BT">
+                    <label class="btn btn-outline-primary" for="bt">BT</label>
+                    
+                    <input type="checkbox" class="btn-check team-filter" name="team-filter" id="wlan" value="WLAN">
+                    <label class="btn btn-outline-primary" for="wlan">WLAN</label>
+                </div>
+            </div>
 
-                    <div class="table-responsive">
-                        <table id="activeSpsTable" class="table table-bordered table-hover align-middle">
-                            <thead class="table-light">
-                                <tr>
-                                    <th>SP Name</th>
-                                    <th>Test Team</th>
-                                    <th>Phase</th>
-                                    <th>Date</th>
-                                    <th>Coverage %</th>
-                                    <th>Pass %</th>
-                                    <th>Fail %</th>
-                                    <th>Block %</th>
-                                </tr>
-                            </thead>
-                            <tbody id="tableBody">
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
+            <div class="table-responsive">
+                <table id="activeSpsTable" class="table table-bordered table-hover">
+                    <thead class="thead-light">
+                        <tr>
+                            <th>SP Name</th>
+                            <th>Test Team</th>
+                            <th>Phase</th>
+                            <th>Date</th>
+                            <th>Coverage %</th>
+                            <th>Pass %</th>
+                            <th>Fail %</th>
+                            <th>Block %</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tableBody">
+                    </tbody>
+                </table>
             </div>
         </div>
     </div>
 </div>
 
 <style>
-/* ... (previous styles remain the same) ... */
-
-.team-filter-container .btn-check:checked + .btn-outline-primary {
-    background-color: #0d6efd;
-    color: white;
+.container {
+    padding: 2rem;
+    max-width: 1400px;
 }
 
-.team-filter-container .btn {
-    flex: 1;
+.table th {
+    background-color: #f8f9fa;
+    position: sticky;
+    top: 0;
+    z-index: 1;
+}
+
+.tooltip-cell {
+    position: relative;
+}
+
+.custom-tooltip {
+    visibility: hidden;
+    position: absolute;
+    z-index: 1000;
+    background-color: rgba(0, 0, 0, 0.8);
+    color: white;
+    padding: 5px 10px;
+    border-radius: 4px;
+    font-size: 12px;
+    bottom: 100%;
+    left: 50%;
+    transform: translateX(-50%);
     white-space: nowrap;
+}
+
+.tooltip-cell:hover .custom-tooltip {
+    visibility: visible;
+}
+
+.metric-cell {
+    cursor: default;
+}
+
+.phase-row:nth-child(odd) {
+    background-color: rgba(0, 0, 0, 0.02);
+}
+
+.highlighted-team {
+    background-color: rgba(0, 123, 255, 0.1);
+}
+
+.btn-group {
+    margin-right: 10px;
+}
+
+.btn-group .btn {
+    margin-right: 2px;
+}
+
+.hidden-row {
+    display: none;
 }
 </style>
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    const tableData = {{ table_data|safe }};
     const tableBody = document.getElementById('tableBody');
     const getDataBtn = document.getElementById('getDataBtn');
     const teamFilters = document.querySelectorAll('.team-filter');
+    const teamFiltersContainer = document.getElementById('teamFilters');
     let selectedTeams = ['all'];
+    let tableData = null;
     
     // Handle team filter changes
     teamFilters.forEach(filter => {
@@ -94,7 +132,6 @@ document.addEventListener('DOMContentLoaded', function() {
             const allTeamsCheckbox = document.getElementById('all');
             
             if (e.target.id === 'all' && e.target.checked) {
-                // If "All Teams" is selected, uncheck other options
                 teamFilters.forEach(cb => {
                     if (cb.id !== 'all') {
                         cb.checked = false;
@@ -102,46 +139,41 @@ document.addEventListener('DOMContentLoaded', function() {
                 });
                 selectedTeams = ['all'];
             } else if (e.target.id === 'all' && !e.target.checked) {
-                // If "All Teams" is unchecked, do nothing but prevent unchecking if it's the only option
                 if (!Array.from(teamFilters).some(cb => cb.checked && cb.id !== 'all')) {
                     e.target.checked = true;
                     selectedTeams = ['all'];
                     return;
                 }
             } else if (e.target.checked) {
-                // If any other team is selected, uncheck "All Teams"
                 allTeamsCheckbox.checked = false;
                 selectedTeams = Array.from(teamFilters)
                     .filter(cb => cb.checked && cb.id !== 'all')
                     .map(cb => cb.value);
                 
-                // If no teams are selected, select "All Teams"
                 if (selectedTeams.length === 0) {
                     allTeamsCheckbox.checked = true;
                     selectedTeams = ['all'];
                 }
             } else {
-                // If a team is unchecked, update the selectedTeams array
                 selectedTeams = Array.from(teamFilters)
                     .filter(cb => cb.checked && cb.id !== 'all')
                     .map(cb => cb.value);
                 
-                // If no teams are selected, select "All Teams"
                 if (selectedTeams.length === 0) {
                     allTeamsCheckbox.checked = true;
                     selectedTeams = ['all'];
                 }
             }
             
-            renderTable();
+            if (tableData) {
+                renderTable();
+            }
         });
     });
     
     function setLoadingState(isLoading) {
         getDataBtn.disabled = isLoading;
-        getDataBtn.innerHTML = isLoading ? 
-            '<span class="spinner-border spinner-border-sm me-2"></span>Loading...' : 
-            '<i class="fas fa-sync-alt me-2"></i>Get Data';
+        getDataBtn.innerHTML = isLoading ? 'Loading...' : 'Get Data';
     }
     
     // Handle Get Data button click
@@ -156,11 +188,9 @@ document.addEventListener('DOMContentLoaded', function() {
         
         setLoadingState(true);
         
-        // Build query parameters
         const params = new URLSearchParams();
         params.append('sp_name', selectedSp);
         
-        // Add selected teams to the query parameters
         if (selectedTeams.includes('all')) {
             params.append('teams', 'all');
         } else {
@@ -171,8 +201,9 @@ document.addEventListener('DOMContentLoaded', function() {
             const response = await fetch(`/api/coverage-data?${params.toString()}`);
             if (!response.ok) throw new Error('Network response was not ok');
             
-            const data = await response.json();
-            renderTable(data);
+            tableData = await response.json();
+            teamFiltersContainer.style.display = 'block';
+            renderTable();
             
         } catch (error) {
             console.error('Error fetching data:', error);
@@ -182,27 +213,105 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
     
-    // ... (rest of the code for formatPercent, createTooltipCell, getBadgeClass remains the same) ...
+    function formatPercent(value) {
+        return typeof value === 'number' ? value.toFixed(1) : 'NA';
+    }
     
-    function renderTable(data = tableData) {
+    function createTooltipCell(content, tooltipText) {
+        return `
+            <td class="tooltip-cell metric-cell">
+                ${content}
+                <span class="custom-tooltip">${tooltipText}</span>
+            </td>
+        `;
+    }
+    
+    function renderTable() {
+        if (!tableData) return;
+        
         tableBody.innerHTML = '';
         
-        data.forEach(spData => {
+        tableData.forEach(spData => {
             let firstSpRow = true;
             const filteredTeams = spData.teams.filter(team => 
                 selectedTeams.includes('all') || selectedTeams.includes(team.team_name)
             );
             
-            // ... (rest of the rendering logic remains the same) ...
+            filteredTeams.forEach(team => {
+                let firstTeamRow = true;
+                
+                team.phases.forEach((phase, phaseIndex) => {
+                    let row = document.createElement('tr');
+                    row.className = 'phase-row';
+                    row.setAttribute('data-team', team.team_name);
+                    
+                    if (firstSpRow) {
+                        let spCell = document.createElement('td');
+                        spCell.rowSpan = filteredTeams.length * team.phases.length;
+                        spCell.innerHTML = `
+                            <a href="/sp-execution-data?sp=${spData.sp_name}" target="_blank">
+                                ${spData.sp_name}
+                            </a>
+                        `;
+                        row.appendChild(spCell);
+                        firstSpRow = false;
+                    }
+                    
+                    if (firstTeamRow) {
+                        let teamCell = document.createElement('td');
+                        teamCell.rowSpan = team.phases.length;
+                        teamCell.textContent = team.team_name;
+                        row.appendChild(teamCell);
+                        firstTeamRow = false;
+                    }
+                    
+                    row.insertAdjacentHTML('beforeend', `
+                        <td>${phase.phase}</td>
+                        <td>${phase.date}</td>
+                        ${createTooltipCell(
+                            formatPercent(phase.metrics.coverage),
+                            `${spData.sp_name} ${team.team_name} ${phase.phase} Coverage ${formatPercent(phase.metrics.coverage)}%`
+                        )}
+                        ${createTooltipCell(
+                            formatPercent(phase.metrics.passed),
+                            `${spData.sp_name} ${team.team_name} ${phase.phase} Pass ${formatPercent(phase.metrics.passed)}%`
+                        )}
+                        ${createTooltipCell(
+                            formatPercent(phase.metrics.failed),
+                            `${spData.sp_name} ${team.team_name} ${phase.phase} Fail ${formatPercent(phase.metrics.failed)}%`
+                        )}
+                        ${createTooltipCell(
+                            formatPercent(phase.metrics.blocked),
+                            `${spData.sp_name} ${team.team_name} ${phase.phase} Block ${formatPercent(phase.metrics.blocked)}%`
+                        )}
+                    `);
+                    
+                    tableBody.appendChild(row);
+                });
+            });
         });
         
         addRowHighlighting();
     }
     
-    // ... (rest of the code remains the same) ...
-    
-    // Initial render
-    renderTable();
+    function addRowHighlighting() {
+        const rows = document.querySelectorAll('.phase-row');
+        rows.forEach(row => {
+            row.addEventListener('mouseenter', () => {
+                const team = row.getAttribute('data-team');
+                document.querySelectorAll(`[data-team="${team}"]`).forEach(r => {
+                    r.classList.add('highlighted-team');
+                });
+            });
+            
+            row.addEventListener('mouseleave', () => {
+                const team = row.getAttribute('data-team');
+                document.querySelectorAll(`[data-team="${team}"]`).forEach(r => {
+                    r.classList.remove('highlighted-team');
+                });
+            });
+        });
+    }
 });
 </script>
 {% endblock %}
