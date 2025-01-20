@@ -1,155 +1,102 @@
-{% extends 'base.html' %}
-{% block content %}
-<link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.2/css/bootstrap.min.css" rel="stylesheet">
-<style>
-    .container {
-        padding: 2rem;
-        max-width: 1400px;
-    }
-    
-    .select-container {
-        margin-bottom: 2rem;
-    }
-    
-    .form-select {
-        max-width: 300px;
-    }
-    
-    .table-responsive {
-        border-radius: 8px;
-        box-shadow: 0 0 20px rgba(0,0,0,0.05);
-        display: inline-block;  /* Makes container wrap content */
-        min-width: min-content;  /* Ensures container doesn't shrink below content width */
-    }
-    
-    .table {
-        margin-bottom: 0;
-        width: auto !important;  /* Prevents table from stretching */
-        min-width: 0 !important;  /* Overrides Bootstrap's min-width */
-    }
-    
-    .table th {
-        background-color: #f8f9fa;
-        font-weight: 600;
-        white-space: nowrap;
-    }
-    
-    .table td {
-        vertical-align: middle;
-    }
-    
-    .metrics-cell {
-        background-color: #e8f4ff;
-        font-weight: 500;
-        color: #1e90ff !important;
-        white-space: nowrap;
-        padding-right: 1.5rem !important;
-    }
-    
-    /* Make other columns compact */
-    .table th:not(:first-child),
-    .table td:not(:first-child) {
-        padding: 0.75rem 1rem;
-        text-align: center;
-        white-space: nowrap;
-    }
-    
-    .page-title {
-        color: #2c3e50;
-        margin-bottom: 2rem;
-    }
-    
-    @media (max-width: 768px) {
-        .container {
-            padding: 1rem;
-        }
-        
-        .metrics-cell {
-            padding-right: 1rem !important;
-        }
-        
-        .table td:not(:first-child), 
-        .table th:not(:first-child) {
-            padding: 0.5rem;
-        }
-    }
-</style>
+/* Navbar specific styles with increased specificity */
+.navbar.navbar-expand-lg {
+    background: linear-gradient(to right, #003366, #004a94);
+    padding: 0.5rem 1rem;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
 
-<div class="container container-fluid">
-    <h1 class="page-title">SP Metrics Report</h1>
+.navbar.navbar-expand-lg .navbar-brand img {
+    height: 30px;
+    margin-right: 1rem;
+}
+
+.navbar.navbar-expand-lg .nav-link {
+    color: white !important;
+    padding: 0.75rem 1rem !important;
+    font-size: 14px;
+    text-transform: uppercase;
+    font-weight: 500;
+    white-space: nowrap;
+    transition: all 0.3s ease;
+}
+
+/* Dropdown styling with increased specificity */
+.navbar.navbar-expand-lg .dropdown-menu {
+    margin-top: 0;
+    border: none;
+    border-radius: 4px;
+    background: #f8f9fa;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.15);
+    padding: 0.5rem 0;
+    min-width: 200px;
+    animation: fadeIn 0.2s ease-in;
+}
+
+.navbar.navbar-expand-lg .dropdown-item {
+    padding: 0.7rem 1.5rem;
+    font-size: 14px;
+    color: #2c3e50;
+    position: relative;
+    transition: all 0.2s ease;
+}
+
+.navbar.navbar-expand-lg .dropdown-item:hover {
+    background: linear-gradient(to right, #e8f0fe, #f8f9fa);
+    color: #004a94;
+    padding-left: 2rem;
+}
+
+.navbar.navbar-expand-lg .dropdown-item::before {
+    content: '';
+    position: absolute;
+    left: 0.7rem;
+    top: 50%;
+    width: 0;
+    height: 2px;
+    background: #004a94;
+    transform: translateY(-50%);
+    transition: width 0.2s ease;
+    opacity: 0;
+}
+
+.navbar.navbar-expand-lg .dropdown-item:hover::before {
+    width: 0.5rem;
+    opacity: 1;
+}
+
+/* Hover effects for desktop with increased specificity */
+@media (min-width: 992px) {
+    .navbar.navbar-expand-lg .dropdown:hover .dropdown-menu {
+        display: block;
+    }
+
+    .navbar.navbar-expand-lg .nav-link:hover {
+        background-color: rgba(255, 255, 255, 0.1);
+        transform: translateY(-1px);
+    }
     
-    <div class="select-container">
-        <label for="sp_name" class="form-label">Select SP:</label>
-        <select id="sp_name" name="sp_name" class="form-select">
-            <option value="">--No SP Selected--</option>
-            {% for sp_name in sp_names %}
-                <option value="{{ sp_name }}" {% if sp_name == selected_sp %}selected{% endif %}>{{ sp_name }}</option>
-            {% endfor %}
-        </select>
-    </div>
+    .navbar.navbar-expand-lg .nav-item.dropdown:hover .nav-link {
+        background: rgba(255, 255, 255, 0.15);
+    }
+}
 
-    <div class="table-responsive">
-        <table id="counts_table" class="table table-hover">
-            <thead>
-                <tr></tr>
-            </thead>
-            <tbody>
-            </tbody>
-        </table>
-    </div>
-</div>
-
-<script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.2/js/bootstrap.bundle.min.js"></script>
-<script>
-    document.getElementById('sp_name').addEventListener('change', function() {
-        const spName = this.value;
-        if (spName) {
-            fetch(`/get_counts/?sp_name=${spName}`)
-                .then(response => response.json())
-                .then(data => {
-                    const tableBody = document.querySelector('#counts_table tbody');
-                    tableBody.innerHTML = '';
-                    const tableHead = document.querySelector('#counts_table thead tr');
-                    tableHead.innerHTML = '<th scope="col" class="metrics-cell">Metrics</th>';
-                    
-                    if (data.length > 0) {
-                        const teams = Object.keys(data[0]).filter(key => key !== 'Metrics');
-                        teams.forEach(team => {
-                            const th = document.createElement('th');
-                            th.setAttribute('scope', 'col');
-                            th.textContent = team;
-                            tableHead.appendChild(th);
-                        });
-                        
-                        data.forEach(row => {
-                            const tr = document.createElement('tr');
-                            const metricsTd = document.createElement('td');
-                            metricsTd.textContent = row.Metrics;
-                            metricsTd.className = 'metrics-cell';
-                            tr.appendChild(metricsTd);
-                            
-                            teams.forEach(team => {
-                                const td = document.createElement('td');
-                                const value = row[team] !== undefined ? row[team] : '';
-                                td.textContent = value === 0 ? '0' : value; // Ensure '0' is displayed
-                                tr.appendChild(td);
-                            });
-                            
-                            tableBody.appendChild(tr);
-                        });
-                    }
-                })
-                .catch(error => {
-                    console.error('Error:', error);
-                    const tableBody = document.querySelector('#counts_table tbody');
-                    tableBody.innerHTML = '<tr><td colspan="100%" class="text-center text-danger">Error loading data. Please try again.</td></tr>';
-                });
-        } else {
-            const tableBody = document.querySelector('#counts_table tbody');
-            tableBody.innerHTML = '';
-            const tableHead = document.querySelector('#counts_table thead tr');
-            tableHead.innerHTML = '<th scope="col" class="metrics-cell">Metrics</th>';
-        }
-    });
-</script>
-{% endblock %}
+/* Mobile and tablet adjustments with increased specificity */
+@media (max-width: 991px) {
+    .navbar.navbar-expand-lg .navbar-collapse {
+        background-color: #003366;
+        max-height: 80vh;
+        overflow-y: auto;
+        border-radius: 0 0 8px 8px;
+    }
+    
+    .navbar.navbar-expand-lg .nav-link {
+        padding: 0.75rem 1rem !important;
+        font-size: 14px;
+        border-left: 3px solid transparent;
+    }
+    
+    .navbar.navbar-expand-lg .nav-link:hover {
+        border-left: 3px solid #fff;
+        background: rgba(255, 255, 255, 0.1);
+    }
+}
