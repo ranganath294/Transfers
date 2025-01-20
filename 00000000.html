@@ -1,153 +1,133 @@
-{% extends 'base.html' %}
-{% block content %}
-<style>
+/* Container styles */
+.container {
+    padding: 2rem;
+    max-width: 1400px;
+}
+
+/* Select dropdown styles */
+.select-container {
+    margin-bottom: 2rem;
+}
+
+.form-select {
+    max-width: 300px;
+    border: 1px solid #dee2e6;
+    padding: 0.5rem;
+    border-radius: 4px;
+}
+
+/* Enhanced table container styles */
+.table-responsive {
+    border-radius: 8px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+    display: inline-block;
+    min-width: min-content;
+    border: 1px solid #dee2e6;
+    overflow: hidden; /* Maintains border-radius with table inside */
+}
+
+/* Enhanced table styles */
+.table {
+    margin-bottom: 0;
+    width: auto !important;
+    min-width: 0 !important;
+    border-collapse: separate;
+    border-spacing: 0;
+}
+
+/* Header styles */
+.table th {
+    background-color: #f8f9fa;
+    font-weight: 600;
+    white-space: nowrap;
+    border: 1px solid #dee2e6;
+    padding: 1rem;
+    position: sticky;
+    top: 0;
+    z-index: 1;
+}
+
+/* Cell styles */
+.table td {
+    vertical-align: middle;
+    border: 1px solid #dee2e6;
+    padding: 0.75rem 1rem;
+}
+
+/* Metrics column styling */
+.metrics-cell {
+    background-color: #e8f4ff;
+    font-weight: 500;
+    color: #1e90ff !important;
+    white-space: nowrap;
+    padding-right: 1.5rem !important;
+    border-right: 2px solid #dee2e6 !important; /* Emphasize metrics column */
+}
+
+/* Other columns */
+.table th:not(:first-child),
+.table td:not(:first-child) {
+    text-align: center;
+    white-space: nowrap;
+    min-width: 100px; /* Ensures minimum column width */
+}
+
+/* Hover effect */
+.table tbody tr:hover {
+    background-color: rgba(232, 244, 255, 0.3);
+}
+
+/* Title styling */
+.page-title {
+    color: #2c3e50;
+    margin-bottom: 2rem;
+    font-weight: 600;
+}
+
+/* Responsive design */
+@media (max-width: 1200px) {
     .container {
-        padding: 2rem;
-        max-width: 1400px;
+        padding: 1.5rem;
     }
     
-    .select-container {
-        margin-bottom: 2rem;
-    }
-    
-    .form-select {
-        max-width: 300px;
-    }
-    
-    .table-responsive {
-        border-radius: 8px;
-        box-shadow: 0 0 20px rgba(0,0,0,0.05);
-        display: inline-block;  /* Makes container wrap content */
-        min-width: min-content;  /* Ensures container doesn't shrink below content width */
-    }
-    
-    .table {
-        margin-bottom: 0;
-        width: auto !important;  /* Prevents table from stretching */
-        min-width: 0 !important;  /* Overrides Bootstrap's min-width */
-    }
-    
-    .table th {
-        background-color: #f8f9fa;
-        font-weight: 600;
-        white-space: nowrap;
-    }
-    
+    .table th,
     .table td {
-        vertical-align: middle;
+        padding: 0.75rem;
+    }
+}
+
+@media (max-width: 768px) {
+    .container {
+        padding: 1rem;
     }
     
     .metrics-cell {
-        background-color: #e8f4ff;
-        font-weight: 500;
-        color: #1e90ff !important;
-        white-space: nowrap;
-        padding-right: 1.5rem !important;
+        padding-right: 1rem !important;
     }
     
-    /* Make other columns compact */
-    .table th:not(:first-child),
-    .table td:not(:first-child) {
-        padding: 0.75rem 1rem;
-        text-align: center;
-        white-space: nowrap;
+    .table td:not(:first-child), 
+    .table th:not(:first-child) {
+        padding: 0.5rem;
+        min-width: 80px;
     }
     
-    .page-title {
-        color: #2c3e50;
-        margin-bottom: 2rem;
+    .table-responsive {
+        margin: 0 -1rem;
+        border-radius: 0;
+        border-left: none;
+        border-right: none;
     }
-    
-    @media (max-width: 768px) {
-        .container {
-            padding: 1rem;
-        }
-        
-        .metrics-cell {
-            padding-right: 1rem !important;
-        }
-        
-        .table td:not(:first-child), 
-        .table th:not(:first-child) {
-            padding: 0.5rem;
-        }
-    }
-</style>
+}
 
-<div class="container container-fluid">
-    <h1 class="page-title">SP Metrics Report</h1>
-    
-    <div class="select-container">
-        <label for="sp_name" class="form-label">Select SP:</label>
-        <select id="sp_name" name="sp_name" class="form-select">
-            <option value="">--No SP Selected--</option>
-            {% for sp_name in sp_names %}
-                <option value="{{ sp_name }}" {% if sp_name == selected_sp %}selected{% endif %}>{{ sp_name }}</option>
-            {% endfor %}
-        </select>
-    </div>
+/* Loading state */
+.table-loading {
+    opacity: 0.6;
+    pointer-events: none;
+}
 
-    <div class="table-responsive">
-        <table id="counts_table" class="table table-hover">
-            <thead>
-                <tr></tr>
-            </thead>
-            <tbody>
-            </tbody>
-        </table>
-    </div>
-</div>
-
-<script>
-    document.getElementById('sp_name').addEventListener('change', function() {
-        const spName = this.value;
-        if (spName) {
-            fetch(`/get_counts/?sp_name=${spName}`)
-                .then(response => response.json())
-                .then(data => {
-                    const tableBody = document.querySelector('#counts_table tbody');
-                    tableBody.innerHTML = '';
-                    const tableHead = document.querySelector('#counts_table thead tr');
-                    tableHead.innerHTML = '<th scope="col" class="metrics-cell">Metrics</th>';
-                    
-                    if (data.length > 0) {
-                        const teams = Object.keys(data[0]).filter(key => key !== 'Metrics');
-                        teams.forEach(team => {
-                            const th = document.createElement('th');
-                            th.setAttribute('scope', 'col');
-                            th.textContent = team;
-                            tableHead.appendChild(th);
-                        });
-                        
-                        data.forEach(row => {
-                            const tr = document.createElement('tr');
-                            const metricsTd = document.createElement('td');
-                            metricsTd.textContent = row.Metrics;
-                            metricsTd.className = 'metrics-cell';
-                            tr.appendChild(metricsTd);
-                            
-                            teams.forEach(team => {
-                                const td = document.createElement('td');
-                                const value = row[team] !== undefined ? row[team] : '';
-                                td.textContent = value === 0 ? '0' : value; // Ensure '0' is displayed
-                                tr.appendChild(td);
-                            });
-                            
-                            tableBody.appendChild(tr);
-                        });
-                    }
-                })
-                .catch(error => {
-                    console.error('Error:', error);
-                    const tableBody = document.querySelector('#counts_table tbody');
-                    tableBody.innerHTML = '<tr><td colspan="100%" class="text-center text-danger">Error loading data. Please try again.</td></tr>';
-                });
-        } else {
-            const tableBody = document.querySelector('#counts_table tbody');
-            tableBody.innerHTML = '';
-            const tableHead = document.querySelector('#counts_table thead tr');
-            tableHead.innerHTML = '<th scope="col" class="metrics-cell">Metrics</th>';
-        }
-    });
-</script>
-{% endblock %}
+/* Empty state */
+.table-empty {
+    padding: 2rem;
+    text-align: center;
+    color: #6c757d;
+}
