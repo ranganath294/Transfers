@@ -22,11 +22,14 @@
         .table-responsive {
             border-radius: 8px;
             box-shadow: 0 0 20px rgba(0,0,0,0.05);
+            display: inline-block;  /* Makes container wrap content */
+            min-width: min-content;  /* Ensures container doesn't shrink below content width */
         }
         
         .table {
             margin-bottom: 0;
-            width: 100%;
+            width: auto !important;  /* Prevents table from stretching */
+            min-width: 0 !important;  /* Overrides Bootstrap's min-width */
         }
         
         .table th {
@@ -44,17 +47,15 @@
             font-weight: 500;
             color: #1e90ff !important;
             white-space: nowrap;
-            padding-right: 1.5rem !important;  /* Reduced padding */
-            width: auto;  /* Changed from fixed width to auto */
-            min-width: 0;  /* Removed min-width constraint */
+            padding-right: 1.5rem !important;
         }
         
         /* Make other columns compact */
         .table th:not(:first-child),
         .table td:not(:first-child) {
-            width: 1%;
             padding: 0.75rem 1rem;
             text-align: center;
+            white-space: nowrap;
         }
         
         .page-title {
@@ -79,7 +80,6 @@
     </style>
 </head>
 <body>
-    <!-- Rest of the HTML remains the same -->
     <div class="container">
         <h1 class="page-title">Test Case Analysis</h1>
         
@@ -106,7 +106,6 @@
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.2/js/bootstrap.bundle.min.js"></script>
     <script>
-        // JavaScript remains the same
         document.getElementById('sp_name').addEventListener('change', function() {
             const spName = this.value;
             if (spName) {
