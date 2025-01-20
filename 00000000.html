@@ -26,35 +26,37 @@
         
         .table {
             margin-bottom: 0;
-            border: 1px solid #dee2e6;
-        }
-        
-        .table th, 
-        .table td {
-            border: 1px solid #dee2e6;
-            padding: 0.5rem;
-            vertical-align: middle;
-            white-space: nowrap;
+            table-layout: auto;
+            width: auto;
+            min-width: 100%;
         }
         
         .table th {
             background-color: #f8f9fa;
             font-weight: 600;
+            white-space: nowrap;
+        }
+        
+        .table td {
+            vertical-align: middle;
         }
         
         .metrics-cell {
             background-color: #e8f4ff;
             font-weight: 500;
             color: #1e90ff !important;
-            padding-left: 0.75rem !important;
-            padding-right: 1rem !important;
+            white-space: nowrap;
+            padding-right: 3rem !important;  /* Added extra space after text */
+            min-width: 200px;  /* Minimum width for metrics column */
+            width: 2%;
         }
         
-        /* Value columns */
+        /* Make other columns compact */
         .table th:not(:first-child),
         .table td:not(:first-child) {
+            width: 1%;
+            padding: 0.75rem 1rem;
             text-align: center;
-            padding: 0.5rem;
         }
         
         .page-title {
@@ -67,13 +69,14 @@
                 padding: 1rem;
             }
             
-            .table td, 
-            .table th {
-                padding: 0.4rem;
+            .metrics-cell {
+                min-width: 150px;  /* Slightly smaller on mobile */
+                padding-right: 1.5rem !important;
             }
             
-            .metrics-cell {
-                padding-right: 0.75rem !important;
+            .table td:not(:first-child), 
+            .table th:not(:first-child) {
+                padding: 0.5rem;
             }
         }
     </style>
@@ -93,7 +96,7 @@
         </div>
 
         <div class="table-responsive">
-            <table id="counts_table" class="table">
+            <table id="counts_table" class="table table-hover">
                 <thead>
                     <tr></tr>
                 </thead>
