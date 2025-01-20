@@ -4,40 +4,95 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Test Case Analysis</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.2/css/bootstrap.min.css" rel="stylesheet">
     <style>
-        table {
-            width: 100%;
-            border-collapse: collapse;
+        .container {
+            padding: 2rem;
+            max-width: 1400px;
         }
-        th, td {
-            border: 1px solid #ddd;
-            padding: 8px;
-            text-align: center;
+        
+        .select-container {
+            margin-bottom: 2rem;
         }
-        th {
-            background-color: #f2f2f2;
+        
+        .form-select {
+            max-width: 300px;
+        }
+        
+        .table-responsive {
+            border-radius: 8px;
+            box-shadow: 0 0 20px rgba(0,0,0,0.05);
+        }
+        
+        .table {
+            margin-bottom: 0;
+        }
+        
+        .table th {
+            background-color: #f8f9fa;
+            font-weight: 600;
+            padding: 1rem;
+            white-space: nowrap;
+        }
+        
+        .table td {
+            padding: 0.75rem 1rem;
+            vertical-align: middle;
+        }
+        
+        .metrics-cell {
+            background-color: #e8f4ff;
+            font-weight: 500;
+            color: #0d6efd;
+            white-space: nowrap;
+        }
+        
+        .page-title {
+            color: #2c3e50;
+            margin-bottom: 2rem;
+        }
+        
+        .table > :not(caption) > * > * {
+            padding: 1rem;
+        }
+        
+        @media (max-width: 768px) {
+            .container {
+                padding: 1rem;
+            }
+            
+            .table td, .table th {
+                padding: 0.5rem;
+            }
         }
     </style>
 </head>
 <body>
-    <h1>Test Case Analysis</h1>
-    <label for="sp_name">Select SP:</label>
-    <select id="sp_name" name="sp_name">
-        <option value="">--No SP Selected--</option>
-        {% for sp_name in sp_names %}
-            <option value="{{ sp_name }}" {% if sp_name == selected_sp %}selected{% endif %}>{{ sp_name }}</option>
-        {% endfor %}
-    </select>
+    <div class="container">
+        <h1 class="page-title">Test Case Analysis</h1>
+        
+        <div class="select-container">
+            <label for="sp_name" class="form-label">Select SP:</label>
+            <select id="sp_name" name="sp_name" class="form-select">
+                <option value="">--No SP Selected--</option>
+                {% for sp_name in sp_names %}
+                    <option value="{{ sp_name }}" {% if sp_name == selected_sp %}selected{% endif %}>{{ sp_name }}</option>
+                {% endfor %}
+            </select>
+        </div>
 
-    <table id="counts_table">
-        <thead>
-            <tr></tr>
-        </thead>
-        <tbody>
-            
-        </tbody>
-    </table>
+        <div class="table-responsive">
+            <table id="counts_table" class="table table-hover">
+                <thead>
+                    <tr></tr>
+                </thead>
+                <tbody>
+                </tbody>
+            </table>
+        </div>
+    </div>
 
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.2/js/bootstrap.bundle.min.js"></script>
     <script>
         document.getElementById('sp_name').addEventListener('change', function() {
             const spName = this.value;
@@ -48,12 +103,13 @@
                         const tableBody = document.querySelector('#counts_table tbody');
                         tableBody.innerHTML = '';
                         const tableHead = document.querySelector('#counts_table thead tr');
-                        tableHead.innerHTML = '<th>Metrics</th>';
+                        tableHead.innerHTML = '<th scope="col">Metrics</th>';
                         
                         if (data.length > 0) {
                             const teams = Object.keys(data[0]).filter(key => key !== 'Metrics');
                             teams.forEach(team => {
                                 const th = document.createElement('th');
+                                th.setAttribute('scope', 'col');
                                 th.textContent = team;
                                 tableHead.appendChild(th);
                             });
@@ -62,6 +118,7 @@
                                 const tr = document.createElement('tr');
                                 const metricsTd = document.createElement('td');
                                 metricsTd.textContent = row.Metrics;
+                                metricsTd.className = 'metrics-cell';
                                 tr.appendChild(metricsTd);
                                 
                                 teams.forEach(team => {
@@ -74,12 +131,16 @@
                             });
                         }
                     })
-                    .catch(error => console.error('Error:', error));
+                    .catch(error => {
+                        console.error('Error:', error);
+                        const tableBody = document.querySelector('#counts_table tbody');
+                        tableBody.innerHTML = '<tr><td colspan="100%" class="text-center text-danger">Error loading data. Please try again.</td></tr>';
+                    });
             } else {
                 const tableBody = document.querySelector('#counts_table tbody');
                 tableBody.innerHTML = '';
                 const tableHead = document.querySelector('#counts_table thead tr');
-                tableHead.innerHTML = '<th>Metrics</th>';
+                tableHead.innerHTML = '<th scope="col">Metrics</th>';
             }
         });
     </script>
