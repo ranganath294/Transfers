@@ -14,7 +14,7 @@
         .select-container {
             margin-bottom: 2rem;
         }
-         
+        
         .form-select {
             max-width: 300px;
         }
@@ -34,21 +34,28 @@
         .table th {
             background-color: #f8f9fa;
             font-weight: 600;
-            padding: 1rem;
             white-space: nowrap;
         }
         
         .table td {
-            padding: 0.75rem 1rem;
             vertical-align: middle;
         }
         
         .metrics-cell {
             background-color: #e8f4ff;
             font-weight: 500;
-            color: #1e90ff !important; /* Dodger blue color for better visibility */
+            color: #1e90ff !important;
             white-space: nowrap;
-            width: 1%;  /* This makes the column shrink to content width */
+            padding-right: 3rem !important;  /* Added extra space after text */
+            min-width: 200px;  /* Minimum width for metrics column */
+        }
+        
+        /* Make other columns compact */
+        .table th:not(:first-child),
+        .table td:not(:first-child) {
+            width: 1%;
+            padding: 0.75rem 1rem;
+            text-align: center;
         }
         
         .page-title {
@@ -56,22 +63,18 @@
             margin-bottom: 2rem;
         }
         
-        .table > :not(caption) > * > * {
-            padding: 1rem;
-        }
-        
-        /* Make other columns take equal remaining space */
-        .table th:not(:first-child),
-        .table td:not(:first-child) {
-            width: auto;
-        }
-        
         @media (max-width: 768px) {
             .container {
                 padding: 1rem;
             }
             
-            .table td, .table th {
+            .metrics-cell {
+                min-width: 150px;  /* Slightly smaller on mobile */
+                padding-right: 1.5rem !important;
+            }
+            
+            .table td:not(:first-child), 
+            .table th:not(:first-child) {
                 padding: 0.5rem;
             }
         }
