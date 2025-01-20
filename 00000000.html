@@ -1,131 +1,87 @@
-{% extends 'base.html' %}
-{% block content %}
-<div class="container-fluid">
-    <div class="card">
-        <div class="card-body">
-            <div class="table-responsive">
-                <table id="activeSpsTable" class="table table-bordered table-hover">
-                    <thead class="thead-light">
-                        <tr>
-                            <th>SP Name</th>
-                            <th>Test Team</th>
-                            <th>Phase</th>
-                            <th>Date</th>
-                            <th>Coverage %</th>
-                            <th>Pass %</th>
-                            <th>Fail %</th>
-                            <th>Block %</th>
-                        </tr>
-                    </thead>
-                    <tbody id="tableBody">
-                    </tbody>
-                </table>
-            </div>
-        </div>
-    </div>
-</div>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Case Analysis</title>
+    <style>
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: center;
+        }
+        th {
+            background-color: #f2f2f2;
+        }
+    </style>
+</head>
+<body>
+    <h1>Test Case Analysis</h1>
+    <label for="sp_name">Select SP:</label>
+    <select id="sp_name" name="sp_name">
+        <option value="">--No SP Selected--</option>
+        {% for sp_name in sp_names %}
+            <option value="{{ sp_name }}" {% if sp_name == selected_sp %}selected{% endif %}>{{ sp_name }}</option>
+        {% endfor %}
+    </select>
 
-<style>
-.table th {
-    background-color: #f8f9fa;
-    position: sticky;
-    top: 0;
-    z-index: 1;
-}
-
-.tooltip-cell {
-    position: relative;
-}
-
-.custom-tooltip {
-    visibility: hidden;
-    position: absolute;
-    z-index: 1000;
-    background-color: rgba(0, 0, 0, 0.8);
-    color: white;
-    padding: 5px 10px;
-    border-radius: 4px;
-    font-size: 12px;
-    bottom: 100%;
-    left: 50%;
-    transform: translateX(-50%);
-    white-space: nowrap;
-}
-
-.tooltip-cell:hover .custom-tooltip {
-    visibility: visible;
-}
-
-.metric-cell {
-    cursor: default;
-}
-
-.phase-row:nth-child(odd) {
-    background-color: rgba(0, 0, 0, 0.02);
-}
-</style>
-
-<script>
-document.addEventListener('DOMContentLoaded', function() {
-    const tableData = {{ table_data|safe }};
-    const tableBody = document.getElementById('tableBody');
-    
-    function formatPercent(value) {
-        return typeof value === 'number' ? value.toFixed(1) : 'NA';
-    }
-    
-    function createTooltipCell(content, tooltipText) {
-        return `
-            <td class="tooltip-cell metric-cell">
-                ${content}
-                <span class="custom-tooltip">${tooltipText}</span>
-            </td>
-        `;
-    }
-    
-    tableData.forEach(spData => {
-        let firstRowInGroup = true;
-        let spRowspan = spData.phases.length;
-        
-        spData.phases.forEach((phase, index) => {
-            let row = '<tr class="phase-row">';
+    <table id="counts_table">
+        <thead>
+            <tr></tr>
+        </thead>
+        <tbody>
             
-            if (firstRowInGroup) {
-                row += `
-                    <td rowspan="${spRowspan}">
-                        <a href="/sp-execution-data?sp=${spData.sp_name}" target="_blank">
-                            ${spData.sp_name}
-                        </a>
-                    </td>
-                    <td rowspan="${spRowspan}">${spData.test_team}</td>
-                `;
+        </tbody>
+    </table>
+
+    <script>
+        document.getElementById('sp_name').addEventListener('change', function() {
+            const spName = this.value;
+            if (spName) {
+                fetch(`/get_counts/?sp_name=${spName}`)
+                    .then(response => response.json())
+                    .then(data => {
+                        const tableBody = document.querySelector('#counts_table tbody');
+                        tableBody.innerHTML = '';
+                        const tableHead = document.querySelector('#counts_table thead tr');
+                        tableHead.innerHTML = '<th>Metrics</th>';
+                        
+                        if (data.length > 0) {
+                            const teams = Object.keys(data[0]).filter(key => key !== 'Metrics');
+                            teams.forEach(team => {
+                                const th = document.createElement('th');
+                                th.textContent = team;
+                                tableHead.appendChild(th);
+                            });
+                            
+                            data.forEach(row => {
+                                const tr = document.createElement('tr');
+                                const metricsTd = document.createElement('td');
+                                metricsTd.textContent = row.Metrics;
+                                tr.appendChild(metricsTd);
+                                
+                                teams.forEach(team => {
+                                    const td = document.createElement('td');
+                                    td.textContent = row[team] || '';
+                                    tr.appendChild(td);
+                                });
+                                
+                                tableBody.appendChild(tr);
+                            });
+                        }
+                    })
+                    .catch(error => console.error('Error:', error));
+            } else {
+                const tableBody = document.querySelector('#counts_table tbody');
+                tableBody.innerHTML = '';
+                const tableHead = document.querySelector('#counts_table thead tr');
+                tableHead.innerHTML = '<th>Metrics</th>';
             }
-            
-            row += `
-                <td>${phase.phase}</td>
-                <td>${phase.date}</td>
-                ${createTooltipCell(
-                    formatPercent(phase.metrics.coverage),
-                    `${spData.sp_name} ${spData.test_team} ${phase.phase} Coverage ${formatPercent(phase.metrics.coverage)}%`
-                )}
-                ${createTooltipCell(
-                    formatPercent(phase.metrics.passed),
-                    `${spData.sp_name} ${spData.test_team} ${phase.phase} Pass ${formatPercent(phase.metrics.passed)}%`
-                )}
-                ${createTooltipCell(
-                    formatPercent(phase.metrics.failed),
-                    `${spData.sp_name} ${spData.test_team} ${phase.phase} Fail ${formatPercent(phase.metrics.failed)}%`
-                )}
-                ${createTooltipCell(
-                    formatPercent(phase.metrics.blocked),
-                    `${spData.sp_name} ${spData.test_team} ${phase.phase} Block ${formatPercent(phase.metrics.blocked)}%`
-                )}
-            </tr>`;
-            
-            tableBody.insertAdjacentHTML('beforeend', row);
-            firstRowInGroup = false;
         });
-    });
-});
-</script>
-{% endblock %}
+    </script>
+</body>
+</html>
