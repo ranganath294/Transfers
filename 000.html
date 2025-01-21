@@ -192,3 +192,12 @@ function addRowHighlighting(tbody) {
         });
     });
 }
+
+
+
+
+
+document.addEventListener('DOMContentLoaded', function() {
+    const tableData = {{ table_data|safe }};  // Your data from the server
+    renderSpTable(tableData, 'targetElementId');
+});
