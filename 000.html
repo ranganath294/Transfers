@@ -1,24 +1,73 @@
-/* Add these styles to your existing <style> section */
-.table th:nth-child(3),
-.table td:nth-child(3) {
-    min-width: 100px;  /* Adjust this value as needed */
-    white-space: nowrap;
+function addRowHighlighting() {
+    const rows = document.querySelectorAll('.phase-row');
+    
+    rows.forEach(row => {
+        row.addEventListener('mouseenter', () => {
+            // Get the current row's attributes
+            const spName = row.getAttribute('data-sp-name');
+            const team = row.getAttribute('data-team');
+            const phase = row.getAttribute('data-phase');
+            const rowIndex = parseInt(row.getAttribute('data-row-index'));
+            
+            // Add highlight class to the current row
+            row.classList.add('highlighted-team');
+            
+            // Find and highlight all cells for this SP, team, and phase
+            rows.forEach(otherRow => {
+                const cells = otherRow.cells;
+                for (let i = 0; i < cells.length; i++) {
+                    const cell = cells[i];
+                    
+                    // Handle SP cell highlighting
+                    if (cell.getAttribute('data-sp-cell') === 'true' && 
+                        cell.textContent.trim().includes(spName)) {
+                        cell.classList.add('highlighted-team');
+                    }
+                    
+                    // Handle team cell highlighting
+                    if (cell.getAttribute('data-team-cell') === 'true' && 
+                        cell.textContent.trim() === team) {
+                        cell.classList.add('highlighted-team');
+                    }
+                    
+                    // Handle phase cell highlighting
+                    if (i === 3 && cell.textContent.trim() === phase) {
+                        const cellRowIndex = parseInt(otherRow.getAttribute('data-row-index'));
+                        const rowSpan = parseInt(cell.rowSpan) || 1;
+                        
+                        // Check if the current row falls within this cell's rowspan
+                        if (rowIndex >= cellRowIndex && rowIndex < cellRowIndex + rowSpan) {
+                            cell.classList.add('highlighted-team');
+                        }
+                    }
+                }
+            });
+        });
+        
+        row.addEventListener('mouseleave', () => {
+            // Remove highlight class from all cells
+            document.querySelectorAll('.highlighted-team').forEach(el => {
+                el.classList.remove('highlighted-team');
+            });
+        });
+    });
 }
 
-/* Update the container max-width to accommodate the new column */
-.container {
-    padding: 2rem;
-    max-width: 1500px;  /* Increased from 1400px */
+
+
+
+
+
+
+
+
+/* Add this to your existing <style> section */
+.highlighted-team {
+    background-color: rgba(0, 123, 255, 0.1) !important;
 }
 
-/* Optional: If you want to ensure other columns don't get too squeezed */
-.table th, 
-.table td {
-    min-width: 70px;  /* Provides a minimum width for all columns */
-}
-
-/* Keep percentage columns from being too wide */
-.table th:nth-child(n+8):nth-child(-n+14),
-.table td:nth-child(n+8):nth-child(-n+14) {
-    min-width: 60px;
+td[data-sp-cell="true"].highlighted-team,
+td[data-team-cell="true"].highlighted-team,
+.phase-row td.highlighted-team {
+    background-color: rgba(0, 123, 255, 0.1) !important;
 }
