@@ -1,26 +1,24 @@
-// Add Coverage Type and metrics
-row.insertAdjacentHTML('beforeend', `
-    <td>${coverageData.coverage_type}</td>
-    ${createValueCell(coverageData.metrics.total, `${spData.sp_name} ${team.team_name} ${phase.phase} ${coverageData.coverage_type} Total ${coverageData.metrics.total}`)}
-    ${createValueCell(coverageData.metrics.coverage, `${spData.sp_name} ${team.team_name} ${phase.phase} ${coverageData.coverage_type} Coverage ${coverageData.metrics.coverage}`)}
-    ${createPercentageCell(
-        coverageData.metrics.coverage_percentage,
-        `${spData.sp_name} ${team.team_name} ${phase.phase} ${coverageData.coverage_type} Coverage ${formatPercent(coverageData.metrics.coverage_percentage)}%`
-    )}
-    ${createValueCell(coverageData.metrics.passed, `${spData.sp_name} ${team.team_name} ${phase.phase} ${coverageData.coverage_type} Passed ${coverageData.metrics.passed}`)}
-    ${createPercentageCell(
-        coverageData.metrics.passed_percentage,
-        `${spData.sp_name} ${team.team_name} ${phase.phase} ${coverageData.coverage_type} Pass ${formatPercent(coverageData.metrics.passed_percentage)}%`
-    )}
-    ${createValueCell(coverageData.metrics.failed, `${spData.sp_name} ${team.team_name} ${phase.phase} ${coverageData.coverage_type} Failed ${coverageData.metrics.failed}`)}
-    ${createPercentageCell(
-        coverageData.metrics.failed_percentage,
-        `${spData.sp_name} ${team.team_name} ${phase.phase} ${coverageData.coverage_type} Fail ${formatPercent(coverageData.metrics.failed_percentage)}%`
-    )}
-    ${createValueCell(coverageData.metrics.blocked, `${spData.sp_name} ${team.team_name} ${phase.phase} ${coverageData.coverage_type} Blocked ${coverageData.metrics.blocked}`)}
-    ${createPercentageCell(
-        coverageData.metrics.blocked_percentage,
-        `${spData.sp_name} ${team.team_name} ${phase.phase} ${coverageData.coverage_type} Block ${formatPercent(coverageData.metrics.blocked_percentage)}%`
-    )}
-    ${createValueCell(coverageData.unique_cr_count, `${spData.sp_name} ${team.team_name} ${phase.phase} ${coverageData.coverage_type} Unique CR Count ${coverageData.unique_cr_count || 0}`)}
-`);
+/* Add these styles to your existing <style> section */
+.table th:nth-child(3),
+.table td:nth-child(3) {
+    min-width: 100px;  /* Adjust this value as needed */
+    white-space: nowrap;
+}
+
+/* Update the container max-width to accommodate the new column */
+.container {
+    padding: 2rem;
+    max-width: 1500px;  /* Increased from 1400px */
+}
+
+/* Optional: If you want to ensure other columns don't get too squeezed */
+.table th, 
+.table td {
+    min-width: 70px;  /* Provides a minimum width for all columns */
+}
+
+/* Keep percentage columns from being too wide */
+.table th:nth-child(n+8):nth-child(-n+14),
+.table td:nth-child(n+8):nth-child(-n+14) {
+    min-width: 60px;
+}
