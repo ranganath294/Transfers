@@ -1,123 +1,177 @@
-/* Replace your existing <style> section with this */
-.container {
-    padding: 2rem;
-    max-width: 1500px;
-}
+def prepare_table_data_active_sps(all_tc_df, phases, phase_dates_df, include_values=False, coverage_types=None, include_coverage_types=False):
+    if coverage_types is None:
+        coverage_types = ['Legacy', 'NewFR']
+    
+    def calculate_phase_metrics(df, phase, coverage_type=None):
+        if coverage_type is not None:
+            filtered_df = df[
+                (df['Test Phase'] == phase) &
+                (df['Legacy_NewFRs'] == coverage_type)
+            ]
+        else:
+            filtered_df = df[df['Test Phase'] == phase]
+        
+        metrics = filtered_df.groupby(['SP Name', 'Test Team']).agg(
+            total=('Result', 'size'),
+            passed=('Result', lambda x: (x == 'Passed').sum()),
+            failed=('Result', lambda x: (x == 'Failed').sum()),
+            blocked=('Result', lambda x: (x == 'Blocked').sum())
+        ).reset_index()
+        
+        metrics['coverage'] = metrics['passed'] + metrics['failed']
+        metrics['coverage_percentage'] = (metrics['coverage'] / metrics['total'] * 100).fillna(0)
+        metrics['passed_percentage'] = (metrics['passed'] / metrics['total'] * 100).fillna(0)
+        metrics['failed_percentage'] = (metrics['failed'] / metrics['total'] * 100).fillna(0)
+        metrics['blocked_percentage'] = (metrics['blocked'] / metrics['total'] * 100).fillna(0)
+        return metrics
+    
+    # Calculate metrics for each phase and coverage type if required
+    if include_coverage_types:
+        phase_data = {phase: {coverage_type: calculate_phase_metrics(all_tc_df, phase, coverage_type)
+                             for coverage_type in coverage_types}
+                      for phase in phases}
+    else:
+        phase_data = {phase: calculate_phase_metrics(all_tc_df, phase) for phase in phases}
+    
+    table_data = []
+    sp_groups = all_tc_df.groupby('SP Name')
+    
+    for sp_name, sp_group in sp_groups:
+        sp_teams = []
+        team_groups = sp_group.groupby('Test Team')
+        
+        for team_name, team_group in team_groups:
+            team_phase_data = []
+            
+            for phase in phases:
+                if include_coverage_types:
+                    phase_coverage_data = []
+                    
+                    for coverage_type in coverage_types:
+                        phase_metrics = phase_data[phase][coverage_type]
+                        metrics = phase_metrics[
+                            (phase_metrics['SP Name'] == sp_name) &
+                            (phase_metrics['Test Team'] == team_name)
+                        ].to_dict('records')
+                        
+                        phase_date = "NA"
+                        if phase in ["ES", "FC", "CS"]:
+                            date_value = phase_dates_df.loc[
+                                phase_dates_df['FirstCustomerSP'] == sp_name,
+                                phase
+                            ].iloc[0] if not phase_dates_df[
+                                phase_dates_df['FirstCustomerSP'] == sp_name
+                            ].empty else None
+                            if pd.notna(date_value):
+                                phase_date = date_value.strftime('%m-%d-%Y')
+                        
+                        # Calculate Unique CR Counts
+                        filter_func = lambda df: ((df['SP Name'] == sp_name) & 
+                                                 (df['Test Team'] == team_name) & 
+                                                 (df['Test Phase'] == phase) & 
+                                                 (df['Legacy_NewFRs'] == coverage_type))
+                        if 'All_Issues' in all_tc_df.columns:
+                            unique_cr_counts, column_name_result = calculate_counts(all_tc_df, 'All_Issues', filter_func=filter_func, unique=True)
+                            unique_cr_count = unique_cr_counts.set_index('Test Team').loc[team_name, column_name_result] if not unique_cr_counts.empty else 0
+                        else:
+                            logging.warning(f"Column 'All_Issues' not found in DataFrame for SP Name: {sp_name}, Test Team: {team_name}, Phase: {phase}, Coverage Type: {coverage_type}")
+                            unique_cr_count = 0
+                        
+                        phase_coverage_info = {
+                            'coverage_type': coverage_type,
+                            'metrics': format_metrics(metrics[0] if metrics else {
+                                'total': 0,
+                                'passed': 0,
+                                'failed': 0,
+                                'blocked': 0,
+                                'coverage': 0,
+                                'coverage_percentage': 0,
+                                'passed_percentage': 0,
+                                'failed_percentage': 0,
+                                'blocked_percentage': 0
+                            }, include_values),
+                            'unique_cr_count': int(unique_cr_count)
+                        }
+                        phase_coverage_data.append(phase_coverage_info)
+                    
+                    phase_info = {
+                        'phase': phase,
+                        'date': phase_date,
+                        'coverage_types': phase_coverage_data
+                    }
+                else:
+                    phase_metrics = phase_data[phase]
+                    metrics = phase_metrics[
+                        (phase_metrics['SP Name'] == sp_name) &
+                        (phase_metrics['Test Team'] == team_name)
+                    ].to_dict('records')
+                    
+                    phase_date = "NA"
+                    if phase in ["ES", "FC", "CS"]:
+                        date_value = phase_dates_df.loc[
+                            phase_dates_df['FirstCustomerSP'] == sp_name,
+                            phase
+                        ].iloc[0] if not phase_dates_df[
+                            phase_dates_df['FirstCustomerSP'] == sp_name
+                        ].empty else None
+                        if pd.notna(date_value):
+                            phase_date = date_value.strftime('%m-%d-%Y')
+                    
+                    # Calculate Unique CR Counts
+                    filter_func = lambda df: ((df['SP Name'] == sp_name) & 
+                                             (df['Test Team'] == team_name) & 
+                                             (df['Test Phase'] == phase))
+                    if 'All_Issues' in all_tc_df.columns:
+                        unique_cr_counts, column_name_result = calculate_counts(all_tc_df, 'All_Issues', filter_func=filter_func, unique=True)
+                        unique_cr_count = unique_cr_counts.set_index('Test Team').loc[team_name, column_name_result] if not unique_cr_counts.empty else 0
+                    else:
+                        logging.warning(f"Column 'All_Issues' not found in DataFrame for SP Name: {sp_name}, Test Team: {team_name}, Phase: {phase}")
+                        unique_cr_count = 0
+                    
+                    phase_info = {
+                        'phase': phase,
+                        'date': phase_date,
+                        'metrics': format_metrics(metrics[0] if metrics else {
+                            'total': 0,
+                            'passed': 0,
+                            'failed': 0,
+                            'blocked': 0,
+                            'coverage': 0,
+                            'coverage_percentage': 0,
+                            'passed_percentage': 0,
+                            'failed_percentage': 0,
+                            'blocked_percentage': 0
+                        }, include_values),
+                        'unique_cr_count': int(unique_cr_count)
+                    }
+                
+                team_phase_data.append(phase_info)
+            
+            sp_teams.append({
+                'team_name': team_name,
+                'phases': team_phase_data
+            })
+        
+        table_data.append({
+            'sp_name': sp_name,
+            'teams': sp_teams
+        })
+    
+    return table_data
 
-/* Base table styles with highlighting prevention */
-.table {
-    -webkit-user-select: none !important;
-    -moz-user-select: none !important;
-    -ms-user-select: none !important;
-    user-select: none !important;
-}
-
-.table th {
-    background-color: #f8f9fa !important;
-    position: sticky;
-    top: 0;
-    z-index: 1;
-    text-align: center;
-    font-size: 0.9rem;
-    vertical-align: middle;
-}
-
-/* Remove ALL hover effects */
-.table tr,
-.table tr:hover,
-.table-hover tbody tr:hover,
-.table td:hover,
-.table th:hover,
-.phase-row:hover,
-.table-bordered tr:hover,
-.table-hover tr:hover {
-    background-color: inherit !important;
-    outline: none !important;
-    box-shadow: none !important;
-}
-
-/* Force background colors */
-.phase-row {
-    background-color: white !important;
-}
-
-.phase-row:nth-child(odd) {
-    background-color: rgba(0, 0, 0, 0.02) !important;
-}
-
-/* Tooltip styles */
-.tooltip-cell {
-    position: relative;
-}
-
-.custom-tooltip {
-    visibility: hidden;
-    position: absolute;
-    z-index: 1000;
-    background-color: rgba(0, 0, 0, 0.8);
-    color: white;
-    padding: 5px 10px;
-    border-radius: 4px;
-    font-size: 12px;
-    bottom: 100%;
-    left: 50%;
-    transform: translateX(-50%);
-    white-space: nowrap;
-}
-
-.tooltip-cell:hover .custom-tooltip {
-    visibility: visible;
-}
-
-.metric-cell {
-    cursor: default;
-    text-align: center;
-}
-
-.btn-group {
-    margin-right: 10px;
-}
-
-.btn-group .btn {
-    margin-right: 2px;
-}
-
-.hidden-row {
-    display: none;
-}
-
-/* Column alignment */
-.table th:nth-child(-n+5),
-.table td:nth-child(-n+5) {
-    text-align: left;
-}
-
-.table th:nth-child(n+8):nth-child(-n+14),
-.table td:nth-child(n+8):nth-child(-n+14) {
-    min-width: 60px;
-}
-
-/* Additional rules to prevent highlighting */
-* {
-    -webkit-tap-highlight-color: transparent !important;
-}
-
-.table td,
-.table th {
-    -webkit-tap-highlight-color: transparent !important;
-    outline: none !important;
-}
-
-/* Disable text selection for the entire table and its contents */
-.table,
-.table *,
-.table td,
-.table th,
-.table tr {
-    -webkit-touch-callout: none !important;
-    -webkit-user-select: none !important;
-    -khtml-user-select: none !important;
-    -moz-user-select: none !important;
-    -ms-user-select: none !important;
-    user-select: none !important;
-}
+def format_metrics(metrics, include_values):
+    formatted_metrics = {
+        'coverage_percentage': metrics['coverage_percentage'],
+        'passed_percentage': metrics['passed_percentage'],
+        'failed_percentage': metrics['failed_percentage'],
+        'blocked_percentage': metrics['blocked_percentage']
+    }
+    if include_values:
+        formatted_metrics.update({
+            'total': metrics['total'],
+            'passed': metrics['passed'],
+            'failed': metrics['failed'],
+            'blocked': metrics['blocked'],
+            'coverage': metrics['coverage']
+        })
+    return formatted_metrics
