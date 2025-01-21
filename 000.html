@@ -111,10 +111,6 @@
     background-color: rgba(0, 0, 0, 0.02);
 }
 
-.highlighted-team {
-    background-color: rgba(0, 123, 255, 0.1);
-}
-
 .btn-group {
     margin-right: 10px;
 }
@@ -125,11 +121,6 @@
 
 .hidden-row {
     display: none;
-}
-
-td[data-sp-cell="true"].highlighted-team,
-td[data-team-cell="true"].highlighted-team {
-    background-color: rgba(0, 123, 255, 0.1) !important;
 }
 
 /* Make the first few columns left-aligned */
@@ -340,52 +331,8 @@ document.addEventListener('DOMContentLoaded', function() {
             });
         });
         
-        addRowHighlighting();
     }
     
-    function addRowHighlighting() {
-        const rows = document.querySelectorAll('.phase-row');
-        
-        rows.forEach(row => {
-            row.addEventListener('mouseenter', () => {
-                // Get the current row's SP and team
-                const spName = row.getAttribute('data-sp-name');
-                const team = row.getAttribute('data-team');
-                const rowIndex = parseInt(row.getAttribute('data-row-index'));
-                
-                // Add highlight class to the current row
-                row.classList.add('highlighted-team');
-                
-                // Find and highlight the corresponding SP cell
-                const spCells = document.querySelectorAll('[data-sp-cell="true"]');
-                spCells.forEach(spCell => {
-                    if (spCell.textContent.trim().includes(spName)) {
-                        spCell.classList.add('highlighted-team');
-                    }
-                });
-                
-                // Find and highlight the corresponding team cell
-                const teamCells = document.querySelectorAll('[data-team-cell="true"]');
-                teamCells.forEach(teamCell => {
-                    if (teamCell.textContent.trim() === team) {
-                        const teamRow = teamCell.closest('tr');
-                        const teamRowIndex = parseInt(teamRow.getAttribute('data-row-index'));
-                        if (teamRowIndex <= rowIndex && 
-                            teamRowIndex + parseInt(teamCell.rowSpan) > rowIndex) {
-                            teamCell.classList.add('highlighted-team');
-                        }
-                    }
-                });
-            });
-            
-            row.addEventListener('mouseleave', () => {
-                // Remove highlight class from all cells
-                document.querySelectorAll('.highlighted-team').forEach(el => {
-                    el.classList.remove('highlighted-team');
-                });
-            });
-        });
-    }
 });
 </script>
 {% endblock %}
