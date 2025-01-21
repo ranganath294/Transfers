@@ -133,7 +133,7 @@ td[data-team-cell="true"].highlighted-team {
         function createTooltipCell(content, tooltipText) {
             return `
                 <td class="tooltip-cell metric-cell">
-                    ${content}
+                    ${content}%
                     <span class="custom-tooltip">${tooltipText}</span>
                 </td>
             `;
@@ -197,20 +197,20 @@ td[data-team-cell="true"].highlighted-team {
                             <td>${phase.phase}</td>
                             <td>${phase.date}</td>
                             ${createTooltipCell(
-                                formatPercent(phase.metrics.coverage),
-                                `${spData.sp_name} ${team.team_name} ${phase.phase} Coverage ${formatPercent(phase.metrics.coverage)}%`
+                                formatPercent(phase.metrics.coverage_percentage),
+                                `${spData.sp_name} ${team.team_name} ${phase.phase} Coverage: ${formatPercent(phase.metrics.coverage_percentage)}%`
                             )}
                             ${createTooltipCell(
-                                formatPercent(phase.metrics.passed),
-                                `${spData.sp_name} ${team.team_name} ${phase.phase} Pass ${formatPercent(phase.metrics.passed)}%`
+                                formatPercent(phase.metrics.passed_percentage),
+                                `${spData.sp_name} ${team.team_name} ${phase.phase} Pass: ${formatPercent(phase.metrics.passed_percentage)}%`
                             )}
                             ${createTooltipCell(
-                                formatPercent(phase.metrics.failed),
-                                `${spData.sp_name} ${team.team_name} ${phase.phase} Fail ${formatPercent(phase.metrics.failed)}%`
+                                formatPercent(phase.metrics.failed_percentage),
+                                `${spData.sp_name} ${team.team_name} ${phase.phase} Fail: ${formatPercent(phase.metrics.failed_percentage)}%`
                             )}
                             ${createTooltipCell(
-                                formatPercent(phase.metrics.blocked),
-                                `${spData.sp_name} ${team.team_name} ${phase.phase} Block ${formatPercent(phase.metrics.blocked)}%`
+                                formatPercent(phase.metrics.blocked_percentage),
+                                `${spData.sp_name} ${team.team_name} ${phase.phase} Block: ${formatPercent(phase.metrics.blocked_percentage)}%`
                             )}
                         `);
                         
@@ -227,15 +227,12 @@ td[data-team-cell="true"].highlighted-team {
             
             rows.forEach(row => {
                 row.addEventListener('mouseenter', () => {
-                    // Get the current row's SP and team
                     const spName = row.getAttribute('data-sp-name');
                     const team = row.getAttribute('data-team');
                     const rowIndex = parseInt(row.getAttribute('data-row-index'));
                     
-                    // Add highlight class to the current row
                     row.classList.add('highlighted-team');
                     
-                    // Find and highlight the corresponding SP cell
                     const spCells = document.querySelectorAll('[data-sp-cell="true"]');
                     spCells.forEach(spCell => {
                         if (spCell.textContent.trim().includes(spName)) {
@@ -243,7 +240,6 @@ td[data-team-cell="true"].highlighted-team {
                         }
                     });
                     
-                    // Find and highlight the corresponding team cell
                     const teamCells = document.querySelectorAll('[data-team-cell="true"]');
                     teamCells.forEach(teamCell => {
                         if (teamCell.textContent.trim() === team) {
@@ -258,7 +254,6 @@ td[data-team-cell="true"].highlighted-team {
                 });
                 
                 row.addEventListener('mouseleave', () => {
-                    // Remove highlight class from all cells
                     document.querySelectorAll('.highlighted-team').forEach(el => {
                         el.classList.remove('highlighted-team');
                     });
@@ -266,7 +261,6 @@ td[data-team-cell="true"].highlighted-team {
             });
         }
         
-        // Add event listeners for team filter buttons
         document.querySelectorAll('.team-filter').forEach(button => {
             button.addEventListener('click', () => {
                 document.querySelectorAll('.team-filter').forEach(btn => btn.classList.remove('active'));
@@ -276,7 +270,6 @@ td[data-team-cell="true"].highlighted-team {
             });
         });
         
-        // Add event listeners for phase filter buttons
         document.querySelectorAll('.phase-filter').forEach(button => {
             button.addEventListener('click', () => {
                 document.querySelectorAll('.phase-filter').forEach(btn => btn.classList.remove('active'));
@@ -286,7 +279,6 @@ td[data-team-cell="true"].highlighted-team {
             });
         });
         
-        // Initial render
         renderTable();
     });
 </script>
