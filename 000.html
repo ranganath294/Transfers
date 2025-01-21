@@ -1,34 +1,123 @@
-/* Add these rules to your existing <style> section */
+/* Replace your existing <style> section with this */
+.container {
+    padding: 2rem;
+    max-width: 1500px;
+}
 
-/* Disable text selection throughout the table */
+/* Base table styles with highlighting prevention */
 .table {
-    -webkit-user-select: none;
-    -moz-user-select: none;
-    -ms-user-select: none;
-    user-select: none;
+    -webkit-user-select: none !important;
+    -moz-user-select: none !important;
+    -ms-user-select: none !important;
+    user-select: none !important;
 }
 
-/* Remove any hover effects on table rows */
-.table tr:hover {
-    background-color: transparent !important;
+.table th {
+    background-color: #f8f9fa !important;
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    text-align: center;
+    font-size: 0.9rem;
+    vertical-align: middle;
 }
 
-/* Override Bootstrap's default hover effect */
-.table-hover tbody tr:hover {
-    background-color: transparent !important;
-}
-
-/* Ensure phase rows maintain their intended background without hover effects */
-.phase-row:hover {
+/* Remove ALL hover effects */
+.table tr,
+.table tr:hover,
+.table-hover tbody tr:hover,
+.table td:hover,
+.table th:hover,
+.phase-row:hover,
+.table-bordered tr:hover,
+.table-hover tr:hover {
     background-color: inherit !important;
+    outline: none !important;
+    box-shadow: none !important;
 }
 
-/* Keep the alternating row colors without hover effects */
-.phase-row:nth-child(odd):hover {
+/* Force background colors */
+.phase-row {
+    background-color: white !important;
+}
+
+.phase-row:nth-child(odd) {
     background-color: rgba(0, 0, 0, 0.02) !important;
 }
 
-/* Remove any highlighting effects from cells */
-.table td, .table th {
-    background-color: inherit !important;
+/* Tooltip styles */
+.tooltip-cell {
+    position: relative;
+}
+
+.custom-tooltip {
+    visibility: hidden;
+    position: absolute;
+    z-index: 1000;
+    background-color: rgba(0, 0, 0, 0.8);
+    color: white;
+    padding: 5px 10px;
+    border-radius: 4px;
+    font-size: 12px;
+    bottom: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    white-space: nowrap;
+}
+
+.tooltip-cell:hover .custom-tooltip {
+    visibility: visible;
+}
+
+.metric-cell {
+    cursor: default;
+    text-align: center;
+}
+
+.btn-group {
+    margin-right: 10px;
+}
+
+.btn-group .btn {
+    margin-right: 2px;
+}
+
+.hidden-row {
+    display: none;
+}
+
+/* Column alignment */
+.table th:nth-child(-n+5),
+.table td:nth-child(-n+5) {
+    text-align: left;
+}
+
+.table th:nth-child(n+8):nth-child(-n+14),
+.table td:nth-child(n+8):nth-child(-n+14) {
+    min-width: 60px;
+}
+
+/* Additional rules to prevent highlighting */
+* {
+    -webkit-tap-highlight-color: transparent !important;
+}
+
+.table td,
+.table th {
+    -webkit-tap-highlight-color: transparent !important;
+    outline: none !important;
+}
+
+/* Disable text selection for the entire table and its contents */
+.table,
+.table *,
+.table td,
+.table th,
+.table tr {
+    -webkit-touch-callout: none !important;
+    -webkit-user-select: none !important;
+    -khtml-user-select: none !important;
+    -moz-user-select: none !important;
+    -ms-user-select: none !important;
+    user-select: none !important;
 }
