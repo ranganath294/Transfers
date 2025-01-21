@@ -12,34 +12,56 @@ function addRowHighlighting() {
             // Add highlight class to the current row
             row.classList.add('highlighted-team');
             
-            // Find and highlight all cells for this SP, team, and phase
-            rows.forEach(otherRow => {
-                const cells = otherRow.cells;
-                for (let i = 0; i < cells.length; i++) {
-                    const cell = cells[i];
-                    
-                    // Handle SP cell highlighting
-                    if (cell.getAttribute('data-sp-cell') === 'true' && 
-                        cell.textContent.trim().includes(spName)) {
-                        cell.classList.add('highlighted-team');
-                    }
-                    
-                    // Handle team cell highlighting
-                    if (cell.getAttribute('data-team-cell') === 'true' && 
-                        cell.textContent.trim() === team) {
-                        cell.classList.add('highlighted-team');
-                    }
-                    
-                    // Handle phase cell highlighting
-                    if (i === 3 && cell.textContent.trim() === phase) {
-                        const cellRowIndex = parseInt(otherRow.getAttribute('data-row-index'));
-                        const rowSpan = parseInt(cell.rowSpan) || 1;
-                        
-                        // Check if the current row falls within this cell's rowspan
-                        if (rowIndex >= cellRowIndex && rowIndex < cellRowIndex + rowSpan) {
-                            cell.classList.add('highlighted-team');
+            // Find cells for highlighting
+            const allRows = Array.from(document.querySelectorAll('.phase-row'));
+            const rowSpanRanges = new Map(); // To track rowspan ranges
+            
+            // First pass: collect rowspan ranges for SP, team, and phase cells
+            allRows.forEach((r, idx) => {
+                Array.from(r.cells).forEach((cell, cellIndex) => {
+                    const rowSpan = parseInt(cell.rowSpan) || 1;
+                    if (rowSpan > 1) {
+                        if (cell.getAttribute('data-sp-cell') === 'true' ||
+                            cell.getAttribute('data-team-cell') === 'true' ||
+                            cellIndex === 3) { // Phase column
+                            rowSpanRanges.set(cell, {
+                                start: idx,
+                                end: idx + rowSpan - 1,
+                                type: cellIndex === 3 ? 'phase' : 
+                                      cell.getAttribute('data-sp-cell') === 'true' ? 'sp' : 'team'
+                            });
                         }
                     }
+                });
+            });
+            
+            // Second pass: apply highlighting based on collected ranges
+            rowSpanRanges.forEach((range, cell) => {
+                if (rowIndex >= range.start && rowIndex <= range.end) {
+                    switch (range.type) {
+                        case 'sp':
+                            if (cell.textContent.trim().includes(spName)) {
+                                cell.classList.add('highlighted-team');
+                            }
+                            break;
+                        case 'team':
+                            if (cell.textContent.trim() === team) {
+                                cell.classList.add('highlighted-team');
+                            }
+                            break;
+                        case 'phase':
+                            if (cell.textContent.trim() === phase) {
+                                cell.classList.add('highlighted-team');
+                            }
+                            break;
+                    }
+                }
+            });
+            
+            // Highlight any non-rowspan cells in the current row
+            Array.from(row.cells).forEach(cell => {
+                if (!rowSpanRanges.has(cell)) {
+                    cell.classList.add('highlighted-team');
                 }
             });
         });
@@ -51,23 +73,4 @@ function addRowHighlighting() {
             });
         });
     });
-}
-
-
-
-
-
-
-
-
-
-/* Add this to your existing <style> section */
-.highlighted-team {
-    background-color: rgba(0, 123, 255, 0.1) !important;
-}
-
-td[data-sp-cell="true"].highlighted-team,
-td[data-team-cell="true"].highlighted-team,
-.phase-row td.highlighted-team {
-    background-color: rgba(0, 123, 255, 0.1) !important;
 }
