@@ -1,359 +1,125 @@
-{% extends 'base.html' %}
-{% load static %}
+function renderMetricsTable(data, containerId) {
+    // Helper function to format percentages
+    const formatPercentage = (value) => {
+        return value ? value.toFixed(1) + '%' : '0.0%';
+    };
 
-{% block title %}Active SPs Report{% endblock %}
-
-{% block extra_css %}
-<style>
-    .container {
-        padding: 2rem;
-        max-width: 1400px;
-    }
-
-    .page-title {
-        margin-bottom: 1.5rem;
-        color: #333;
-    }
-
-    .table th {
-        background-color: #f8f9fa;
-        position: sticky;
-        top: 0;
-        z-index: 1;
-    }
-
-    .tooltip-cell {
-        position: relative;
-        cursor: default;
-    }
-
-    .custom-tooltip {
-        visibility: hidden;
-        position: absolute;
-        z-index: 1000;
-        background-color: rgba(0, 0, 0, 0.8);
-        color: white;
-        padding: 5px 10px;
-        border-radius: 4px;
-        font-size: 12px;
-        bottom: 100%;
-        left: 50%;
-        transform: translateX(-50%);
-        white-space: nowrap;
-    }
-
-    .tooltip-cell:hover .custom-tooltip {
-        visibility: visible;
-    }
-
-    .metric-cell {
-        cursor: default;
-    }
-
-    .phase-row:nth-child(odd) {
-        background-color: rgba(0, 0, 0, 0.02);
-    }
-
-    .highlighted-team {
-        background-color: rgba(0, 123, 255, 0.1) !important;
-    }
-
-    .btn-group {
-        margin-right: 10px;
-    }
-
-    .btn-group .btn {
-        margin-right: 2px;
-    }
-
-    .filter-container {
-        margin-bottom: 1.5rem;
-        display: flex;
-        flex-wrap: wrap;
-        gap: 1rem;
-    }
-
-    @media (max-width: 768px) {
-        .filter-container {
-            flex-direction: column;
-        }
-        
-        .btn-group {
-            width: 100%;
-            margin-bottom: 0.5rem;
-        }
-    }
-</style>
-{% endblock %}
-
-{% block content %}
-<div class="container">
-    <div class="row">
-        <div class="col-12">
-            <h1 class="page-title">Active SPs Report</h1>
-            
-            <div class="card">
-                <div class="card-body">
-                    <!-- Filters -->
-                    <div class="filter-container">
-                        <div class="btn-group" role="group" aria-label="Test Team filters">
-                            <button type="button" class="btn btn-outline-primary team-filter active" data-team="all">All Teams</button>
-                            {% for team in available_teams %}
-                            <button type="button" class="btn btn-outline-primary team-filter" data-team="{{ team }}">{{ team }}</button>
-                            {% endfor %}
-                        </div>
-
-                        <div class="btn-group" role="group" aria-label="Phase filters">
-                            <button type="button" class="btn btn-outline-primary phase-filter active" data-phase="all">All Phases</button>
-                            {% for phase in available_phases %}
-                            <button type="button" class="btn btn-outline-primary phase-filter" data-phase="{{ phase }}">{{ phase }}</button>
-                            {% endfor %}
-                        </div>
-
-                        <div class="dropdown">
-                            <button class="btn btn-outline-secondary dropdown-toggle" type="button" id="exportDropdown" data-bs-toggle="dropdown" aria-expanded="false">
-                                Export
-                            </button>
-                            <ul class="dropdown-menu" aria-labelledby="exportDropdown">
-                                <li><a class="dropdown-item" href="#" id="exportExcel">Export to Excel</a></li>
-                                <li><a class="dropdown-item" href="#" id="exportCSV">Export to CSV</a></li>
-                            </ul>
-                        </div>
-                    </div>
-
-                    <!-- Table Container -->
-                    <div class="table-responsive">
-                        <div id="spTableContainer"></div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
-{% endblock %}
-
-{% block extra_js %}
-<script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-
-<script>
-    // Table rendering function
-    function renderSpTable(data, targetElementId) {
-        const table = document.createElement('table');
-        table.className = 'table table-bordered table-hover';
-        table.id = 'activeSpsTable';
-        
-        // Create header
-        const thead = document.createElement('thead');
-        thead.className = 'thead-light';
-        const headerRow = document.createElement('tr');
-        const headers = [
-            'SP Name', 'Test Team', 'Phase', 'Date', 
-            'Coverage %', 'Pass %', 'Fail %', 'Block %'
-        ];
-        
-        headers.forEach(header => {
-            const th = document.createElement('th');
-            th.textContent = header;
-            headerRow.appendChild(th);
-        });
-        thead.appendChild(headerRow);
-        table.appendChild(thead);
-        
-        // Create table body with filtered data
-        const tbody = document.createElement('tbody');
-        data.forEach((sp, spIndex) => {
-            let isFirstSpRow = true;
-            const spRowspan = calculateSpRowspan(sp);
-            
-            sp.teams.forEach((team, teamIndex) => {
-                let isFirstTeamRow = true;
-                const teamRowspan = calculateTeamRowspan(team);
-                
-                team.phases.forEach((phase, phaseIndex) => {
-                    const row = document.createElement('tr');
-                    row.className = 'phase-row';
-                    row.setAttribute('data-sp-name', sp.sp_name);
-                    row.setAttribute('data-team', team.team_name);
-                    row.setAttribute('data-phase', phase.phase);
-                    
-                    if (isFirstSpRow) {
-                        const spCell = document.createElement('td');
-                        spCell.setAttribute('rowspan', spRowspan);
-                        spCell.setAttribute('data-sp-cell', 'true');
-                        spCell.innerHTML = `<a href="/sp-execution-data/${sp.sp_name}/">${sp.sp_name}</a>`;
-                        row.appendChild(spCell);
-                        isFirstSpRow = false;
-                    }
-                    
-                    if (isFirstTeamRow) {
-                        const teamCell = document.createElement('td');
-                        teamCell.setAttribute('rowspan', teamRowspan);
-                        teamCell.setAttribute('data-team-cell', 'true');
-                        teamCell.textContent = team.team_name;
-                        row.appendChild(teamCell);
-                        isFirstTeamRow = false;
-                    }
-                    
-                    addMetricCells(row, phase);
-                    tbody.appendChild(row);
-                });
-            });
-        });
-        
-        table.appendChild(tbody);
-        
-        const container = document.getElementById(targetElementId);
-        container.innerHTML = '';
-        container.appendChild(table);
-        
-        addRowHighlighting();
-    }
-
-    // Helper functions
-    function calculateSpRowspan(sp) {
-        return sp.teams.reduce((acc, team) => acc + calculateTeamRowspan(team), 0);
-    }
-
-    function calculateTeamRowspan(team) {
-        return team.phases.length;
-    }
-
-    function formatPercent(value) {
-        return value !== null && value !== undefined ? value.toFixed(1) : 'NA';
-    }
-
-    function addMetricCells(row, phase) {
-        // Phase and Date cells
-        const cells = [
-            phase.phase,
-            phase.date,
-            createTooltipCell(phase.metrics.coverage_percentage, 'Coverage'),
-            createTooltipCell(phase.metrics.passed_percentage, 'Pass'),
-            createTooltipCell(phase.metrics.failed_percentage, 'Fail'),
-            createTooltipCell(phase.metrics.blocked_percentage, 'Block')
-        ];
-
-        cells.forEach(cellContent => {
-            const td = document.createElement('td');
-            if (typeof cellContent === 'string') {
-                td.textContent = cellContent;
-            } else {
-                td.innerHTML = cellContent;
-            }
-            row.appendChild(td);
-        });
-    }
-
-    function createTooltipCell(value, metricName) {
-        return `
-            <div class="tooltip-cell metric-cell">
-                ${formatPercent(value)}%
-                <span class="custom-tooltip">${metricName}: ${formatPercent(value)}%</span>
-            </div>
-        `;
-    }
-
-    function addRowHighlighting() {
-        const rows = document.querySelectorAll('.phase-row');
-        
-        rows.forEach(row => {
-            row.addEventListener('mouseenter', () => {
-                const spName = row.getAttribute('data-sp-name');
-                const team = row.getAttribute('data-team');
-                
-                // Highlight current row
-                row.classList.add('highlighted-team');
-                
-                // Highlight SP cell
-                document.querySelectorAll(`[data-sp-cell="true"]`).forEach(cell => {
-                    if (cell.textContent.includes(spName)) {
-                        cell.classList.add('highlighted-team');
-                    }
-                });
-                
-                // Highlight team cell
-                document.querySelectorAll(`[data-team-cell="true"]`).forEach(cell => {
-                    if (cell.textContent === team) {
-                        cell.classList.add('highlighted-team');
-                    }
-                });
-            });
-            
-            row.addEventListener('mouseleave', () => {
-                document.querySelectorAll('.highlighted-team').forEach(el => {
-                    el.classList.remove('highlighted-team');
-                });
-            });
-        });
-    }
-
-    // Filter handlers
-    function handleTeamFilter(team) {
-        const rows = document.querySelectorAll('.phase-row');
-        rows.forEach(row => {
-            const rowTeam = row.getAttribute('data-team');
-            if (team === 'all' || rowTeam === team) {
-                row.style.display = '';
-            } else {
-                row.style.display = 'none';
-            }
-        });
-    }
-
-    function handlePhaseFilter(phase) {
-        const rows = document.querySelectorAll('.phase-row');
-        rows.forEach(row => {
-            const rowPhase = row.getAttribute('data-phase');
-            if (phase === 'all' || rowPhase === phase) {
-                row.style.display = '';
-            } else {
-                row.style.display = 'none';
-            }
-        });
-    }
-
-    // Export functions
-    function exportToExcel() {
-        const table = document.getElementById('activeSpsTable');
-        const wb = XLSX.utils.table_to_book(table, { sheet: "Active SPs Report" });
-        XLSX.writeFile(wb, 'active_sps_report.xlsx');
-    }
-
-    function exportToCSV() {
-        const table = document.getElementById('activeSpsTable');
-        const wb = XLSX.utils.table_to_book(table);
-        const csvContent = XLSX.utils.sheet_to_csv(wb.Sheets[wb.SheetNames[0]]);
-        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-        saveAs(blob, 'active_sps_report.csv');
-    }
-
-    // Initialize on page load
-    document.addEventListener('DOMContentLoaded', function() {
-        const tableData = {{ table_data|safe }};
-        renderSpTable(tableData, 'spTableContainer');
-
-        // Team filter listeners
-        document.querySelectorAll('.team-filter').forEach(button => {
-            button.addEventListener('click', function() {
-                document.querySelectorAll('.team-filter').forEach(btn => btn.classList.remove('active'));
-                this.classList.add('active');
-                handleTeamFilter(this.getAttribute('data-team'));
-            });
-        });
-
-        // Phase filter listeners
-        document.querySelectorAll('.phase-filter').forEach(button => {
-            button.addEventListener('click', function() {
-                document.querySelectorAll('.phase-filter').forEach(btn => btn.classList.remove('active'));
-                this.classList.add('active');
-                handlePhaseFilter(this.getAttribute('data-phase'));
-            });
-        });
-
-        // Export listeners
-        document.getElementById('exportExcel').addEventListener('click', exportToExcel);
-        document.getElementById('exportCSV').addEventListener('click', exportToCSV);
+    // Create table element
+    const table = document.createElement('table');
+    table.className = 'metrics-table';
+    
+    // Create header
+    const thead = document.createElement('thead');
+    const headerRow = document.createElement('tr');
+    const headers = ['SP Name', 'Test Team', 'Phase', 'Date', 'Coverage %', 'Pass %', 'Fail %', 'Block %'];
+    
+    headers.forEach(text => {
+        const th = document.createElement('th');
+        th.textContent = text;
+        headerRow.appendChild(th);
     });
-</script>
-{% endblock %}
+    
+    thead.appendChild(headerRow);
+    table.appendChild(thead);
+    
+    // Create table body
+    const tbody = document.createElement('tbody');
+    
+    // Process each SP
+    data.forEach(sp => {
+        let isFirstSpRow = true;
+        const spRowspan = sp.teams.reduce((acc, team) => acc + team.phases.length, 0);
+        
+        sp.teams.forEach(team => {
+            let isFirstTeamRow = true;
+            const teamRowspan = team.phases.length;
+            
+            team.phases.forEach(phase => {
+                const row = document.createElement('tr');
+                
+                // SP Name cell (only on first row of the SP)
+                if (isFirstSpRow) {
+                    const spCell = document.createElement('td');
+                    spCell.textContent = sp.sp_name;
+                    spCell.rowSpan = spRowspan;
+                    row.appendChild(spCell);
+                    isFirstSpRow = false;
+                }
+                
+                // Team Name cell (only on first row of the team)
+                if (isFirstTeamRow) {
+                    const teamCell = document.createElement('td');
+                    teamCell.textContent = team.team_name;
+                    teamCell.rowSpan = teamRowspan;
+                    row.appendChild(teamCell);
+                    isFirstTeamRow = false;
+                }
+                
+                // Phase cell
+                const phaseCell = document.createElement('td');
+                phaseCell.textContent = phase.phase;
+                row.appendChild(phaseCell);
+                
+                // Date cell
+                const dateCell = document.createElement('td');
+                dateCell.textContent = phase.date;
+                row.appendChild(dateCell);
+                
+                // Metrics cells
+                const metrics = phase.metrics;
+                const metricsArray = [
+                    metrics.coverage_percentage,
+                    metrics.passed_percentage,
+                    metrics.failed_percentage,
+                    metrics.blocked_percentage
+                ];
+                
+                metricsArray.forEach(value => {
+                    const cell = document.createElement('td');
+                    cell.textContent = formatPercentage(value);
+                    row.appendChild(cell);
+                });
+                
+                tbody.appendChild(row);
+            });
+        });
+    });
+    
+    table.appendChild(tbody);
+    
+    // Add some basic CSS
+    const style = document.createElement('style');
+    style.textContent = `
+        .metrics-table {
+            border-collapse: collapse;
+            width: 100%;
+            margin: 20px 0;
+        }
+        .metrics-table th,
+        .metrics-table td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+        }
+        .metrics-table th {
+            background-color: #f5f5f5;
+            font-weight: bold;
+        }
+        .metrics-table tr:nth-child(even) {
+            background-color: #f9f9f9;
+        }
+        .metrics-table tr:hover {
+            background-color: #f5f5f5;
+        }
+    `;
+    
+    document.head.appendChild(style);
+    
+    // Clear and append to container
+    const container = document.getElementById(containerId);
+    container.innerHTML = '';
+    container.appendChild(table);
+}
+
+// Example usage:
+// renderMetricsTable(data, 'tableContainer');
