@@ -1,285 +1,150 @@
-{% extends 'base.html' %}
-{% block content %}
-<div class="container container-fluid">
-    <h1 class="page-title">Active SPs Report</h1>
-    <div class="card mb-3">
-        <div class="card-body">
-            <div class="d-flex justify-content-between align-items-center mb-3">
-                <div class="btn-group" role="group" aria-label="Test Team filters">
-                    <button type="button" class="btn btn-outline-primary team-filter active" data-team="all">All Teams</button>
-                    <button type="button" class="btn btn-outline-primary team-filter" data-team="BT">BT</button>
-                    <button type="button" class="btn btn-outline-primary team-filter" data-team="WLAN">WLAN</button>
-                </div>
-                <div class="btn-group" role="group" aria-label="Phase filters">
-                    <button type="button" class="btn btn-outline-primary phase-filter active" data-phase="all">All Phases</button>
-                    <button type="button" class="btn btn-outline-primary phase-filter" data-phase="ES">ES</button>
-                    <button type="button" class="btn btn-outline-primary phase-filter" data-phase="FC">FC</button>
-                    <button type="button" class="btn btn-outline-primary phase-filter" data-phase="CS">CS</button>
-                    <button type="button" class="btn btn-outline-primary phase-filter" data-phase="Post-CS">Post-CS</button>
-                    <button type="button" class="btn btn-outline-primary phase-filter" data-phase="Mainline_Regression">Mainline Regression</button>
-                </div>
-            </div>
-            <div class="table-responsive">
-                <table id="activeSpsTable" class="table table-bordered table-hover">
-                    <thead class="thead-light">
-                        <tr>
-                            <th>SP Name</th>
-                            <th>Test Team</th>
-                            <th>Phase</th>
-                            <th>Date</th>
-                            <th>Coverage %</th>
-                            <th>Pass %</th>
-                            <th>Fail %</th>
-                            <th>Block %</th>
-                        </tr>
-                    </thead>
-                    <tbody id="tableBody">
-                    </tbody>
-                </table>
-            </div>
-        </div>
-    </div>
-</div>
+import pandas as pd
 
-<style>
-.container {
-    padding: 2rem;
-    max-width: 1400px;
-}
-
-.table th {
-    background-color: #f8f9fa;
-    position: sticky;
-    top: 0;
-    z-index: 1;
-}
-
-.tooltip-cell {
-    position: relative;
-}
-
-.custom-tooltip {
-    visibility: hidden;
-    position: absolute;
-    z-index: 1000;
-    background-color: rgba(0, 0, 0, 0.8);
-    color: white;
-    padding: 5px 10px;
-    border-radius: 4px;
-    font-size: 12px;
-    bottom: 100%;
-    left: 50%;
-    transform: translateX(-50%);
-    white-space: nowrap;
-}
-
-.tooltip-cell:hover .custom-tooltip {
-    visibility: visible;
-}
-
-.metric-cell {
-    cursor: default;
-}
-
-.phase-row:nth-child(odd) {
-    background-color: rgba(0, 0, 0, 0.02);
-}
-
-.sp-group {
-    background-color: #f8f9fa;
-}
-
-.team-group {
-    background-color: #ffffff;
-}
-
-.highlighted-team {
-    background-color: rgba(0, 123, 255, 0.1);
-}
-
-.btn-group {
-    margin-right: 10px;
-}
-
-.btn-group .btn {
-    margin-right: 2px;
-}
-
-.hidden-row {
-    display: none;
-}
-
-.highlighted-team {
-    background-color: rgba(0, 123, 255, 0.1) !important;
-}
-
-td[data-sp-cell="true"].highlighted-team,
-td[data-team-cell="true"].highlighted-team {
-    background-color: rgba(0, 123, 255, 0.1) !important;
-}
-</style>
-
-<script>
-    document.addEventListener('DOMContentLoaded', function() {
-        const tableData = {{ table_data|safe }};
-        const tableBody = document.getElementById('tableBody');
-        let selectedTeam = 'all';
-        let selectedPhase = 'all';
+def prepare_table_data_active_sps(all_tc_df, phases, phase_dates_df, include_values=False, coverage_types=None, include_coverage_types=False):
+    if coverage_types is None:
+        coverage_types = ['Legacy', 'NewFR']
+    
+    table_data = []
+    
+    def calculate_phase_metrics(df, phase, coverage_type=None):
+        if coverage_type is not None:
+            filtered_df = df[
+                (df['Test Phase'] == phase) & 
+                (df['Legacy_NewFRs'] == coverage_type)
+            ]
+        else:
+            filtered_df = df[df['Test Phase'] == phase]
         
-        function formatPercent(value) {
-            return typeof value === 'number' ? value.toFixed(1) : 'NA';
-        }
-        
-        function createTooltipCell(content, tooltipText) {
-            return `
-                <td class="tooltip-cell metric-cell">
-                    ${content}%
-                    <span class="custom-tooltip">${tooltipText}</span>
-                </td>
-            `;
-        }
-        
-        function renderTable(filteredTeam = 'all', filteredPhase = 'all') {
-            tableBody.innerHTML = '';
-            let rowCounter = 0;
-            
-            tableData.forEach((spData, spIndex) => {
-                let firstSpRow = true;
-                const filteredTeams = spData.teams.filter(team => 
-                    filteredTeam === 'all' || team.team_name === filteredTeam
-                );
-                
-                filteredTeams.forEach((team, teamIndex) => {
-                    let firstTeamRow = true;
-                    const filteredPhases = team.phases.filter(phase =>
-                        filteredPhase === 'all' || phase.phase === filteredPhase
-                    );
-                    
-                    if (filteredPhases.length === 0) return;
-                    
-                    filteredPhases.forEach((phase, phaseIndex) => {
-                        let row = document.createElement('tr');
-                        row.className = 'phase-row';
-                        row.setAttribute('data-row-index', rowCounter++);
-                        row.setAttribute('data-sp-index', spIndex);
-                        row.setAttribute('data-team-index', teamIndex);
-                        row.setAttribute('data-team', team.team_name);
-                        row.setAttribute('data-phase', phase.phase);
-                        row.setAttribute('data-sp-name', spData.sp_name);
-                        
-                        if (firstSpRow) {
-                            let spCell = document.createElement('td');
-                            spCell.rowSpan = filteredTeams.reduce((acc, t) => {
-                                return acc + t.phases.filter(p => 
-                                    filteredPhase === 'all' || p.phase === filteredPhase
-                                ).length;
-                            }, 0);
-                            spCell.innerHTML = `
-                                <a href="/sp-execution-data?sp=${spData.sp_name}" target="_blank">
-                                    ${spData.sp_name}
-                                </a>
-                            `;
-                            spCell.setAttribute('data-sp-cell', 'true');
-                            row.appendChild(spCell);
-                            firstSpRow = false;
+        metrics = filtered_df.groupby(['SP Name', 'Test Team']).agg(
+            total=('Result', 'size'),
+            passed=('Result', lambda x: (x == 'Passed').sum()),
+            failed=('Result', lambda x: (x == 'Failed').sum()),
+            blocked=('Result', lambda x: (x == 'Blocked').sum())
+        ).reset_index()
+        metrics['coverage'] = metrics['passed'] + metrics['failed']
+        metrics['coverage_percentage'] = (metrics['coverage'] / metrics['total'] * 100).fillna(0)
+        metrics['passed_percentage'] = (metrics['passed'] / metrics['total'] * 100).fillna(0)
+        metrics['failed_percentage'] = (metrics['failed'] / metrics['total'] * 100).fillna(0)
+        metrics['blocked_percentage'] = (metrics['blocked'] / metrics['total'] * 100).fillna(0)
+        return metrics
+    
+    # Calculate metrics for each phase and coverage type if required
+    if include_coverage_types:
+        phase_data = {phase: {coverage_type: calculate_phase_metrics(all_tc_df, phase, coverage_type) 
+                             for coverage_type in coverage_types} 
+                      for phase in phases}
+    else:
+        phase_data = {phase: calculate_phase_metrics(all_tc_df, phase) for phase in phases}
+    
+    # Group by SP Name first
+    sp_groups = all_tc_df.groupby('SP Name')
+    for sp_name, sp_group in sp_groups:
+        sp_teams = []
+        # Then group by Test Team within each SP
+        team_groups = sp_group.groupby('Test Team')
+        for team_name, team_group in team_groups:
+            team_phase_data = []
+            for phase in phases:
+                if include_coverage_types:
+                    phase_coverage_data = []
+                    for coverage_type in coverage_types:
+                        phase_metrics = phase_data[phase][coverage_type]
+                        metrics = phase_metrics[
+                            (phase_metrics['SP Name'] == sp_name) &
+                            (phase_metrics['Test Team'] == team_name)
+                        ].to_dict('records')
+                        phase_date = "NA"
+                        if phase in ["ES", "FC", "CS"]:
+                            date_value = phase_dates_df.loc[
+                                phase_dates_df['FirstCustomerSP'] == sp_name,
+                                phase
+                            ].iloc[0] if not phase_dates_df[
+                                phase_dates_df['FirstCustomerSP'] == sp_name
+                            ].empty else None
+                            if pd.notna(date_value):
+                                phase_date = date_value.strftime('%m-%d-%Y')
+                        phase_coverage_info = {
+                            'coverage_type': coverage_type,
+                            'metrics': format_metrics(metrics[0] if metrics else {
+                                'total': 0,
+                                'passed': 0,
+                                'failed': 0,
+                                'blocked': 0,
+                                'coverage': 0,
+                                'coverage_percentage': 0,
+                                'passed_percentage': 0,
+                                'failed_percentage': 0,
+                                'blocked_percentage': 0
+                            }, include_values)
                         }
-                        
-                        if (firstTeamRow) {
-                            let teamCell = document.createElement('td');
-                            teamCell.rowSpan = filteredPhases.length;
-                            teamCell.textContent = team.team_name;
-                            teamCell.setAttribute('data-team-cell', 'true');
-                            row.appendChild(teamCell);
-                            firstTeamRow = false;
-                        }
-                        
-                        row.insertAdjacentHTML('beforeend', `
-                            <td>${phase.phase}</td>
-                            <td>${phase.date}</td>
-                            ${createTooltipCell(
-                                formatPercent(phase.metrics.coverage_percentage),
-                                `${spData.sp_name} ${team.team_name} ${phase.phase} Coverage: ${formatPercent(phase.metrics.coverage_percentage)}%`
-                            )}
-                            ${createTooltipCell(
-                                formatPercent(phase.metrics.passed_percentage),
-                                `${spData.sp_name} ${team.team_name} ${phase.phase} Pass: ${formatPercent(phase.metrics.passed_percentage)}%`
-                            )}
-                            ${createTooltipCell(
-                                formatPercent(phase.metrics.failed_percentage),
-                                `${spData.sp_name} ${team.team_name} ${phase.phase} Fail: ${formatPercent(phase.metrics.failed_percentage)}%`
-                            )}
-                            ${createTooltipCell(
-                                formatPercent(phase.metrics.blocked_percentage),
-                                `${spData.sp_name} ${team.team_name} ${phase.phase} Block: ${formatPercent(phase.metrics.blocked_percentage)}%`
-                            )}
-                        `);
-                        
-                        tableBody.appendChild(row);
-                    });
-                });
-            });
-            
-            addRowHighlighting();
-        }
-        
-        function addRowHighlighting() {
-            const rows = document.querySelectorAll('.phase-row');
-            
-            rows.forEach(row => {
-                row.addEventListener('mouseenter', () => {
-                    const spName = row.getAttribute('data-sp-name');
-                    const team = row.getAttribute('data-team');
-                    const rowIndex = parseInt(row.getAttribute('data-row-index'));
-                    
-                    row.classList.add('highlighted-team');
-                    
-                    const spCells = document.querySelectorAll('[data-sp-cell="true"]');
-                    spCells.forEach(spCell => {
-                        if (spCell.textContent.trim().includes(spName)) {
-                            spCell.classList.add('highlighted-team');
-                        }
-                    });
-                    
-                    const teamCells = document.querySelectorAll('[data-team-cell="true"]');
-                    teamCells.forEach(teamCell => {
-                        if (teamCell.textContent.trim() === team) {
-                            const teamRow = teamCell.closest('tr');
-                            const teamRowIndex = parseInt(teamRow.getAttribute('data-row-index'));
-                            if (teamRowIndex <= rowIndex && 
-                                teamRowIndex + parseInt(teamCell.rowSpan) > rowIndex) {
-                                teamCell.classList.add('highlighted-team');
-                            }
-                        }
-                    });
-                });
-                
-                row.addEventListener('mouseleave', () => {
-                    document.querySelectorAll('.highlighted-team').forEach(el => {
-                        el.classList.remove('highlighted-team');
-                    });
-                });
-            });
-        }
-        
-        document.querySelectorAll('.team-filter').forEach(button => {
-            button.addEventListener('click', () => {
-                document.querySelectorAll('.team-filter').forEach(btn => btn.classList.remove('active'));
-                button.classList.add('active');
-                selectedTeam = button.getAttribute('data-team');
-                renderTable(selectedTeam, selectedPhase);
-            });
-        });
-        
-        document.querySelectorAll('.phase-filter').forEach(button => {
-            button.addEventListener('click', () => {
-                document.querySelectorAll('.phase-filter').forEach(btn => btn.classList.remove('active'));
-                button.classList.add('active');
-                selectedPhase = button.getAttribute('data-phase');
-                renderTable(selectedTeam, selectedPhase);
-            });
-        });
-        
-        renderTable();
-    });
-</script>
-{% endblock %}
+                        phase_coverage_data.append(phase_coverage_info)
+                    phase_info = {
+                        'phase': phase,
+                        'date': phase_date,
+                        'coverage_types': phase_coverage_data
+                    }
+                else:
+                    phase_metrics = phase_data[phase]
+                    metrics = phase_metrics[
+                        (phase_metrics['SP Name'] == sp_name) &
+                        (phase_metrics['Test Team'] == team_name)
+                    ].to_dict('records')
+                    phase_date = "NA"
+                    if phase in ["ES", "FC", "CS"]:
+                        date_value = phase_dates_df.loc[
+                            phase_dates_df['FirstCustomerSP'] == sp_name,
+                            phase
+                        ].iloc[0] if not phase_dates_df[
+                            phase_dates_df['FirstCustomerSP'] == sp_name
+                        ].empty else None
+                        if pd.notna(date_value):
+                            phase_date = date_value.strftime('%m-%d-%Y')
+                    phase_info = {
+                        'phase': phase,
+                        'date': phase_date,
+                        'metrics': format_metrics(metrics[0] if metrics else {
+                            'total': 0,
+                            'passed': 0,
+                            'failed': 0,
+                            'blocked': 0,
+                            'coverage': 0,
+                            'coverage_percentage': 0,
+                            'passed_percentage': 0,
+                            'failed_percentage': 0,
+                            'blocked_percentage': 0
+                        }, include_values)
+                    }
+                team_phase_data.append(phase_info)
+            sp_teams.append({
+                'team_name': team_name,
+                'phases': team_phase_data
+            })
+        table_data.append({
+            'sp_name': sp_name,
+            'teams': sp_teams
+        })
+    return table_data
+
+def format_metrics(metrics, include_values):
+    formatted_metrics = {
+        'coverage_percentage': metrics['coverage_percentage'],
+        'passed_percentage': metrics['passed_percentage'],
+        'failed_percentage': metrics['failed_percentage'],
+        'blocked_percentage': metrics['blocked_percentage']
+    }
+    if include_values:
+        formatted_metrics.update({
+            'total': metrics['total'],
+            'passed': metrics['passed'],
+            'failed': metrics['failed'],
+            'blocked': metrics['blocked'],
+            'coverage': metrics['coverage']
+        })
+    return formatted_metrics
+
+
+
+
+
+
+
