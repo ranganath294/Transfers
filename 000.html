@@ -1,113 +1,141 @@
-document.addEventListener('DOMContentLoaded', function() {
-    // Helper functions
-    function calculateSpRowspan(sp) {
-        return sp.teams.reduce((acc, team) => {
-            return acc + calculateTeamRowspan(team);
-        }, 0);
-    }
-
-    function calculateTeamRowspan(team) {
-        return team.phases.reduce((acc, phase) => {
-            if (phase.coverage_types) {
-                return acc + phase.coverage_types.length;
-            }
-            return acc + 1;
-        }, 0);
-    }
-
-    function formatPercentage(value) {
-        return value ? value.toFixed(2) + '%' : '0.00%';
-    }
-
-    function renderCoverageTable(data, targetElementId) {
-        const table = document.createElement('table');
-        table.className = 'coverage-table';
-
-        // Create header
-        const thead = document.createElement('thead');
-        const headerRow = document.createElement('tr');
-        const headers = [
-            'SP Name',
-            'Test Team',
-            'Phase',
-            'Date',
-            'Coverage %',
-            'Pass %',
-            'Fail %',
-            'Block %'
-        ];
-
-        headers.forEach(header => {
-            const th = document.createElement('th');
-            th.textContent = header;
-            headerRow.appendChild(th);
-        });
-        thead.appendChild(headerRow);
-        table.appendChild(thead);
-
-        // Create table body
-        const tbody = document.createElement('tbody');
-        data.forEach(sp => {
-            const spRowspan = calculateSpRowspan(sp);
-            let isFirstSpRow = true;
-
-            sp.teams.forEach(team => {
-                const teamRowspan = calculateTeamRowspan(team);
-                let isFirstTeamRow = true;
-
-                team.phases.forEach(phase => {
-                    const tr = document.createElement('tr');
-
-                    // SP Name column (with rowspan)
-                    if (isFirstSpRow) {
-                        const tdSp = document.createElement('td');
-                        tdSp.textContent = sp.sp_name;
-                        tdSp.rowSpan = spRowspan;
-                        tr.appendChild(tdSp);
-                        isFirstSpRow = false;
-                    }
-
-                    // Team Name column (with rowspan)
-                    if (isFirstTeamRow) {
-                        const tdTeam = document.createElement('td');
-                        tdTeam.textContent = team.team_name;
-                        tdTeam.rowSpan = teamRowspan;
-                        tr.appendChild(tdTeam);
-                        isFirstTeamRow = false;
-                    }
-
-                    // Phase and metrics
-                    const cells = [
-                        phase.phase,
-                        phase.date,
-                        formatPercentage(phase.metrics.coverage_percentage),
-                        formatPercentage(phase.metrics.passed_percentage),
-                        formatPercentage(phase.metrics.failed_percentage),
-                        formatPercentage(phase.metrics.blocked_percentage)
-                    ];
-
-                    cells.forEach(cellData => {
-                        const td = document.createElement('td');
-                        td.textContent = cellData;
-                        tr.appendChild(td);
+{% extends 'base.html' %}
+{% block content %}
+<div class="container container-fluid">
+    <h1 class="page-title">Active SPs Report</h1>
+    <div class="card mb-3">
+        <div class="card-body">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <div class="btn-group" role="group" aria-label="Test Team filters">
+                    <button type="button" class="btn btn-outline-primary team-filter active" data-team="all">All Teams</button>
+                    <button type="button" class="btn btn-outline-primary team-filter" data-team="BT">BT</button>
+                    <button type="button" class="btn btn-outline-primary team-filter" data-team="WLAN">WLAN</button>
+                </div>
+                <div class="btn-group" role="group" aria-label="Phase filters">
+                    <button type="button" class="btn btn-outline-primary phase-filter active" data-phase="all">All Phases</button>
+                    <button type="button" class="btn btn-outline-primary phase-filter" data-phase="ES">ES</button>
+                    <button type="button" class="btn btn-outline-primary phase-filter" data-phase="FC">FC</button>
+                    <button type="button" class="btn btn-outline-primary phase-filter" data-phase="CS">CS</button>
+                    <button type="button" class="btn btn-outline-primary phase-filter" data-phase="Post-CS">Post-CS</button>
+                    <button type="button" class="btn btn-outline-primary phase-filter" data-phase="Mainline_Regression">Mainline Regression</button>
+                </div>
+            </div>
+            <div class="table-responsive">
+                <div id="tableContainer"></div>
+            </div>
+        </div>
+    </div>
+</div>
+<style>
+.container {
+    padding: 2rem;
+    max-width: 1500px;
+}
+.btn-group {
+    margin-right: 10px;
+}
+.btn-group .btn {
+    margin-right: 2px;
+}
+</style>
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Helper functions
+        function calculateSpRowspan(sp) {
+            return sp.teams.reduce((acc, team) => {
+                return acc + calculateTeamRowspan(team);
+            }, 0);
+        }
+    
+        function calculateTeamRowspan(team) {
+            return team.phases.reduce((acc, phase) => {
+                if (phase.coverage_types) {
+                    return acc + phase.coverage_types.length;
+                }
+                return acc + 1;
+            }, 0);
+        }
+    
+        function formatPercentage(value) {
+            return value ? value.toFixed(2) + '%' : '0.00%';
+        }
+    
+        function renderCoverageTable(data, targetElementId) {
+            const table = document.createElement('table');
+            table.className = 'coverage-table';
+            // Create header
+            const thead = document.createElement('thead');
+            const headerRow = document.createElement('tr');
+            const headers = [
+                'SP Name',
+                'Test Team',
+                'Phase',
+                'Date',
+                'Coverage %',
+                'Pass %',
+                'Fail %',
+                'Block %'
+            ];
+            headers.forEach(header => {
+                const th = document.createElement('th');
+                th.textContent = header;
+                headerRow.appendChild(th);
+            });
+            thead.appendChild(headerRow);
+            table.appendChild(thead);
+            // Create table body
+            const tbody = document.createElement('tbody');
+            data.forEach(sp => {
+                const spRowspan = calculateSpRowspan(sp);
+                let isFirstSpRow = true;
+                sp.teams.forEach(team => {
+                    const teamRowspan = calculateTeamRowspan(team);
+                    let isFirstTeamRow = true;
+                    team.phases.forEach(phase => {
+                        const tr = document.createElement('tr');
+                        // SP Name column (with rowspan)
+                        if (isFirstSpRow) {
+                            const tdSp = document.createElement('td');
+                            tdSp.textContent = sp.sp_name;
+                            tdSp.rowSpan = spRowspan;
+                            tr.appendChild(tdSp);
+                            isFirstSpRow = false;
+                        }
+                        // Team Name column (with rowspan)
+                        if (isFirstTeamRow) {
+                            const tdTeam = document.createElement('td');
+                            tdTeam.textContent = team.team_name;
+                            tdTeam.rowSpan = teamRowspan;
+                            tr.appendChild(tdTeam);
+                            isFirstTeamRow = false;
+                        }
+                        // Phase and metrics
+                        const cells = [
+                            phase.phase,
+                            phase.date,
+                            formatPercentage(phase.metrics.coverage_percentage),
+                            formatPercentage(phase.metrics.passed_percentage),
+                            formatPercentage(phase.metrics.failed_percentage),
+                            formatPercentage(phase.metrics.blocked_percentage)
+                        ];
+                        cells.forEach(cellData => {
+                            const td = document.createElement('td');
+                            td.textContent = cellData;
+                            tr.appendChild(td);
+                        });
+                        tbody.appendChild(tr);
                     });
-
-                    tbody.appendChild(tr);
                 });
             });
-        });
-
-        table.appendChild(tbody);
-
-        // Add basic styles
-        const style = document.createElement('style');
-        style.textContent = `
+            table.appendChild(tbody);
+            // Add basic styles
+            const style = document.createElement('style');
+            style.textContent = `
             .coverage-table {
                 border-collapse: collapse;
                 width: 100%;
                 margin: 20px 0;
             }
-            .coverage-table th, 
+            .coverage-table th,
             .coverage-table td {
                 border: 1px solid #ddd;
                 padding: 8px;
@@ -120,17 +148,30 @@ document.addEventListener('DOMContentLoaded', function() {
             .coverage-table tbody tr:nth-child(even) {
                 background-color: #f9f9f9;
             }
-        `;
-        document.head.appendChild(style);
-
-        // Render the table
-        const targetElement = document.getElementById(targetElementId);
-        targetElement.innerHTML = '';
-        targetElement.appendChild(table);
-    }
-
-    // Initial render if data is available
-    if (typeof initialData !== 'undefined') {
-        renderCoverageTable(initialData, 'tableContainer');
-    }
-});
+            `;
+            document.head.appendChild(style);
+            // Render the table
+            const targetElement = document.getElementById(targetElementId);
+            targetElement.innerHTML = '';
+            targetElement.appendChild(table);
+        }
+    
+        // Filter data based on selected teams and phases
+        function filterData(data, selectedTeam, selectedPhase) {
+            return data.filter(sp => {
+                return sp.teams.some(team => {
+                    return (selectedTeam === 'all' || team.team_name === selectedTeam) &&
+                        team.phases.some(phase => selectedPhase === 'all' || phase.phase === selectedPhase);
+                });
+            });
+        }
+    
+        // Initial render if data is available
+        const initialData = {{ table_data|safe }};
+        if (typeof initialData !== 'undefined') {
+            renderCoverageTable(initialData, 'tableContainer');
+        }
+    });
+    
+</script>
+{% endblock %}
