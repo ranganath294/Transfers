@@ -1,15 +1,190 @@
-<th>SP Name</th>
-<th>Test Team</th>
-<th>Date</th>
-<th>Phase</th>
-<th>Coverage Type</th>
-<th>Total TCs</th>
-<th>Coverage</th>
-<th>Coverage %</th>
-<th>Passed</th>
-<th>Pass %</th>
-<th>Failed</th>
-<th>Fail %</th>
-<th>Blocked</th>
-<th>Block %</th>
-<th>Unique CR Issued</th>
+function renderCoverageTable(data, targetElementId) {
+    const table = document.createElement('table');
+    table.className = 'coverage-table';
+    
+    // Create header
+    const thead = document.createElement('thead');
+    const headerRow = document.createElement('tr');
+    const headers = [
+        'SP Name', 'Test Team', 'Date', 'Phase', 'Coverage Type',
+        'Total TCs', 'Coverage', 'Coverage %', 'Passed', 'Pass %',
+        'Failed', 'Fail %', 'Blocked', 'Block %', 'Unique CR Issued'
+    ];
+    
+    headers.forEach(header => {
+        const th = document.createElement('th');
+        th.textContent = header;
+        headerRow.appendChild(th);
+    });
+    thead.appendChild(headerRow);
+    table.appendChild(thead);
+    
+    // Create table body
+    const tbody = document.createElement('tbody');
+    
+    data.forEach(sp => {
+        const spRowspan = calculateSpRowspan(sp);
+        let isFirstSpRow = true;
+        
+        sp.teams.forEach(team => {
+            const teamRowspan = calculateTeamRowspan(team);
+            let isFirstTeamRow = true;
+            
+            team.phases.forEach(phase => {
+                if (phase.coverage_types) {
+                    // Handle multiple coverage types
+                    phase.coverage_types.forEach((coverageType, ctIndex) => {
+                        const tr = document.createElement('tr');
+                        
+                        // SP Name column
+                        if (isFirstSpRow) {
+                            const tdSp = document.createElement('td');
+                            tdSp.textContent = sp.sp_name;
+                            tdSp.rowSpan = spRowspan;
+                            tr.appendChild(tdSp);
+                            isFirstSpRow = false;
+                        }
+                        
+                        // Team Name column
+                        if (isFirstTeamRow) {
+                            const tdTeam = document.createElement('td');
+                            tdTeam.textContent = team.team_name;
+                            tdTeam.rowSpan = teamRowspan;
+                            tr.appendChild(tdTeam);
+                            isFirstTeamRow = false;
+                        }
+                        
+                        // Phase date
+                        if (ctIndex === 0) {
+                            const tdDate = document.createElement('td');
+                            tdDate.textContent = phase.date;
+                            tdDate.rowSpan = phase.coverage_types.length;
+                            tr.appendChild(tdDate);
+                            
+                            const tdPhase = document.createElement('td');
+                            tdPhase.textContent = phase.phase;
+                            tdPhase.rowSpan = phase.coverage_types.length;
+                            tr.appendChild(tdPhase);
+                        }
+                        
+                        // Coverage type and metrics
+                        const cells = [
+                            coverageType.coverage_type,
+                            coverageType.metrics.total || '0',
+                            coverageType.metrics.coverage || '0',
+                            formatPercentage(coverageType.metrics.coverage_percentage),
+                            coverageType.metrics.passed || '0',
+                            formatPercentage(coverageType.metrics.passed_percentage),
+                            coverageType.metrics.failed || '0',
+                            formatPercentage(coverageType.metrics.failed_percentage),
+                            coverageType.metrics.blocked || '0',
+                            formatPercentage(coverageType.metrics.blocked_percentage),
+                            coverageType.unique_cr_count
+                        ];
+                        
+                        cells.forEach(cellData => {
+                            const td = document.createElement('td');
+                            td.textContent = cellData;
+                            tr.appendChild(td);
+                        });
+                        
+                        tbody.appendChild(tr);
+                    });
+                } else {
+                    // Handle single coverage type
+                    const tr = document.createElement('tr');
+                    
+                    if (isFirstSpRow) {
+                        const tdSp = document.createElement('td');
+                        tdSp.textContent = sp.sp_name;
+                        tdSp.rowSpan = spRowspan;
+                        tr.appendChild(tdSp);
+                        isFirstSpRow = false;
+                    }
+                    
+                    if (isFirstTeamRow) {
+                        const tdTeam = document.createElement('td');
+                        tdTeam.textContent = team.team_name;
+                        tdTeam.rowSpan = teamRowspan;
+                        tr.appendChild(tdTeam);
+                        isFirstTeamRow = false;
+                    }
+                    
+                    const cells = [
+                        phase.date,
+                        phase.phase,
+                        'All',
+                        phase.metrics.total || '0',
+                        phase.metrics.coverage || '0',
+                        formatPercentage(phase.metrics.coverage_percentage),
+                        phase.metrics.passed || '0',
+                        formatPercentage(phase.metrics.passed_percentage),
+                        phase.metrics.failed || '0',
+                        formatPercentage(phase.metrics.failed_percentage),
+                        phase.metrics.blocked || '0',
+                        formatPercentage(phase.metrics.blocked_percentage),
+                        phase.unique_cr_count
+                    ];
+                    
+                    cells.forEach(cellData => {
+                        const td = document.createElement('td');
+                        td.textContent = cellData;
+                        tr.appendChild(td);
+                    });
+                    
+                    tbody.appendChild(tr);
+                }
+            });
+        });
+    });
+    
+    table.appendChild(tbody);
+    
+    // Add basic styles
+    const style = document.createElement('style');
+    style.textContent = `
+        .coverage-table {
+            border-collapse: collapse;
+            width: 100%;
+            margin: 20px 0;
+        }
+        .coverage-table th, .coverage-table td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+        }
+        .coverage-table th {
+            background-color: #f5f5f5;
+            font-weight: bold;
+        }
+        .coverage-table tbody tr:nth-child(even) {
+            background-color: #f9f9f9;
+        }
+    `;
+    document.head.appendChild(style);
+    
+    // Render the table
+    const targetElement = document.getElementById(targetElementId);
+    targetElement.innerHTML = '';
+    targetElement.appendChild(table);
+}
+
+// Helper functions
+function calculateSpRowspan(sp) {
+    return sp.teams.reduce((acc, team) => {
+        return acc + calculateTeamRowspan(team);
+    }, 0);
+}
+
+function calculateTeamRowspan(team) {
+    return team.phases.reduce((acc, phase) => {
+        if (phase.coverage_types) {
+            return acc + phase.coverage_types.length;
+        }
+        return acc + 1;
+    }, 0);
+}
+
+function formatPercentage(value) {
+    return value ? value.toFixed(2) + '%' : '0.00%';
+}
