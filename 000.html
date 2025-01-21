@@ -1,91 +1,142 @@
 function addRowHighlighting() {
     const rows = document.querySelectorAll('.phase-row');
     
+    // First, let's add hierarchical data attributes to map relationships
+    let spMapping = {};
+    let teamMapping = {};
+    let phaseMapping = {};
+    
     rows.forEach(row => {
-        row.addEventListener('mouseenter', () => {
-            // Get current row's data attributes
-            const spName = row.getAttribute('data-sp-name');
-            const team = row.getAttribute('data-team');
-            const phase = row.getAttribute('data-phase');
-            const rowIndex = parseInt(row.getAttribute('data-row-index'));
-            
-            // Highlight the current row
-            row.classList.add('highlighted-team');
-            
-            // Find and highlight all related rows up to the current one
-            document.querySelectorAll('.phase-row').forEach(otherRow => {
-                const otherRowIndex = parseInt(otherRow.getAttribute('data-row-index'));
-                if (otherRowIndex <= rowIndex && 
-                    otherRow.getAttribute('data-sp-name') === spName && 
-                    otherRow.getAttribute('data-team') === team && 
-                    otherRow.getAttribute('data-phase') === phase) {
-                    otherRow.classList.add('highlighted-team');
-                }
-            });
-            
-            // Highlight SP cell
-            const spCells = document.querySelectorAll('[data-sp-cell="true"]');
-            spCells.forEach(spCell => {
-                if (spCell.textContent.trim().includes(spName)) {
-                    spCell.classList.add('highlighted-team');
-                    
-                    // Find all rows under this SP up to the current row
-                    const spRows = document.querySelectorAll(`.phase-row[data-sp-name="${spName}"]`);
-                    spRows.forEach(spRow => {
-                        const spRowIndex = parseInt(spRow.getAttribute('data-row-index'));
-                        if (spRowIndex <= rowIndex) {
-                            // Highlight cells in the hierarchy path
-                            const cells = spRow.querySelectorAll('td');
-                            cells.forEach(cell => {
-                                if (cell.hasAttribute('data-sp-cell') || 
-                                    cell.hasAttribute('data-team-cell') || 
-                                    cell.textContent.trim() === phase) {
-                                    cell.classList.add('highlighted-team');
-                                }
-                            });
-                        }
-                    });
-                }
-            });
-            
-            // Highlight team cells in the path
-            const teamCells = document.querySelectorAll('[data-team-cell="true"]');
-            teamCells.forEach(teamCell => {
-                if (teamCell.textContent.trim() === team) {
-                    const teamRow = teamCell.closest('tr');
-                    const teamRowIndex = parseInt(teamRow.getAttribute('data-row-index'));
-                    if (teamRowIndex <= rowIndex && 
-                        teamRowIndex + parseInt(teamCell.rowSpan) > rowIndex) {
-                        teamCell.classList.add('highlighted-team');
-                        
-                        // Highlight phase cells in the path
-                        const phaseRows = document.querySelectorAll(`.phase-row[data-team="${team}"]`);
-                        phaseRows.forEach(phaseRow => {
-                            const phaseRowIndex = parseInt(phaseRow.getAttribute('data-row-index'));
-                            if (phaseRowIndex <= rowIndex) {
-                                const phaseCells = phaseRow.querySelectorAll('td');
-                                phaseCells.forEach(cell => {
-                                    if (cell.textContent.trim() === phase) {
-                                        cell.classList.add('highlighted-team');
-                                    }
-                                });
-                            }
-                        });
-                    }
-                }
-            });
-        });
+        const spName = row.getAttribute('data-sp-name');
+        const team = row.getAttribute('data-team');
+        const phase = row.getAttribute('data-phase');
+        const rowIndex = row.getAttribute('data-row-index');
         
-        row.addEventListener('mouseleave', () => {
-            // Remove highlight class from all elements
-            document.querySelectorAll('.highlighted-team').forEach(el => {
-                el.classList.remove('highlighted-team');
+        // Build SP hierarchy
+        if (!spMapping[spName]) {
+            spMapping[spName] = {
+                teams: new Set(),
+                rows: new Set()
+            };
+        }
+        spMapping[spName].teams.add(team);
+        spMapping[spName].rows.add(rowIndex);
+        
+        // Build Team hierarchy
+        const teamKey = `${spName}-${team}`;
+        if (!teamMapping[teamKey]) {
+            teamMapping[teamKey] = {
+                phases: new Set(),
+                rows: new Set()
+            };
+        }
+        teamMapping[teamKey].phases.add(phase);
+        teamMapping[teamKey].rows.add(rowIndex);
+        
+        // Build Phase hierarchy
+        const phaseKey = `${spName}-${team}-${phase}`;
+        if (!phaseMapping[phaseKey]) {
+            phaseMapping[phaseKey] = new Set();
+        }
+        phaseMapping[phaseKey].add(rowIndex);
+        
+        // Add hierarchy data to row
+        row.setAttribute('data-hierarchy', JSON.stringify({
+            sp: spName,
+            team: teamKey,
+            phase: phaseKey
+        }));
+    });
+    
+    // Add highlighting events
+    rows.forEach(row => {
+        const cells = row.querySelectorAll('td');
+        
+        cells.forEach((cell, cellIndex) => {
+            cell.addEventListener('mouseenter', () => {
+                const hierarchy = JSON.parse(row.getAttribute('data-hierarchy'));
+                
+                // Clear previous highlights
+                document.querySelectorAll('.highlighted-team').forEach(el => {
+                    el.classList.remove('highlighted-team');
+                });
+                
+                // Highlight based on cell position (column)
+                if (cellIndex === 0) { // SP cell
+                    // Highlight all rows belonging to this SP
+                    const spRows = spMapping[hierarchy.sp].rows;
+                    highlightRows(spRows);
+                    
+                } else if (cellIndex === 1) { // Team cell
+                    // Highlight all rows belonging to this team and its SP
+                    const teamRows = teamMapping[hierarchy.team].rows;
+                    highlightRows(teamRows);
+                    highlightParentSP(hierarchy.sp);
+                    
+                } else if (cellIndex === 3) { // Phase cell
+                    // Highlight all rows belonging to this phase, its team and SP
+                    const phaseRows = phaseMapping[hierarchy.phase];
+                    highlightRows(phaseRows);
+                    highlightParentTeam(hierarchy.team);
+                    highlightParentSP(hierarchy.sp);
+                    
+                } else { // Coverage type or metric cells
+                    // Highlight this specific row and all its parents
+                    row.classList.add('highlighted-team');
+                    highlightParentPhase(hierarchy.phase);
+                    highlightParentTeam(hierarchy.team);
+                    highlightParentSP(hierarchy.sp);
+                }
             });
         });
     });
+    
+    function highlightRows(rowIndices) {
+        rowIndices.forEach(index => {
+            const row = document.querySelector(`.phase-row[data-row-index="${index}"]`);
+            if (row) row.classList.add('highlighted-team');
+        });
+    }
+    
+    function highlightParentSP(spName) {
+        const spCell = document.querySelector(`td[data-sp-cell="true"]`);
+        if (spCell && spCell.textContent.trim() === spName) {
+            spCell.classList.add('highlighted-team');
+        }
+    }
+    
+    function highlightParentTeam(teamKey) {
+        const [spName, team] = teamKey.split('-');
+        const teamCells = document.querySelectorAll('td[data-team-cell="true"]');
+        teamCells.forEach(cell => {
+            if (cell.textContent.trim() === team) {
+                cell.classList.add('highlighted-team');
+            }
+        });
+    }
+    
+    function highlightParentPhase(phaseKey) {
+        const [spName, team, phase] = phaseKey.split('-');
+        const rows = document.querySelectorAll('.phase-row');
+        rows.forEach(row => {
+            if (row.getAttribute('data-phase') === phase) {
+                const phaseCells = row.querySelectorAll('td');
+                phaseCells.forEach(cell => {
+                    if (cell.textContent.trim() === phase) {
+                        cell.classList.add('highlighted-team');
+                    }
+                });
+            }
+        });
+    }
+    
+    // Add mouseleave event to table
+    document.querySelector('.table').addEventListener('mouseleave', () => {
+        document.querySelectorAll('.highlighted-team').forEach(el => {
+            el.classList.remove('highlighted-team');
+        });
+    });
 }
-
-
 
 
 
@@ -97,8 +148,26 @@ function addRowHighlighting() {
     transition: background-color 0.2s ease;
 }
 
-.phase-row:hover {
-    background-color: rgba(0, 123, 255, 0.1);
+.phase-row td {
+    position: relative;
 }
 
+.highlighted-team::after {
+    content: '';
+    position: absolute;
+    right: -1px;
+    top: 50%;
+    width: 2px;
+    height: 50%;
+    background-color: rgba(0, 123, 255, 0.3);
+    transform: translateY(-50%);
+}
+
+td[data-sp-cell="true"].highlighted-team {
+    background-color: rgba(0, 123, 255, 0.2) !important;
+}
+
+td[data-team-cell="true"].highlighted-team {
+    background-color: rgba(0, 123, 255, 0.17) !important;
+}
 
