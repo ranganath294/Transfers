@@ -1,42 +1,245 @@
 {% extends 'base.html' %}
 {% block content %}
 <div class="container container-fluid">
-    <!-- Keep existing header content unchanged -->
-    <div class="table-responsive">
-        <table id="activeSpsTable" class="table table-bordered table-hover">
-            <thead class="thead-light">
-                <tr>
-                    <th>SP Name</th>
-                    <th>Test Team</th>
-                    <th>Date</th>
-                    <th>Phase</th>
-                    <th>Coverage Type</th>
-                    <th>Total TCs</th>
-                    <th>Coverage</th>
-                    <th>Coverage %</th>
-                    <th>Passed</th>
-                    <th>Pass %</th>
-                    <th>Failed</th>
-                    <th>Fail %</th>
-                    <th>Blocked</th>
-                    <th>Block %</th>
-                </tr>
-            </thead>
-            <tbody id="tableBody">
-            </tbody>
-        </table>
+    <h1 class="page-title">Coverage Report</h1>
+    <div class="card mb-3">
+        <div class="card-body">
+            <div class="row mb-3">
+                <div class="col-md-6">
+                    <div class="form-group">
+                        <label for="sp_name" class="form-label">Select SP:</label>
+                        <div class="input-group">
+                            <select id="sp_name" name="sp_name" class="form-select">
+                                <option value="">--No SP Selected--</option>
+                                {% for sp_name in sp_names %}
+                                    <option value="{{ sp_name }}" {% if sp_name == selected_sp %}selected{% endif %}>{{ sp_name }}</option>
+                                {% endfor %}
+                            </select>
+                            <button id="getDataBtn" class="btn btn-primary">Get Data</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div id="teamFilters" style="display: none;" class="mb-3">
+                <div class="btn-group" role="group" aria-label="Test Team filters">
+                    <input type="checkbox" class="btn-check team-filter" name="team-filter" id="all" value="all" checked>
+                    <label class="btn btn-outline-primary" for="all">All Teams</label>
+                    
+                    <input type="checkbox" class="btn-check team-filter" name="team-filter" id="bt" value="BT">
+                    <label class="btn btn-outline-primary" for="bt">BT</label>
+                    
+                    <input type="checkbox" class="btn-check team-filter" name="team-filter" id="wlan" value="WLAN">
+                    <label class="btn btn-outline-primary" for="wlan">WLAN</label>
+                </div>
+            </div>
+
+            <div class="table-responsive">
+                <table id="activeSpsTable" class="table table-bordered table-hover">
+                    <thead class="thead-light">
+                        <tr>
+                            <th>SP Name</th>
+                            <th>Test Team</th>
+                            <th>Phase</th>
+                            <th>Date</th>
+                            <th>Total TCs</th>
+                            <th>Coverage</th>
+                            <th>Coverage %</th>
+                            <th>Passed</th>
+                            <th>Pass %</th>
+                            <th>Failed</th>
+                            <th>Fail %</th>
+                            <th>Blocked</th>
+                            <th>Block %</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tableBody">
+                    </tbody>
+                </table>
+            </div>
+        </div>
     </div>
 </div>
 
+<style>
+.container {
+    padding: 2rem;
+    max-width: 1400px;
+}
+
+.table th {
+    background-color: #f8f9fa;
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    text-align: center;
+    font-size: 0.9rem;
+    vertical-align: middle;
+}
+
+.tooltip-cell {
+    position: relative;
+}
+
+.custom-tooltip {
+    visibility: hidden;
+    position: absolute;
+    z-index: 1000;
+    background-color: rgba(0, 0, 0, 0.8);
+    color: white;
+    padding: 5px 10px;
+    border-radius: 4px;
+    font-size: 12px;
+    bottom: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    white-space: nowrap;
+}
+
+.tooltip-cell:hover .custom-tooltip {
+    visibility: visible;
+}
+
+.metric-cell {
+    cursor: default;
+    text-align: center;
+}
+
+.phase-row:nth-child(odd) {
+    background-color: rgba(0, 0, 0, 0.02);
+}
+
+.highlighted-team {
+    background-color: rgba(0, 123, 255, 0.1);
+}
+
+.btn-group {
+    margin-right: 10px;
+}
+
+.btn-group .btn {
+    margin-right: 2px;
+}
+
+.hidden-row {
+    display: none;
+}
+
+td[data-sp-cell="true"].highlighted-team,
+td[data-team-cell="true"].highlighted-team {
+    background-color: rgba(0, 123, 255, 0.1) !important;
+}
+
+/* Make the first few columns left-aligned */
+.table th:nth-child(-n+4),
+.table td:nth-child(-n+4) {
+    text-align: left;
+}
+</style>
+
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    // Keep existing initialization code unchanged
+    const tableBody = document.getElementById('tableBody');
+    const getDataBtn = document.getElementById('getDataBtn');
+    const teamFilters = document.querySelectorAll('.team-filter');
+    const teamFiltersContainer = document.getElementById('teamFilters');
+    let selectedTeams = ['all'];
+    let tableData = null;
+    
+    // Handle team filter changes
+    teamFilters.forEach(filter => {
+        filter.addEventListener('change', (e) => {
+            const allTeamsCheckbox = document.getElementById('all');
+            
+            if (e.target.id === 'all' && e.target.checked) {
+                teamFilters.forEach(cb => {
+                    if (cb.id !== 'all') {
+                        cb.checked = false;
+                    }
+                });
+                selectedTeams = ['all'];
+            } else if (e.target.id === 'all' && !e.target.checked) {
+                if (!Array.from(teamFilters).some(cb => cb.checked && cb.id !== 'all')) {
+                    e.target.checked = true;
+                    selectedTeams = ['all'];
+                    return;
+                }
+            } else if (e.target.checked) {
+                allTeamsCheckbox.checked = false;
+                selectedTeams = Array.from(teamFilters)
+                    .filter(cb => cb.checked && cb.id !== 'all')
+                    .map(cb => cb.value);
+                
+                if (selectedTeams.length === 0) {
+                    allTeamsCheckbox.checked = true;
+                    selectedTeams = ['all'];
+                }
+            } else {
+                selectedTeams = Array.from(teamFilters)
+                    .filter(cb => cb.checked && cb.id !== 'all')
+                    .map(cb => cb.value);
+                
+                if (selectedTeams.length === 0) {
+                    allTeamsCheckbox.checked = true;
+                    selectedTeams = ['all'];
+                }
+            }
+            
+            if (tableData) {
+                renderTable();
+            }
+        });
+    });
+    
+    function setLoadingState(isLoading) {
+        getDataBtn.disabled = isLoading;
+        getDataBtn.innerHTML = isLoading ? 'Loading...' : 'Get Data';
+    }
+    
+    // Handle Get Data button click
+    getDataBtn.addEventListener('click', async function() {
+        const spSelect = document.getElementById('sp_name');
+        const selectedSp = spSelect.value;
+        
+        if (!selectedSp) {
+            alert('Please select an SP first');
+            return;
+        }
+        
+        setLoadingState(true);
+        
+        const params = new URLSearchParams();
+        params.append('sp_name', selectedSp);
+        
+        if (selectedTeams.includes('all')) {
+            params.append('teams', 'all');
+        } else {
+            selectedTeams.forEach(team => params.append('teams', team));
+        }
+        
+        try {
+            const response = await fetch(`{% url 'cst_reporting_views:coverage_report' %}?${params.toString()}`);
+            if (!response.ok) throw new Error('Network response was not ok');
+            
+            response_data = await response.json();
+            tableData = response_data["table_data"]
+            console.log(tableData)
+            teamFiltersContainer.style.display = 'block';
+            renderTable();
+            
+        } catch (error) {
+            console.error('Error fetching data:', error);
+            alert('Error fetching data. Please try again.');
+        } finally {
+            setLoadingState(false);
+        }
+    });
     
     function formatPercent(value) {
         return typeof value === 'number' ? value.toFixed(1) : 'NA';
     }
     
-    function createTooltipCell(value, tooltipText) {
+    function createValueCell(value, tooltipText) {
         return `
             <td class="tooltip-cell metric-cell text-center">
                 ${value || 0}
@@ -60,44 +263,75 @@ document.addEventListener('DOMContentLoaded', function() {
         tableBody.innerHTML = '';
         let rowCounter = 0;
         
-        tableData.forEach((spData) => {
+        tableData.forEach((spData, spIndex) => {
+            let firstSpRow = true;
             const filteredTeams = spData.teams.filter(team => 
                 selectedTeams.includes('all') || selectedTeams.includes(team.team_name)
             );
             
-            filteredTeams.forEach((team) => {
-                team.phases.forEach((phase) => {
-                    // Create a row for each coverage type
-                    phase.coverage_types.forEach((coverageData) => {
-                        let row = document.createElement('tr');
-                        row.className = 'phase-row';
-                        row.setAttribute('data-row-index', rowCounter++);
-                        row.setAttribute('data-team', team.team_name);
-                        row.setAttribute('data-phase', phase.phase);
-                        row.setAttribute('data-sp-name', spData.sp_name);
-                        
-                        const tooltipBase = `${spData.sp_name} ${team.team_name} ${phase.phase} ${coverageData.coverage_type}`;
-                        const metrics = coverageData.metrics;
-                        
-                        row.innerHTML = `
-                            <td>${spData.sp_name}</td>
-                            <td>${team.team_name}</td>
-                            <td>${phase.date}</td>
-                            <td>${phase.phase}</td>
-                            <td>${coverageData.coverage_type}</td>
-                            ${createTooltipCell(metrics.total, `${tooltipBase} Total ${metrics.total}`)}
-                            ${createTooltipCell(metrics.coverage, `${tooltipBase} Coverage ${metrics.coverage}`)}
-                            ${createPercentageCell(metrics.coverage_percentage, `${tooltipBase} Coverage ${formatPercent(metrics.coverage_percentage)}%`)}
-                            ${createTooltipCell(metrics.passed, `${tooltipBase} Passed ${metrics.passed}`)}
-                            ${createPercentageCell(metrics.passed_percentage, `${tooltipBase} Pass ${formatPercent(metrics.passed_percentage)}%`)}
-                            ${createTooltipCell(metrics.failed, `${tooltipBase} Failed ${metrics.failed}`)}
-                            ${createPercentageCell(metrics.failed_percentage, `${tooltipBase} Fail ${formatPercent(metrics.failed_percentage)}%`)}
-                            ${createTooltipCell(metrics.blocked, `${tooltipBase} Blocked ${metrics.blocked}`)}
-                            ${createPercentageCell(metrics.blocked_percentage, `${tooltipBase} Block ${formatPercent(metrics.blocked_percentage)}%`)}
+            filteredTeams.forEach((team, teamIndex) => {
+                let firstTeamRow = true;
+                
+                team.phases.forEach((phase, phaseIndex) => {
+                    let row = document.createElement('tr');
+                    row.className = 'phase-row';
+                    row.setAttribute('data-row-index', rowCounter++);
+                    row.setAttribute('data-sp-index', spIndex);
+                    row.setAttribute('data-team-index', teamIndex);
+                    row.setAttribute('data-team', team.team_name);
+                    row.setAttribute('data-phase', phase.phase);
+                    row.setAttribute('data-sp-name', spData.sp_name);
+                    
+                    if (firstSpRow) {
+                        let spCell = document.createElement('td');
+                        spCell.rowSpan = filteredTeams.reduce((acc, t) => 
+                            acc + t.phases.length, 0);
+                        spCell.innerHTML = `
+                            <a href="/sp-execution-data?sp=${spData.sp_name}" target="_blank">
+                                ${spData.sp_name}
+                            </a>
                         `;
-                        
-                        tableBody.appendChild(row);
-                    });
+                        spCell.setAttribute('data-sp-cell', 'true');
+                        row.appendChild(spCell);
+                        firstSpRow = false;
+                    }
+                    
+                    if (firstTeamRow) {
+                        let teamCell = document.createElement('td');
+                        teamCell.rowSpan = team.phases.length;
+                        teamCell.textContent = team.team_name;
+                        teamCell.setAttribute('data-team-cell', 'true');
+                        row.appendChild(teamCell);
+                        firstTeamRow = false;
+                    }
+                    
+                    row.insertAdjacentHTML('beforeend', `
+                        <td>${phase.phase}</td>
+                        <td>${phase.date}</td>
+                        ${createValueCell(phase.metrics.total, `${spData.sp_name} ${team.team_name} ${phase.phase} Total ${phase.metrics.total}`)}
+                        ${createValueCell(phase.metrics.coverage, `${spData.sp_name} ${team.team_name} ${phase.phase} Coverage ${phase.metrics.coverage}`)}
+                        ${createPercentageCell(
+                            phase.metrics.coverage_percentage,
+                            `${spData.sp_name} ${team.team_name} ${phase.phase} Coverage ${formatPercent(phase.metrics.coverage_percentage)}%`
+                        )}
+                        ${createValueCell(phase.metrics.passed, `${spData.sp_name} ${team.team_name} ${phase.phase} Passed ${phase.metrics.passed}`)}
+                        ${createPercentageCell(
+                            phase.metrics.passed_percentage,
+                            `${spData.sp_name} ${team.team_name} ${phase.phase} Pass ${formatPercent(phase.metrics.passed_percentage)}%`
+                        )}
+                        ${createValueCell(phase.metrics.failed, `${spData.sp_name} ${team.team_name} ${phase.phase} Failed ${phase.metrics.failed}`)}
+                        ${createPercentageCell(
+                            phase.metrics.failed_percentage,
+                            `${spData.sp_name} ${team.team_name} ${phase.phase} Fail ${formatPercent(phase.metrics.failed_percentage)}%`
+                        )}
+                        ${createValueCell(phase.metrics.blocked, `${spData.sp_name} ${team.team_name} ${phase.phase} Blocked ${phase.metrics.blocked}`)}
+                        ${createPercentageCell(
+                            phase.metrics.blocked_percentage,
+                            `${spData.sp_name} ${team.team_name} ${phase.phase} Block ${formatPercent(phase.metrics.blocked_percentage)}%`
+                        )}
+                    `);
+                    
+                    tableBody.appendChild(row);
                 });
             });
         });
@@ -105,15 +339,49 @@ document.addEventListener('DOMContentLoaded', function() {
         addRowHighlighting();
     }
     
-    // Keep existing event handlers and highlighting code unchanged
+    function addRowHighlighting() {
+        const rows = document.querySelectorAll('.phase-row');
+        
+        rows.forEach(row => {
+            row.addEventListener('mouseenter', () => {
+                // Get the current row's SP and team
+                const spName = row.getAttribute('data-sp-name');
+                const team = row.getAttribute('data-team');
+                const rowIndex = parseInt(row.getAttribute('data-row-index'));
+                
+                // Add highlight class to the current row
+                row.classList.add('highlighted-team');
+                
+                // Find and highlight the corresponding SP cell
+                const spCells = document.querySelectorAll('[data-sp-cell="true"]');
+                spCells.forEach(spCell => {
+                    if (spCell.textContent.trim().includes(spName)) {
+                        spCell.classList.add('highlighted-team');
+                    }
+                });
+                
+                // Find and highlight the corresponding team cell
+                const teamCells = document.querySelectorAll('[data-team-cell="true"]');
+                teamCells.forEach(teamCell => {
+                    if (teamCell.textContent.trim() === team) {
+                        const teamRow = teamCell.closest('tr');
+                        const teamRowIndex = parseInt(teamRow.getAttribute('data-row-index'));
+                        if (teamRowIndex <= rowIndex && 
+                            teamRowIndex + parseInt(teamCell.rowSpan) > rowIndex) {
+                            teamCell.classList.add('highlighted-team');
+                        }
+                    }
+                });
+            });
+            
+            row.addEventListener('mouseleave', () => {
+                // Remove highlight class from all cells
+                document.querySelectorAll('.highlighted-team').forEach(el => {
+                    el.classList.remove('highlighted-team');
+                });
+            });
+        });
+    }
 });
 </script>
-
-<style>
-/* Keep existing styles unchanged, just add this one new style */
-.coverage-type {
-    font-weight: 500;
-    color: #666;
-}
-</style>
 {% endblock %}
