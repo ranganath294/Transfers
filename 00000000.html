@@ -1,85 +1,293 @@
-<thead class="thead-light">
-    <tr>
-        <th>SP Name</th>
-        <th>Test Team</th>
-        <th>Phase</th>
-        <th>Date</th>
-        <th>Total TCs</th>
-        <th>Coverage</th>
-        <th>Coverage %</th>
-        <th>Passed</th>
-        <th>Pass %</th>
-        <th>Failed</th>
-        <th>Fail %</th>
-        <th>Blocked</th>
-        <th>Block %</th>
-    </tr>
-</thead>
+{% extends 'base.html' %}
+{% block content %}
+<div class="container container-fluid">
+    <h1 class="page-title">Active SPs Report</h1>
+    <div class="card mb-3">
+        <div class="card-body">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <div class="btn-group" role="group" aria-label="Test Team filters">
+                    <button type="button" class="btn btn-outline-primary team-filter active" data-team="all">All Teams</button>
+                    <button type="button" class="btn btn-outline-primary team-filter" data-team="BT">BT</button>
+                    <button type="button" class="btn btn-outline-primary team-filter" data-team="WLAN">WLAN</button>
+                </div>
+                <div class="btn-group" role="group" aria-label="Phase filters">
+                    <button type="button" class="btn btn-outline-primary phase-filter active" data-phase="all">All Phases</button>
+                    <button type="button" class="btn btn-outline-primary phase-filter" data-phase="ES">ES</button>
+                    <button type="button" class="btn btn-outline-primary phase-filter" data-phase="FC">FC</button>
+                    <button type="button" class="btn btn-outline-primary phase-filter" data-phase="CS">CS</button>
+                    <button type="button" class="btn btn-outline-primary phase-filter" data-phase="Post-CS">Post-CS</button>
+                    <button type="button" class="btn btn-outline-primary phase-filter" data-phase="Mainline_Regression">Mainline Regression</button>
+                </div>
+            </div>
+            <div class="table-responsive">
+                <table id="activeSpsTable" class="table table-bordered table-hover">
+                    <thead class="thead-light">
+                        <tr>
+                            <th>SP Name</th>
+                            <th>Test Team</th>
+                            <th>Phase</th>
+                            <th>Date</th>
+                            <th>Coverage %</th>
+                            <th>Pass %</th>
+                            <th>Fail %</th>
+                            <th>Block %</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tableBody">
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
 
-
-
-
-
-function createValueCell(value) {
-    return `<td class="metric-cell text-center">${value || 0}</td>`;
-}
-
-function createPercentageCell(percentage, tooltipText) {
-    return `
-        <td class="tooltip-cell metric-cell text-center">
-            ${formatPercent(percentage)}%
-            <span class="custom-tooltip">${tooltipText}</span>
-        </td>
-    `;
-}
-
-
-
-
-
-row.insertAdjacentHTML('beforeend', `
-    <td>${phase.phase}</td>
-    <td>${phase.date}</td>
-    ${createValueCell(phase.metrics.total)}
-    ${createValueCell(phase.metrics.coverage)}
-    ${createPercentageCell(
-        phase.metrics.coverage_percentage,
-        `${spData.sp_name} ${team.team_name} ${phase.phase} Coverage ${formatPercent(phase.metrics.coverage_percentage)}%`
-    )}
-    ${createValueCell(phase.metrics.passed)}
-    ${createPercentageCell(
-        phase.metrics.passed_percentage,
-        `${spData.sp_name} ${team.team_name} ${phase.phase} Pass ${formatPercent(phase.metrics.passed_percentage)}%`
-    )}
-    ${createValueCell(phase.metrics.failed)}
-    ${createPercentageCell(
-        phase.metrics.failed_percentage,
-        `${spData.sp_name} ${team.team_name} ${phase.phase} Fail ${formatPercent(phase.metrics.failed_percentage)}%`
-    )}
-    ${createValueCell(phase.metrics.blocked)}
-    ${createPercentageCell(
-        phase.metrics.blocked_percentage,
-        `${spData.sp_name} ${team.team_name} ${phase.phase} Block ${formatPercent(phase.metrics.blocked_percentage)}%`
-    )}
-`);
-
-
-
-
-
-
-.metric-cell {
-    text-align: center;
+<style>
+.container {
+    padding: 2rem;
+    max-width: 1400px;
 }
 
 .table th {
-    text-align: center;
-    font-size: 0.9rem;
-    vertical-align: middle;
+    background-color: #f8f9fa;
+    position: sticky;
+    top: 0;
+    z-index: 1;
 }
 
-/* Make the first few columns left-aligned */
-.table th:nth-child(-n+4),
-.table td:nth-child(-n+4) {
-    text-align: left;
+.tooltip-cell {
+    position: relative;
 }
+
+.custom-tooltip {
+    visibility: hidden;
+    position: absolute;
+    z-index: 1000;
+    background-color: rgba(0, 0, 0, 0.8);
+    color: white;
+    padding: 5px 10px;
+    border-radius: 4px;
+    font-size: 12px;
+    bottom: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    white-space: nowrap;
+}
+
+.tooltip-cell:hover .custom-tooltip {
+    visibility: visible;
+}
+
+.metric-cell {
+    cursor: default;
+}
+
+.phase-row:nth-child(odd) {
+    background-color: rgba(0, 0, 0, 0.02);
+}
+
+.sp-group {
+    background-color: #f8f9fa;
+}
+
+.team-group {
+    background-color: #ffffff;
+}
+
+.highlighted-team {
+    background-color: rgba(0, 123, 255, 0.1);
+}
+
+.btn-group {
+    margin-right: 10px;
+}
+
+.btn-group .btn {
+    margin-right: 2px;
+}
+
+.hidden-row {
+    display: none;
+}
+
+.highlighted-team {
+    background-color: rgba(0, 123, 255, 0.1) !important;
+}
+
+td[data-sp-cell="true"].highlighted-team,
+td[data-team-cell="true"].highlighted-team {
+    background-color: rgba(0, 123, 255, 0.1) !important;
+}
+</style>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const tableData = {{ table_data|safe }};
+        const tableBody = document.getElementById('tableBody');
+        let selectedTeam = 'all';
+        let selectedPhase = 'all';
+        
+        function formatPercent(value) {
+            return typeof value === 'number' ? value.toFixed(1) : 'NA';
+        }
+        
+        function createTooltipCell(content, tooltipText) {
+            return `
+                <td class="tooltip-cell metric-cell">
+                    ${content}
+                    <span class="custom-tooltip">${tooltipText}</span>
+                </td>
+            `;
+        }
+        
+        function renderTable(filteredTeam = 'all', filteredPhase = 'all') {
+            tableBody.innerHTML = '';
+            let rowCounter = 0;
+            
+            tableData.forEach((spData, spIndex) => {
+                let firstSpRow = true;
+                const filteredTeams = spData.teams.filter(team => 
+                    filteredTeam === 'all' || team.team_name === filteredTeam
+                );
+                
+                filteredTeams.forEach((team, teamIndex) => {
+                    let firstTeamRow = true;
+                    const filteredPhases = team.phases.filter(phase =>
+                        filteredPhase === 'all' || phase.phase === filteredPhase
+                    );
+                    
+                    if (filteredPhases.length === 0) return;
+                    
+                    filteredPhases.forEach((phase, phaseIndex) => {
+                        let row = document.createElement('tr');
+                        row.className = 'phase-row';
+                        row.setAttribute('data-row-index', rowCounter++);
+                        row.setAttribute('data-sp-index', spIndex);
+                        row.setAttribute('data-team-index', teamIndex);
+                        row.setAttribute('data-team', team.team_name);
+                        row.setAttribute('data-phase', phase.phase);
+                        row.setAttribute('data-sp-name', spData.sp_name);
+                        
+                        if (firstSpRow) {
+                            let spCell = document.createElement('td');
+                            spCell.rowSpan = filteredTeams.reduce((acc, t) => {
+                                return acc + t.phases.filter(p => 
+                                    filteredPhase === 'all' || p.phase === filteredPhase
+                                ).length;
+                            }, 0);
+                            spCell.innerHTML = `
+                                <a href="/sp-execution-data?sp=${spData.sp_name}" target="_blank">
+                                    ${spData.sp_name}
+                                </a>
+                            `;
+                            spCell.setAttribute('data-sp-cell', 'true');
+                            row.appendChild(spCell);
+                            firstSpRow = false;
+                        }
+                        
+                        if (firstTeamRow) {
+                            let teamCell = document.createElement('td');
+                            teamCell.rowSpan = filteredPhases.length;
+                            teamCell.textContent = team.team_name;
+                            teamCell.setAttribute('data-team-cell', 'true');
+                            row.appendChild(teamCell);
+                            firstTeamRow = false;
+                        }
+                        
+                        row.insertAdjacentHTML('beforeend', `
+                            <td>${phase.phase}</td>
+                            <td>${phase.date}</td>
+                            ${createTooltipCell(
+                                formatPercent(phase.metrics.coverage),
+                                `${spData.sp_name} ${team.team_name} ${phase.phase} Coverage ${formatPercent(phase.metrics.coverage)}%`
+                            )}
+                            ${createTooltipCell(
+                                formatPercent(phase.metrics.passed),
+                                `${spData.sp_name} ${team.team_name} ${phase.phase} Pass ${formatPercent(phase.metrics.passed)}%`
+                            )}
+                            ${createTooltipCell(
+                                formatPercent(phase.metrics.failed),
+                                `${spData.sp_name} ${team.team_name} ${phase.phase} Fail ${formatPercent(phase.metrics.failed)}%`
+                            )}
+                            ${createTooltipCell(
+                                formatPercent(phase.metrics.blocked),
+                                `${spData.sp_name} ${team.team_name} ${phase.phase} Block ${formatPercent(phase.metrics.blocked)}%`
+                            )}
+                        `);
+                        
+                        tableBody.appendChild(row);
+                    });
+                });
+            });
+            
+            addRowHighlighting();
+        }
+        
+        function addRowHighlighting() {
+            const rows = document.querySelectorAll('.phase-row');
+            
+            rows.forEach(row => {
+                row.addEventListener('mouseenter', () => {
+                    // Get the current row's SP and team
+                    const spName = row.getAttribute('data-sp-name');
+                    const team = row.getAttribute('data-team');
+                    const rowIndex = parseInt(row.getAttribute('data-row-index'));
+                    
+                    // Add highlight class to the current row
+                    row.classList.add('highlighted-team');
+                    
+                    // Find and highlight the corresponding SP cell
+                    const spCells = document.querySelectorAll('[data-sp-cell="true"]');
+                    spCells.forEach(spCell => {
+                        if (spCell.textContent.trim().includes(spName)) {
+                            spCell.classList.add('highlighted-team');
+                        }
+                    });
+                    
+                    // Find and highlight the corresponding team cell
+                    const teamCells = document.querySelectorAll('[data-team-cell="true"]');
+                    teamCells.forEach(teamCell => {
+                        if (teamCell.textContent.trim() === team) {
+                            const teamRow = teamCell.closest('tr');
+                            const teamRowIndex = parseInt(teamRow.getAttribute('data-row-index'));
+                            if (teamRowIndex <= rowIndex && 
+                                teamRowIndex + parseInt(teamCell.rowSpan) > rowIndex) {
+                                teamCell.classList.add('highlighted-team');
+                            }
+                        }
+                    });
+                });
+                
+                row.addEventListener('mouseleave', () => {
+                    // Remove highlight class from all cells
+                    document.querySelectorAll('.highlighted-team').forEach(el => {
+                        el.classList.remove('highlighted-team');
+                    });
+                });
+            });
+        }
+        
+        // Add event listeners for team filter buttons
+        document.querySelectorAll('.team-filter').forEach(button => {
+            button.addEventListener('click', () => {
+                document.querySelectorAll('.team-filter').forEach(btn => btn.classList.remove('active'));
+                button.classList.add('active');
+                selectedTeam = button.getAttribute('data-team');
+                renderTable(selectedTeam, selectedPhase);
+            });
+        });
+        
+        // Add event listeners for phase filter buttons
+        document.querySelectorAll('.phase-filter').forEach(button => {
+            button.addEventListener('click', () => {
+                document.querySelectorAll('.phase-filter').forEach(btn => btn.classList.remove('active'));
+                button.classList.add('active');
+                selectedPhase = button.getAttribute('data-phase');
+                renderTable(selectedTeam, selectedPhase);
+            });
+        });
+        
+        // Initial render
+        renderTable();
+    });
+</script>
+{% endblock %}
