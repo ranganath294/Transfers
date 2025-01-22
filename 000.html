@@ -1,115 +1,90 @@
-// Function to calculate cumulative metrics for each SP and phase
-function calculateCumulativeMetrics(data, selectedTeam) {
-    return data
-        .filter(sp => sp.teams.some(team => team.team_name === selectedTeam))
-        .map(sp => {
-            const teamData = sp.teams.find(team => team.team_name === selectedTeam);
-            if (!teamData) return null;
-
-            const processedPhases = teamData.phases.map(phase => {
-                let totalTCs = 0;
-                let totalCoverage = 0;
-                let totalPassed = 0;
-                let totalFailed = 0;
-                let totalBlocked = 0;
-
-                if (phase.coverage_types) {
-                    phase.coverage_types.forEach(ct => {
-                        totalTCs += parseInt(ct.metrics.total || 0);
-                        totalCoverage += parseInt(ct.metrics.coverage || 0);
-                        totalPassed += parseInt(ct.metrics.passed || 0);
-                        totalFailed += parseInt(ct.metrics.failed || 0);
-                        totalBlocked += parseInt(ct.metrics.blocked || 0);
-                    });
-                } else {
-                    totalTCs = parseInt(phase.metrics.total || 0);
-                    totalCoverage = parseInt(phase.metrics.coverage || 0);
-                    totalPassed = parseInt(phase.metrics.passed || 0);
-                    totalFailed = parseInt(phase.metrics.failed || 0);
-                    totalBlocked = parseInt(phase.metrics.blocked || 0);
-                }
-
-                const coveragePercentage = totalTCs > 0 ? (totalCoverage / totalTCs) * 100 : 0;
-                const passPercentage = totalTCs > 0 ? (totalPassed / totalTCs) * 100 : 0;
-                const failPercentage = totalTCs > 0 ? (totalFailed / totalTCs) * 100 : 0;
-                const blockPercentage = totalTCs > 0 ? (totalBlocked / totalTCs) * 100 : 0;
-
-                return {
-                    phase: phase.phase,
-                    metrics: {
-                        total: totalTCs,
-                        coverage: totalCoverage,
-                        coverage_percentage: coveragePercentage,
-                        passed: totalPassed,
-                        passed_percentage: passPercentage,
-                        failed: totalFailed,
-                        failed_percentage: failPercentage,
-                        blocked: totalBlocked,
-                        blocked_percentage: blockPercentage
-                    }
-                };
-            });
-
-            return {
-                phases: processedPhases
-            };
-        })
-        .filter(Boolean);
+.coverage-table {
+    border-collapse: collapse;
+    width: 100%;
+    margin: 20px 0;
+    table-layout: auto;  /* Allow columns to size based on content */
+    border: 1px solid black;
 }
 
-// Function to render the cumulative metrics table
-function renderCumulativeTable(data, targetElementId) {
-    const table = document.createElement('table');
-    table.className = 'coverage-table';
+.coverage-table th,
+.coverage-table td {
+    border: 1px solid black;
+    padding: 8px;
+    text-align: left;
+    font-size: 15px;
+    color: black;
+    white-space: nowrap;  /* Prevent wrapping in data cells */
+}
 
-    // Create header
-    const thead = document.createElement('thead');
-    const headerRow = document.createElement('tr');
-    const headers = [
-        'Phase', 
-        'Total TCs',
-        'Coverage', 'Coverage %',
-        'Passed', 'Pass %',
-        'Failed', 'Fail %',
-        'Blocked', 'Block %'
-    ];
-    headers.forEach(header => {
-        const th = document.createElement('th');
-        th.textContent = header;
-        headerRow.appendChild(th);
-    });
-    thead.appendChild(headerRow);
-    table.appendChild(thead);
+.coverage-table th {
+    background-color: #328AA4;
+    font-weight: bold;
+    color: white;
+    position: relative;
+    white-space: normal;  /* Allow header text to wrap */
+    word-wrap: break-word;  /* Break long words if necessary */
+    min-width: 50px;  /* Minimum width for columns */
+    max-width: 150px;  /* Maximum width for headers */
+    overflow: hidden;
+    text-overflow: ellipsis;  /* Show ellipsis for overflowing header text */
+}
 
-    // Create table body
-    const tbody = document.createElement('tbody');
-    data.forEach(sp => {
-        sp.phases.forEach(phase => {
-            const tr = document.createElement('tr');
-            const cells = [
-                phase.phase,
-                phase.metrics.total,
-                phase.metrics.coverage,
-                formatPercentage(phase.metrics.coverage_percentage),
-                phase.metrics.passed,
-                formatPercentage(phase.metrics.passed_percentage),
-                phase.metrics.failed,
-                formatPercentage(phase.metrics.failed_percentage),
-                phase.metrics.blocked,
-                formatPercentage(phase.metrics.blocked_percentage)
-            ];
-            cells.forEach(cellData => {
-                const td = document.createElement('td');
-                td.textContent = cellData;
-                tr.appendChild(td);
-            });
-            tbody.appendChild(tr);
+.coverage-table tbody tr:nth-child(even) {
+    background-color: #f9f9f9;
+}
+
+/* Add horizontal scrolling for the table container if needed */
+.table-responsive {
+    overflow-x: auto;
+    max-width: 100%;
+}
+
+
+
+
+
+
+function adjustColumnWidths() {
+    const table = document.querySelector('.coverage-table');
+    if (!table) return;
+
+    // Reset any previously set widths
+    const cells = table.querySelectorAll('th, td');
+    cells.forEach(cell => cell.style.width = '');
+
+    // Let the browser render the table first
+    setTimeout(() => {
+        const headerCells = table.querySelectorAll('th');
+        const bodyCells = Array.from(table.querySelectorAll('tbody tr:first-child td'));
+
+        // Calculate maximum width needed for data cells in each column
+        bodyCells.forEach((cell, index) => {
+            const columnCells = Array.from(table.querySelectorAll(`tbody td:nth-child(${index + 1})`));
+            const maxWidth = Math.max(...columnCells.map(cell => cell.offsetWidth));
+            
+            // Set width based on data content
+            columnCells.forEach(cell => cell.style.width = `${maxWidth}px`);
+            if (headerCells[index]) {
+                headerCells[index].style.width = `${maxWidth}px`;
+            }
         });
-    });
-    table.appendChild(tbody);
+    }, 0);
+}
 
-    // Render the table
+
+
+
+
+
+
+function renderCumulativeTable(data, targetElementId) {
+    // ... existing rendering code ...
+
+    // After appending the table
     const targetElement = document.getElementById(targetElementId);
     targetElement.innerHTML = '';
     targetElement.appendChild(table);
+    
+    // Adjust column widths
+    adjustColumnWidths();
 }
