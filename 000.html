@@ -1,161 +1,298 @@
-document.addEventListener('DOMContentLoaded', function() {
-    let currentData = {{ table_data|safe }};
-    let selectedTeam = 'all';
-    let selectedPhase = 'all';
-
-    // Helper functions from existing code
-    function calculateSpRowspan(sp) {
-        return sp.teams.reduce((acc, team) => {
-            return acc + calculateTeamRowspan(team);
-        }, 0);
-    }
-
-    function calculateTeamRowspan(team) {
-        return team.phases.reduce((acc, phase) => {
-            if (phase.coverage_types) {
-                return acc + phase.coverage_types.length;
+{% extends 'base.html' %}
+{% block content %}
+<div class="container container-fluid">
+    <h1 class="page-title">Coverage Report</h1>
+    <div class="card mb-3">
+        <div class="card-body">
+            <div class="row mb-3">
+                <div class="col-md-6">
+                    <div class="form-group">
+                        <label for="sp_name" class="form-label">Select SP:</label>
+                        <div class="input-group">
+                            <select id="sp_name" name="sp_name" class="form-select">
+                                <option value="">--No SP Selected--</option>
+                                {% for sp_name in sp_names %}
+                                    <option value="{{ sp_name }}" {% if sp_name == selected_sp %}selected{% endif %}>{{ sp_name }}</option>
+                                {% endfor %}
+                            </select>
+                            <button id="getDataBtn" class="btn btn-primary">Get Data</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div id="teamFilters" style="display: none;" class="mb-3">
+                <div class="btn-group" role="group" aria-label="Test Team filters">
+                    <input type="radio" class="btn-check team-filter" name="team-filter" id="all" value="all" checked>
+                    <label class="btn btn-outline-primary" for="all">All Teams</label>
+                    <input type="radio" class="btn-check team-filter" name="team-filter" id="bt" value="BT">
+                    <label class="btn btn-outline-primary" for="bt">BT</label>
+                    <input type="radio" class="btn-check team-filter" name="team-filter" id="wlan" value="WLAN">
+                    <label class="btn btn-outline-primary" for="wlan">WLAN</label>
+                </div>
+            </div>
+            <div id="tableContainer" class="table-responsive">
+                <!-- Table will be rendered here -->
+            </div>
+        </div>
+    </div>
+</div>
+<style>
+.container {
+    padding: 2rem;
+    max-width: 1500px;
+}
+.btn-group {
+    margin-right: 10px;
+}
+.btn-group .btn {
+    margin-right: 2px;
+}
+.coverage-table {
+    border-collapse: collapse;
+    width: 100%;
+    margin: 20px 0;
+    border: 1px solid black; /* Solid black border for the table */
+}
+.coverage-table th,
+.coverage-table td {
+    border: 1px solid black; /* Solid black borders for table cells */
+    padding: 8px;
+    text-align: left;
+    font-size: 15px; /* Set font size to 15px */
+    color: black; /* Set text color to black */
+}
+.coverage-table th {
+    background-color: #328AA4; /* Set background color for headers */
+    font-weight: bold;
+    color: white; /* Set text color for headers to white */
+}
+.coverage-table tbody tr:nth-child(even) {
+    background-color: #f9f9f9;
+}
+</style>
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const getDataBtn = document.getElementById('getDataBtn');
+        const teamFilters = document.querySelectorAll('.team-filter');
+        const teamFiltersContainer = document.getElementById('teamFilters');
+        let selectedTeams = ['all'];
+        let tableData = null;
+    
+        // Handle team filter changes
+        teamFilters.forEach(filter => {
+            filter.addEventListener('change', (e) => {
+                const selectedValue = e.target.value;
+                if (selectedValue === 'all') {
+                    selectedTeams = ['all'];
+                } else {
+                    selectedTeams = [selectedValue];
+                }
+                if (tableData) {
+                    renderCoverageTable(filterData(tableData, selectedTeams), 'tableContainer');
+                }
+            });
+        });
+    
+        function setLoadingState(isLoading) {
+            getDataBtn.disabled = isLoading;
+            getDataBtn.innerHTML = isLoading ? 'Loading...' : 'Get Data';
+        }
+    
+        // Handle Get Data button click
+        getDataBtn.addEventListener('click', async function() {
+            const spSelect = document.getElementById('sp_name');
+            const selectedSp = spSelect.value;
+            if (!selectedSp) {
+                alert('Please select an SP first');
+                return;
             }
-            return acc + 1;
-        }, 0);
-    }
-
-    function formatPercentage(value) {
-        return value ? value.toFixed(2) + '%' : '0.00%';
-    }
-
-    // Filter data based on selected team and phase
-    function filterData(data, team, phase) {
-        return data.map(sp => ({
-            ...sp,
-            teams: sp.teams
-                .filter(t => team === 'all' || t.team_name === team)
-                .map(t => ({
-                    ...t,
-                    phases: t.phases.filter(p => phase === 'all' || p.phase === phase)
-                }))
-                .filter(t => t.phases.length > 0)
-        })).filter(sp => sp.teams.length > 0);
-    }
-
-    // Add click handlers for team filters
-    document.querySelectorAll('.team-filter').forEach(button => {
-        button.addEventListener('click', function() {
-            // Remove active class from all team buttons
-            document.querySelectorAll('.team-filter').forEach(btn => {
-                btn.classList.remove('active');
+            setLoadingState(true);
+            const params = new URLSearchParams();
+            params.append('sp_name', selectedSp);
+            if (selectedTeams.includes('all')) {
+                params.append('teams', 'all');
+            } else {
+                selectedTeams.forEach(team => params.append('teams', team));
+            }
+            try {
+                const response = await fetch(`{% url 'cst_reporting_views:coverage_report' %}?${params.toString()}`);
+                if (!response.ok) throw new Error('Network response was not ok');
+                const responseData = await response.json();
+                tableData = responseData["table_data"];
+                console.log(tableData);
+                teamFiltersContainer.style.display = 'block';
+                renderCoverageTable(tableData, 'tableContainer');
+            } catch (error) {
+                console.error('Error fetching data:', error);
+                alert('Error fetching data. Please try again.');
+            } finally {
+                setLoadingState(false);
+            }
+        });
+    
+        // Helper function to filter data based on selected teams
+        function filterData(data, selectedTeams) {
+            if (selectedTeams.includes('all')) {
+                return data;
+            }
+            return data.map(sp => ({
+                ...sp,
+                teams: sp.teams.filter(team => selectedTeams.includes(team.team_name))
+            })).filter(sp => sp.teams.length > 0);
+        }
+    
+        // Helper functions
+        function calculateSpRowspan(sp) {
+            return sp.teams.reduce((acc, team) => {
+                return acc + calculateTeamRowspan(team);
+            }, 0);
+        }
+    
+        function calculateTeamRowspan(team) {
+            return team.phases.reduce((acc, phase) => {
+                if (phase.coverage_types) {
+                    return acc + phase.coverage_types.length;
+                }
+                return acc + 1;
+            }, 0);
+        }
+    
+        function formatPercentage(value) {
+            return value ? value.toFixed(2) + '%' : '0.00%';
+        }
+    
+        // Function to render the coverage table
+        function renderCoverageTable(data, targetElementId) {
+            const table = document.createElement('table');
+            table.className = 'coverage-table';
+            // Create header
+            const thead = document.createElement('thead');
+            const headerRow = document.createElement('tr');
+            const headers = [
+                'SP Name', 'Test Team', 'Date', 'Phase', 'Coverage Type',
+                'Total TCs', 'Coverage', 'Coverage %', 'Passed', 'Pass %',
+                'Failed', 'Fail %', 'Blocked', 'Block %', 'Unique CR Issued'
+            ];
+            headers.forEach(header => {
+                const th = document.createElement('th');
+                th.textContent = header;
+                headerRow.appendChild(th);
             });
-            // Add active class to clicked button
-            this.classList.add('active');
-            
-            selectedTeam = this.getAttribute('data-team');
-            const filteredData = filterData(currentData, selectedTeam, selectedPhase);
-            renderCoverageTable(filteredData, 'tableContainer');
-        });
-    });
-
-    // Add click handlers for phase filters
-    document.querySelectorAll('.phase-filter').forEach(button => {
-        button.addEventListener('click', function() {
-            // Remove active class from all phase buttons
-            document.querySelectorAll('.phase-filter').forEach(btn => {
-                btn.classList.remove('active');
-            });
-            // Add active class to clicked button
-            this.classList.add('active');
-            
-            selectedPhase = this.getAttribute('data-phase');
-            const filteredData = filterData(currentData, selectedTeam, selectedPhase);
-            renderCoverageTable(filteredData, 'tableContainer');
-        });
-    });
-
-    function renderCoverageTable(data, targetElementId) {
-        const table = document.createElement('table');
-        table.className = 'coverage-table';
-
-        // Create header
-        const thead = document.createElement('thead');
-        const headerRow = document.createElement('tr');
-        const headers = [
-            'SP Name',
-            'Test Team',
-            'Phase',
-            'Date',
-            'Coverage %',
-            'Pass %',
-            'Fail %',
-            'Block %'
-        ];
-
-        headers.forEach(header => {
-            const th = document.createElement('th');
-            th.textContent = header;
-            headerRow.appendChild(th);
-        });
-        thead.appendChild(headerRow);
-        table.appendChild(thead);
-
-        // Create table body
-        const tbody = document.createElement('tbody');
-        data.forEach(sp => {
-            const spRowspan = calculateSpRowspan(sp);
-            let isFirstSpRow = true;
-
-            sp.teams.forEach(team => {
-                const teamRowspan = calculateTeamRowspan(team);
-                let isFirstTeamRow = true;
-
-                team.phases.forEach(phase => {
-                    const tr = document.createElement('tr');
-
-                    if (isFirstSpRow) {
-                        const tdSp = document.createElement('td');
-                        tdSp.textContent = sp.sp_name;
-                        tdSp.rowSpan = spRowspan;
-                        tr.appendChild(tdSp);
-                        isFirstSpRow = false;
-                    }
-
-                    if (isFirstTeamRow) {
-                        const tdTeam = document.createElement('td');
-                        tdTeam.textContent = team.team_name;
-                        tdTeam.rowSpan = teamRowspan;
-                        tr.appendChild(tdTeam);
-                        isFirstTeamRow = false;
-                    }
-
-                    const cells = [
-                        phase.phase,
-                        phase.date,
-                        formatPercentage(phase.metrics.coverage_percentage),
-                        formatPercentage(phase.metrics.passed_percentage),
-                        formatPercentage(phase.metrics.failed_percentage),
-                        formatPercentage(phase.metrics.blocked_percentage)
-                    ];
-
-                    cells.forEach(cellData => {
-                        const td = document.createElement('td');
-                        td.textContent = cellData;
-                        tr.appendChild(td);
+            thead.appendChild(headerRow);
+            table.appendChild(thead);
+            // Create table body
+            const tbody = document.createElement('tbody');
+            data.forEach(sp => {
+                const spRowspan = calculateSpRowspan(sp);
+                let isFirstSpRow = true;
+                sp.teams.forEach(team => {
+                    const teamRowspan = calculateTeamRowspan(team);
+                    let isFirstTeamRow = true;
+                    team.phases.forEach(phase => {
+                        if (phase.coverage_types) {
+                            // Handle multiple coverage types
+                            phase.coverage_types.forEach((coverageType, ctIndex) => {
+                                const tr = document.createElement('tr');
+                                // SP Name column
+                                if (isFirstSpRow) {
+                                    const tdSp = document.createElement('td');
+                                    tdSp.textContent = sp.sp_name;
+                                    tdSp.rowSpan = spRowspan;
+                                    tr.appendChild(tdSp);
+                                    isFirstSpRow = false;
+                                }
+                                // Team Name column
+                                if (isFirstTeamRow) {
+                                    const tdTeam = document.createElement('td');
+                                    tdTeam.textContent = team.team_name;
+                                    tdTeam.rowSpan = teamRowspan;
+                                    tr.appendChild(tdTeam);
+                                    isFirstTeamRow = false;
+                                }
+                                // Phase date
+                                if (ctIndex === 0) {
+                                    const tdDate = document.createElement('td');
+                                    tdDate.textContent = phase.date;
+                                    tdDate.rowSpan = phase.coverage_types.length;
+                                    tr.appendChild(tdDate);
+                                    const tdPhase = document.createElement('td');
+                                    tdPhase.textContent = phase.phase;
+                                    tdPhase.rowSpan = phase.coverage_types.length;
+                                    tr.appendChild(tdPhase);
+                                }
+                                // Coverage type and metrics
+                                const cells = [
+                                    coverageType.coverage_type,
+                                    coverageType.metrics.total || '0',
+                                    coverageType.metrics.coverage || '0',
+                                    formatPercentage(coverageType.metrics.coverage_percentage),
+                                    coverageType.metrics.passed || '0',
+                                    formatPercentage(coverageType.metrics.passed_percentage),
+                                    coverageType.metrics.failed || '0',
+                                    formatPercentage(coverageType.metrics.failed_percentage),
+                                    coverageType.metrics.blocked || '0',
+                                    formatPercentage(coverageType.metrics.blocked_percentage),
+                                    coverageType.unique_cr_count
+                                ];
+                                cells.forEach(cellData => {
+                                    const td = document.createElement('td');
+                                    td.textContent = cellData;
+                                    tr.appendChild(td);
+                                });
+                                tbody.appendChild(tr);
+                            });
+                        } else {
+                            // Handle single coverage type
+                            const tr = document.createElement('tr');
+                            if (isFirstSpRow) {
+                                const tdSp = document.createElement('td');
+                                tdSp.textContent = sp.sp_name;
+                                tdSp.rowSpan = spRowspan;
+                                tr.appendChild(tdSp);
+                                isFirstSpRow = false;
+                            }
+                            if (isFirstTeamRow) {
+                                const tdTeam = document.createElement('td');
+                                tdTeam.textContent = team.team_name;
+                                tdTeam.rowSpan = teamRowspan;
+                                tr.appendChild(tdTeam);
+                                isFirstTeamRow = false;
+                            }
+                            const cells = [
+                                phase.date,
+                                phase.phase,
+                                'All',
+                                phase.metrics.total || '0',
+                                phase.metrics.coverage || '0',
+                                formatPercentage(phase.metrics.coverage_percentage),
+                                phase.metrics.passed || '0',
+                                formatPercentage(phase.metrics.passed_percentage),
+                                phase.metrics.failed || '0',
+                                formatPercentage(phase.metrics.failed_percentage),
+                                phase.metrics.blocked || '0',
+                                formatPercentage(phase.metrics.blocked_percentage),
+                                phase.unique_cr_count
+                            ];
+                            cells.forEach(cellData => {
+                                const td = document.createElement('td');
+                                td.textContent = cellData;
+                                tr.appendChild(td);
+                            });
+                            tbody.appendChild(tr);
+                        }
                     });
-
-                    tbody.appendChild(tr);
                 });
             });
-        });
-
-        table.appendChild(tbody);
-
-        // Add styles
-        const style = document.createElement('style');
-        style.textContent = `
+            table.appendChild(tbody);
+            // Add basic styles
+            const style = document.createElement('style');
+            style.textContent = `
             .coverage-table {
                 border-collapse: collapse;
                 width: 100%;
                 margin: 20px 0;
             }
-            .coverage-table th,
-            .coverage-table td {
+            .coverage-table th, .coverage-table td {
                 border: 1px solid #ddd;
                 padding: 8px;
                 text-align: left;
@@ -167,16 +304,17 @@ document.addEventListener('DOMContentLoaded', function() {
             .coverage-table tbody tr:nth-child(even) {
                 background-color: #f9f9f9;
             }
-        `;
-        document.head.appendChild(style);
+            `;
+            document.head.appendChild(style);
+            // Render the table
+            const targetElement = document.getElementById(targetElementId);
+            targetElement.innerHTML = '';
+            targetElement.appendChild(table);
+        }
+    });
+    
+</script>
+{% endblock %}
 
-        const targetElement = document.getElementById(targetElementId);
-        targetElement.innerHTML = '';
-        targetElement.appendChild(table);
-    }
 
-    // Initial render with unfiltered data
-    if (currentData) {
-        renderCoverageTable(currentData, 'tableContainer');
-    }
-});
+
