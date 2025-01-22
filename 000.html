@@ -1,42 +1,186 @@
-.coverage-table {
-    border-collapse: collapse;
-    width: 100%;
-    margin: 20px 0;
-    table-layout: auto;  /* Allow columns to size based on content */
-    border: 1px solid black;
+/* Main container styles */
+.container {
+    padding: 2rem;
+    max-width: 1500px;
+    background-color: #a9c8e3;
+    min-height: 100vh;
 }
 
-.coverage-table th,
-.coverage-table td {
-    border: 1px solid black;
-    padding: 8px;
-    text-align: left;
-    font-size: 15px;
-    color: black;
-    white-space: nowrap;  /* Prevent wrapping in data cells */
-}
-
-.coverage-table th {
-    background-color: #328AA4;
+.page-title {
+    color: #1a365d;
+    font-size: 2.5rem;
+    margin-bottom: 2rem;
     font-weight: bold;
+    text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.1);
+}
+
+/* Card styles */
+.card {
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    margin-bottom: 2rem;
+    border: none;
+}
+
+.card-body {
+    padding: 2rem;
+}
+
+/* Form controls */
+.form-group {
+    margin-bottom: 1.5rem;
+}
+
+.form-label {
+    color: #2d3748;
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+}
+
+.form-select {
+    border-radius: 6px;
+    border: 2px solid #e2e8f0;
+    padding: 0.5rem;
+    font-size: 1rem;
+    transition: border-color 0.2s;
+}
+
+.form-select:focus {
+    border-color: #4299e1;
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(66, 153, 225, 0.2);
+}
+
+/* Button styles */
+.btn-primary {
+    background-color: #4299e1;
+    border: none;
+    padding: 0.5rem 1rem;
+    border-radius: 6px;
+    font-weight: 600;
+    transition: all 0.2s;
+}
+
+.btn-primary:hover {
+    background-color: #2b6cb0;
+    transform: translateY(-1px);
+}
+
+/* Team filter buttons */
+.team-filter-container {
+    margin: 2rem 0;
+    display: flex;
+    gap: 1rem;
+    flex-wrap: wrap;
+}
+
+.team-filter-btn {
+    background: white;
+    border: 2px solid #4299e1;
+    color: #4299e1;
+    padding: 0.75rem 1.5rem;
+    border-radius: 8px;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    transition: all 0.2s;
+    cursor: pointer;
+}
+
+.team-filter-btn:hover {
+    background: #4299e1;
     color: white;
-    position: relative;
-    white-space: normal;  /* Allow header text to wrap */
-    word-wrap: break-word;  /* Break long words if necessary */
-    min-width: 50px;  /* Minimum width for columns */
-    max-width: 150px;  /* Maximum width for headers */
+}
+
+.team-filter-btn.active {
+    background: #4299e1;
+    color: white;
+}
+
+.team-filter-btn i {
+    font-size: 1.2rem;
+}
+
+/* Table Styles - Version 1 (Zebra Stripes) */
+.coverage-table-zebra {
+    width: 100%;
+    border-collapse: collapse;
+    background: white;
+    border-radius: 8px;
     overflow: hidden;
-    text-overflow: ellipsis;  /* Show ellipsis for overflowing header text */
+    margin: 1rem 0;
 }
 
-.coverage-table tbody tr:nth-child(even) {
-    background-color: #f9f9f9;
+.coverage-table-zebra th {
+    background: #2d3748;
+    color: white;
+    padding: 1rem;
+    text-align: left;
+    font-weight: 600;
+    white-space: nowrap;
 }
 
-/* Add horizontal scrolling for the table container if needed */
+.coverage-table-zebra td {
+    padding: 1rem;
+    border: 1px solid #e2e8f0;
+}
+
+.coverage-table-zebra tbody tr:nth-child(even) {
+    background: #f7fafc;
+}
+
+/* Table Styles - Version 2 (All White) */
+.coverage-table-white {
+    width: 100%;
+    border-collapse: collapse;
+    background: white;
+    border-radius: 8px;
+    overflow: hidden;
+    margin: 1rem 0;
+}
+
+.coverage-table-white th {
+    background: #2d3748;
+    color: white;
+    padding: 1rem;
+    text-align: left;
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+.coverage-table-white td {
+    padding: 1rem;
+    border: 1px solid #e2e8f0;
+    background: white;
+}
+
+/* Responsive table container */
 .table-responsive {
     overflow-x: auto;
-    max-width: 100%;
+    border-radius: 8px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .container {
+        padding: 1rem;
+    }
+    
+    .card-body {
+        padding: 1rem;
+    }
+    
+    .team-filter-container {
+        justify-content: center;
+    }
+    
+    .page-title {
+        font-size: 2rem;
+        text-align: center;
+    }
 }
 
 
@@ -44,31 +188,97 @@
 
 
 
-function adjustColumnWidths() {
-    const table = document.querySelector('.coverage-table');
-    if (!table) return;
 
-    // Reset any previously set widths
-    const cells = table.querySelectorAll('th, td');
-    cells.forEach(cell => cell.style.width = '');
 
-    // Let the browser render the table first
-    setTimeout(() => {
-        const headerCells = table.querySelectorAll('th');
-        const bodyCells = Array.from(table.querySelectorAll('tbody tr:first-child td'));
 
-        // Calculate maximum width needed for data cells in each column
-        bodyCells.forEach((cell, index) => {
-            const columnCells = Array.from(table.querySelectorAll(`tbody td:nth-child(${index + 1})`));
-            const maxWidth = Math.max(...columnCells.map(cell => cell.offsetWidth));
+{% extends 'base.html' %}
+{% block content %}
+<div class="container">
+    <h1 class="page-title">Coverage Report</h1>
+    <div class="card">
+        <div class="card-body">
+            <!-- SP Selection -->
+            <div class="row mb-4">
+                <div class="col-md-6">
+                    <div class="form-group">
+                        <label for="sp_name" class="form-label">Select SP:</label>
+                        <div class="input-group">
+                            <select id="sp_name" name="sp_name" class="form-select">
+                                <option value="">--No SP Selected--</option>
+                                {% for sp_name in sp_names %}
+                                    <option value="{{ sp_name }}" {% if sp_name == selected_sp %}selected{% endif %}>{{ sp_name }}</option>
+                                {% endfor %}
+                            </select>
+                            <button id="getDataBtn" class="btn btn-primary">
+                                <i class="fas fa-sync-alt me-2"></i> Get Data
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Team Filters -->
+            <div id="teamFilters" class="team-filter-container" style="display: none;">
+                <button class="team-filter-btn active" data-team="all">
+                    <i class="fas fa-globe"></i> All Teams
+                </button>
+                <button class="team-filter-btn" data-team="BT">
+                    <i class="fas fa-bluetooth"></i> BT
+                </button>
+                <button class="team-filter-btn" data-team="WLAN">
+                    <i class="fas fa-wifi"></i> WLAN
+                </button>
+            </div>
+
+            <!-- Table Container -->
+            <div id="tableContainer" class="table-responsive">
+                <!-- Table will be rendered here -->
+            </div>
+        </div>
+    </div>
+</div>
+
+
+
+
+
+
+
+
+
+
+// Add this to your existing JavaScript
+document.addEventListener('DOMContentLoaded', function() {
+    // Initialize team filter buttons
+    const filterButtons = document.querySelectorAll('.team-filter-btn');
+    
+    filterButtons.forEach(button => {
+        button.addEventListener('click', () => {
+            // Remove active class from all buttons
+            filterButtons.forEach(btn => btn.classList.remove('active'));
+            // Add active class to clicked button
+            button.classList.add('active');
             
-            // Set width based on data content
-            columnCells.forEach(cell => cell.style.width = `${maxWidth}px`);
-            if (headerCells[index]) {
-                headerCells[index].style.width = `${maxWidth}px`;
+            const selectedTeam = button.dataset.team;
+            if (selectedTeam === 'all') {
+                if (tableData) {
+                    renderCoverageTable(filterData(tableData, ['all']), 'tableContainer');
+                }
+            } else {
+                if (tableData) {
+                    const cumulativeData = calculateCumulativeMetrics(tableData, selectedTeam);
+                    renderCumulativeTable(cumulativeData, 'tableContainer');
+                }
             }
         });
-    }, 0);
+    });
+});
+
+// Modify your renderCumulativeTable function to use the chosen table style
+function renderCumulativeTable(data, targetElementId, useZebraStripes = true) {
+    const table = document.createElement('table');
+    table.className = useZebraStripes ? 'coverage-table-zebra' : 'coverage-table-white';
+    // ... rest of your table rendering code ...
 }
 
 
@@ -77,14 +287,18 @@ function adjustColumnWidths() {
 
 
 
-function renderCumulativeTable(data, targetElementId) {
-    // ... existing rendering code ...
 
-    // After appending the table
-    const targetElement = document.getElementById(targetElementId);
-    targetElement.innerHTML = '';
-    targetElement.appendChild(table);
-    
-    // Adjust column widths
-    adjustColumnWidths();
-}
+
+
+
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+
+
+
+
+
+// For zebra stripes
+renderCumulativeTable(data, 'tableContainer', true);
+
+// For all-white
+renderCumulativeTable(data, 'tableContainer', false);
