@@ -1,77 +1,172 @@
-[
-  {
-    "sp_name": "Bonito.LA.1.0",
-    "teams": [
-      {
-        "team_name": "BT",
-        "phases": [
-          {
-            "phase": "ES",
-            "date": "12-10-2024",
-            "coverage_types": [
-              {
-                "coverage_type": "Legacy",
-                "metrics": {
-                  "coverage_percentage": 100.0,
-                  "passed_percentage": 100.0,
-                  "failed_percentage": 0.0,
-                  "blocked_percentage": 0.0,
-                  "total": 93,
-                  "passed": 93,
-                  "failed": 0,
-                  "blocked": 0,
-                  "coverage": 93,
-                },
-                "unique_issue_count": 0,
-                "unique_issue_list": [],
-                "unique_cr_list": [],
-                "unique_cr_count": 0,
-                "unique_jira_list": [],
-                "unique_jira_count": 0,
-              }
-            ]
-          }
-        ]
-      },
-      {
-        "team_name": "WLAN",
-        "phases": [
-          {
-            "phase": "ES",
-            "date": "12-10-2024",
-            "coverage_types": [
-              {
-                "coverage_type": "Legacy",
-                "metrics": {
-                  "coverage_percentage": 100.0,
-                  "passed_percentage": 92.85714285714286,
-                  "failed_percentage": 7.142857142857142,
-                  "blocked_percentage": 0.0,
-                  "total": 210,
-                  "passed": 195,
-                  "failed": 15,
-                  "blocked": 0,
-                  "coverage": 210,
-                },
-                "unique_issue_count": 2,
-                "unique_issue_list": [
-                  "CR-3967821",
-                  "CR-3909552"
-                ],
-                "unique_cr_list": [
-                  "CR-3967821",
-                  "CR-3909552"
-                ],
-                "unique_cr_count": 2,
-                "unique_jira_list": [
-                  "QSTABILITY-18226561"
-                ],
-                "unique_jira_count": 1
-              }
-            ]
-          }
-        ]
-      }
-    ]
-  }
-]
+function renderCoverageTable(data, targetElementId) {
+    const table = document.createElement('table');
+    table.className = 'coverage-table';
+    // ... (existing header creation code remains the same)
+
+    const tbody = document.createElement('tbody');
+    data.forEach(sp => {
+        const spRowspan = calculateSpRowspan(sp);
+        let isFirstSpRow = true;
+        sp.teams.forEach(team => {
+            const teamRowspan = calculateTeamRowspan(team);
+            let isFirstTeamRow = true;
+            team.phases.forEach(phase => {
+                if (phase.coverage_types) {
+                    phase.coverage_types.forEach((coverageType, ctIndex) => {
+                        const tr = document.createElement('tr');
+                        
+                        // Add expandable "+" icon for phases
+                        if (ctIndex === 0) {
+                            const expandTd = document.createElement('td');
+                            const expandIcon = document.createElement('span');
+                            expandIcon.textContent = '+';
+                            expandIcon.className = 'expand-phase-details';
+                            expandIcon.setAttribute('data-sp', sp.sp_name);
+                            expandIcon.setAttribute('data-team', team.team_name);
+                            expandIcon.setAttribute('data-phase', phase.phase);
+                            expandIcon.style.cssText = `
+                                cursor: pointer;
+                                font-weight: bold;
+                                color: #328AA4;
+                                margin-right: 5px;
+                            `;
+                            expandTd.appendChild(expandIcon);
+                            tr.appendChild(expandTd);
+                        }
+
+                        // ... (rest of the existing row creation logic)
+                    });
+                }
+                // ... (rest of the existing code)
+            });
+        });
+    });
+
+    // Add new method to render coverage type details
+    function renderCoverageTypeDetails(sp, team, phase) {
+        const detailsRow = document.createElement('tr');
+        detailsRow.className = 'coverage-type-details';
+        
+        const detailsCell = document.createElement('td');
+        detailsCell.setAttribute('colspan', '15'); // Match total number of columns
+        
+        const innerTable = document.createElement('table');
+        innerTable.className = 'inner-coverage-table';
+        innerTable.style.cssText = `
+            width: 95%;
+            margin: 10px auto;
+            border: 1px solid #e0e0e0;
+            background-color: #f9f9f9;
+        `;
+
+        // Create inner table header
+        const innerHeader = document.createElement('thead');
+        const headerRow = document.createElement('tr');
+        const headers = [
+            'Coverage Type', 'Total TCs', 'Coverage', 'Coverage %', 
+            'Passed', 'Pass %', 'Failed', 'Fail %', 
+            'Blocked', 'Block %', 'Unique CRs', 'Unique JIRAs'
+        ];
+        headers.forEach(headerText => {
+            const th = document.createElement('th');
+            th.textContent = headerText;
+            th.style.cssText = `
+                background-color: #e6f2f5;
+                padding: 8px;
+                border: 1px solid #d0e0e3;
+            `;
+            headerRow.appendChild(th);
+        });
+        innerHeader.appendChild(headerRow);
+        innerTable.appendChild(innerHeader);
+
+        // Create inner table body
+        const innerBody = document.createElement('tbody');
+        phase.coverage_types.forEach(coverageType => {
+            const innerRow = document.createElement('tr');
+            
+            const rowData = [
+                coverageType.coverage_type,
+                coverageType.metrics.total || '0',
+                coverageType.metrics.coverage || '0',
+                formatPercentage(coverageType.metrics.coverage_percentage),
+                coverageType.metrics.passed || '0',
+                formatPercentage(coverageType.metrics.passed_percentage),
+                coverageType.metrics.failed || '0',
+                formatPercentage(coverageType.metrics.failed_percentage),
+                coverageType.metrics.blocked || '0',
+                formatPercentage(coverageType.metrics.blocked_percentage)
+            ];
+
+            rowData.forEach(cellData => {
+                const td = document.createElement('td');
+                td.textContent = cellData;
+                td.style.cssText = `
+                    padding: 8px;
+                    border: 1px solid #e0e0e0;
+                    text-align: left;
+                `;
+                innerRow.appendChild(td);
+            });
+
+            // Unique CRs column
+            const crTd = document.createElement('td');
+            crTd.innerHTML = formatLongList(
+                coverageType.unique_cr_list || [], 
+                coverageType.unique_cr_count || 0
+            );
+            innerRow.appendChild(crTd);
+
+            // Unique JIRAs column
+            const jiraTd = document.createElement('td');
+            jiraTd.innerHTML = formatLongList(
+                coverageType.unique_jira_list || [], 
+                coverageType.unique_jira_count || 0
+            );
+            innerRow.appendChild(jiraTd);
+
+            innerBody.appendChild(innerRow);
+        });
+
+        innerTable.appendChild(innerBody);
+        detailsCell.appendChild(innerTable);
+        detailsRow.appendChild(detailsCell);
+
+        return detailsRow;
+    }
+
+    // Add event listener for expand/collapse
+    tbody.addEventListener('click', function(e) {
+        if (e.target.classList.contains('expand-phase-details')) {
+            const icon = e.target;
+            const parentRow = icon.closest('tr');
+            const detailsRow = parentRow.nextElementSibling;
+
+            // Toggle between '+' and '-'
+            icon.textContent = icon.textContent === '+' ? '-' : '+';
+
+            // If details row already exists, remove it
+            if (detailsRow && detailsRow.classList.contains('coverage-type-details')) {
+                detailsRow.remove();
+                return;
+            }
+
+            // Find the specific SP, team, and phase
+            const sp = icon.getAttribute('data-sp');
+            const team = icon.getAttribute('data-team');
+            const phase = icon.getAttribute('data-phase');
+
+            // Find the matching data
+            const matchingData = data.find(s => s.sp_name === sp);
+            const matchingTeam = matchingData.teams.find(t => t.team_name === team);
+            const matchingPhase = matchingTeam.phases.find(p => p.phase === phase);
+
+            // Create and insert details row
+            const detailsRow = renderCoverageTypeDetails(matchingData, matchingTeam, matchingPhase);
+            parentRow.insertAdjacentElement('afterend', detailsRow);
+        }
+    });
+
+    table.appendChild(tbody);
+    // ... (rest of the existing rendering code)
+}
