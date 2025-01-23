@@ -1,17 +1,18 @@
-function renderInnerTable_1(data, selectedTeam, selectedPhase, parentRow) {
-    // First, find the correct SP and team data
-    const spData = data.find(sp => 
+function renderInnerTable_1(tableData, selectedTeam, selectedPhase, parentRow) {
+    // Find the SP with the selected team
+    const spWithTeam = tableData.find(sp => 
         sp.teams.some(team => team.team_name === selectedTeam)
     );
 
-    if (!spData) return null;
+    if (!spWithTeam) return null;
 
-    const teamData = spData.teams.find(team => team.team_name === selectedTeam);
-    if (!teamData) return null;
+    // Find the specific team
+    const team = spWithTeam.teams.find(team => team.team_name === selectedTeam);
+    if (!team) return null;
 
-    // Find the phase with matching name and coverage types
-    const phaseData = teamData.phases.find(phase => phase.phase === selectedPhase);
-    if (!phaseData || !phaseData.coverage_types) return null;
+    // Find the specific phase
+    const phase = team.phases.find(p => p.phase === selectedPhase);
+    if (!phase || !phase.coverage_types) return null;
 
     // Create inner table container
     const innerTableContainer = document.createElement('tr');
@@ -62,7 +63,7 @@ function renderInnerTable_1(data, selectedTeam, selectedPhase, parentRow) {
     const tbody = document.createElement('tbody');
 
     // Render coverage types
-    phaseData.coverage_types.forEach(coverageType => {
+    phase.coverage_types.forEach(coverageType => {
         const tr = document.createElement('tr');
         
         const cells = [
@@ -113,7 +114,6 @@ function renderInnerTable_1(data, selectedTeam, selectedPhase, parentRow) {
     return innerTableContainer;
 }
 
-// Modify the renderCumulativeTable function
 function renderCumulativeTable(data, targetElementId) {
     const table = document.createElement('table');
     table.className = 'coverage-table';
@@ -146,81 +146,87 @@ function renderCumulativeTable(data, targetElementId) {
     // Get the current selected team from the team filter
     const selectedTeam = document.querySelector('input[name="team-filter"]:checked').value;
 
-    data.forEach(sp => {
-        // Filter for the selected team
-        const teamData = sp.teams.find(team => team.team_name === selectedTeam);
-        if (!teamData) return;
+    // Find the SP with the selected team
+    const spWithTeam = data.find(sp => 
+        sp.teams.some(team => team.team_name === selectedTeam)
+    );
 
-        teamData.phases.forEach(phase => {
-            const tr = document.createElement('tr');
-            
-            // Expand/Collapse column
-            const expandTd = document.createElement('td');
-            const expandIcon = document.createElement('span');
-            expandIcon.innerHTML = '➕';  // Plus icon
-            expandIcon.style.cssText = `
-                cursor: pointer;
-                padding: 0 5px;
-                font-weight: bold;
-                color: #328AA4;
-            `;
-            expandIcon.setAttribute('data-expanded', 'false');
-            
-            expandIcon.addEventListener('click', (e) => {
-                const parentRow = e.target.closest('tr');
-                const isExpanded = e.target.getAttribute('data-expanded') === 'true';
+    if (spWithTeam) {
+        // Find the specific team
+        const team = spWithTeam.teams.find(team => team.team_name === selectedTeam);
+
+        if (team) {
+            team.phases.forEach(phase => {
+                const tr = document.createElement('tr');
                 
-                // Remove any existing inner tables
-                const existingInnerTable = parentRow.nextElementSibling;
-                if (existingInnerTable && existingInnerTable.classList.contains('inner-table-container')) {
-                    existingInnerTable.remove();
-                    e.target.innerHTML = '➕';
-                    e.target.setAttribute('data-expanded', 'false');
-                    return;
-                }
+                // Expand/Collapse column
+                const expandTd = document.createElement('td');
+                const expandIcon = document.createElement('span');
+                expandIcon.innerHTML = '➕';  // Plus icon
+                expandIcon.style.cssText = `
+                    cursor: pointer;
+                    padding: 0 5px;
+                    font-weight: bold;
+                    color: #328AA4;
+                `;
+                expandIcon.setAttribute('data-expanded', 'false');
+                
+                expandIcon.addEventListener('click', (e) => {
+                    const parentRow = e.target.closest('tr');
+                    const isExpanded = e.target.getAttribute('data-expanded') === 'true';
+                    
+                    // Remove any existing inner tables
+                    const existingInnerTable = parentRow.nextElementSibling;
+                    if (existingInnerTable && existingInnerTable.classList.contains('inner-table-container')) {
+                        existingInnerTable.remove();
+                        e.target.innerHTML = '➕';
+                        e.target.setAttribute('data-expanded', 'false');
+                        return;
+                    }
 
-                // Render inner table
-                renderInnerTable_1(data, selectedTeam, phase.phase, parentRow);
-                e.target.innerHTML = '➖';  // Minus icon
-                e.target.setAttribute('data-expanded', 'true');
+                    // Render inner table
+                    renderInnerTable_1(data, selectedTeam, phase.phase, parentRow);
+                    e.target.innerHTML = '➖';  // Minus icon
+                    e.target.setAttribute('data-expanded', 'true');
+                });
+
+                expandTd.appendChild(expandIcon);
+                tr.appendChild(expandTd);
+
+                // Rest of the row cells
+                const cells = [
+                    phase.phase,
+                    phase.metrics.total,
+                    phase.metrics.coverage,
+                    formatPercentage(phase.metrics.coverage_percentage),
+                    phase.metrics.passed,
+                    formatPercentage(phase.metrics.passed_percentage),
+                    phase.metrics.failed,
+                    formatPercentage(phase.metrics.failed_percentage),
+                    phase.metrics.blocked,
+                    formatPercentage(phase.metrics.blocked_percentage)
+                ];
+
+                cells.forEach(cellData => {
+                    const td = document.createElement('td');
+                    td.textContent = cellData;
+                    tr.appendChild(td);
+                });
+
+                // Add Unique CRs column
+                const crTd = document.createElement('td');
+                crTd.innerHTML = formatLongList(phase.unique_cr_list || [], phase.unique_cr_count || 0);
+                tr.appendChild(crTd);
+
+                // Add Unique JIRAs column
+                const jiraTd = document.createElement('td');
+                jiraTd.innerHTML = formatLongList(phase.unique_jira_list || [], phase.unique_jira_count || 0);
+                tr.appendChild(jiraTd);
+
+                tbody.appendChild(tr);
             });
-
-            expandTd.appendChild(expandIcon);
-            tr.appendChild(expandTd);
-
-            // Rest of the row cells
-            const cells = [
-                phase.phase,
-                phase.metrics.total,
-                phase.metrics.coverage,
-                formatPercentage(phase.metrics.coverage_percentage),
-                phase.metrics.passed,
-                formatPercentage(phase.metrics.passed_percentage),
-                phase.metrics.failed,
-                formatPercentage(phase.metrics.failed_percentage),
-                phase.metrics.blocked,
-                formatPercentage(phase.metrics.blocked_percentage)
-            ];
-
-            cells.forEach(cellData => {
-                const td = document.createElement('td');
-                td.textContent = cellData;
-                tr.appendChild(td);
-            });
-
-            // Add Unique CRs column
-            const crTd = document.createElement('td');
-            crTd.innerHTML = formatLongList(phase.unique_cr_list, phase.unique_cr_count);
-            tr.appendChild(crTd);
-
-            // Add Unique JIRAs column
-            const jiraTd = document.createElement('td');
-            jiraTd.innerHTML = formatLongList(phase.unique_jira_list, phase.unique_jira_count);
-            tr.appendChild(jiraTd);
-
-            tbody.appendChild(tr);
-        });
-    });
+        }
+    }
 
     table.appendChild(tbody);
 
