@@ -1,6 +1,6 @@
 <script>
     document.addEventListener('DOMContentLoaded', function() {
-        // ... (previous existing code remains the same)
+        // ... (previous existing code)
 
         // Configuration for list display
         const LIST_THRESHOLD = 15;
@@ -18,14 +18,15 @@
                 background: white;
                 border: 1px solid #ccc;
                 box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-                max-width: 500px;
+                width: 80vw;
+                max-width: 1000px;
                 max-height: 70vh;
                 overflow: hidden;
                 z-index: 1000;
                 border-radius: 8px;
             `;
 
-            // Modal header
+            // Modal header (matching table header style)
             const header = document.createElement('div');
             header.style.cssText = `
                 display: flex;
@@ -33,6 +34,8 @@
                 align-items: center;
                 padding: 10px;
                 border-bottom: 1px solid #eee;
+                background-color: #328AA4;
+                color: white;
             `;
             const titleEl = document.createElement('h3');
             titleEl.textContent = title;
@@ -46,6 +49,7 @@
                 border: none;
                 font-size: 20px;
                 cursor: pointer;
+                color: white;
             `;
             closeBtn.addEventListener('click', () => {
                 document.body.removeChild(modal);
@@ -62,18 +66,30 @@
                 overflow-y: auto;
                 padding: 10px;
             `;
-            const listEl = document.createElement('ul');
-            listEl.style.listStyleType = 'none';
-            listEl.style.padding = '0';
+
+            // Create grid-like layout for list items
+            const listContainer = document.createElement('div');
+            listContainer.style.cssText = `
+                display: grid;
+                grid-template-columns: repeat(4, 1fr);
+                gap: 10px;
+                padding: 10px;
+            `;
+
             list.forEach(item => {
-                const li = document.createElement('li');
-                li.textContent = item;
-                li.style.padding = '5px 0';
-                li.style.borderBottom = '1px solid #eee';
-                listEl.appendChild(li);
+                const itemEl = document.createElement('div');
+                itemEl.textContent = item;
+                itemEl.style.cssText = `
+                    border: 1px solid #eee;
+                    padding: 5px;
+                    background-color: #f9f9f9;
+                    border-radius: 4px;
+                    word-break: break-all;
+                `;
+                listContainer.appendChild(itemEl);
             });
 
-            content.appendChild(listEl);
+            content.appendChild(listContainer);
 
             // Overlay
             const overlay = document.createElement('div');
@@ -98,186 +114,104 @@
             document.body.appendChild(modal);
         }
 
-        // Function to format long lists with "more" functionality
+        // Function to format long lists with vertical display
         function formatLongList(list, count) {
             if (count <= LIST_THRESHOLD) {
-                return `${count}(${list.join(' ; ')})`;
-            }
-            const displayList = list.slice(0, LIST_THRESHOLD);
-            return `${count}(${displayList.join(' ; ')}...) 
-                <a href="#" class="show-more-list" 
-                    data-title="Full List" 
-                    data-list="${encodeURIComponent(JSON.stringify(list))}">
-                    more...
-                </a>`;
-        }
+                // Create a vertical list for inline display
+                const listContainer = document.createElement('div');
+                listContainer.style.cssText = `
+                    display: grid;
+                    grid-template-columns: repeat(3, 1fr);
+                    gap: 5px;
+                    max-width: 300px;
+                    max-height: 100px;
+                    overflow-y: auto;
+                `;
 
-        // Modify calculateCumulativeMetrics to merge unique lists
-        function calculateCumulativeMetrics(data, selectedTeam) {
-            return data
-                .filter(sp => sp.teams.some(team => team.team_name === selectedTeam))
-                .map(sp => {
-                    const teamData = sp.teams.find(team => team.team_name === selectedTeam);
-                    if (!teamData) return null;
-
-                    const processedPhases = teamData.phases.reduce((accumPhases, phase) => {
-                        // Cumulative metrics calculation (similar to previous implementation)
-                        let totalTCs = 0;
-                        let totalCoverage = 0;
-                        let totalPassed = 0;
-                        let totalFailed = 0;
-                        let totalBlocked = 0;
-                        
-                        // Merged lists for unique CRs and JIRAs
-                        const mergedUniqueCRs = new Set();
-                        const mergedUniqueJiras = new Set();
-
-                        if (phase.coverage_types) {
-                            phase.coverage_types.forEach(ct => {
-                                // Metrics calculation
-                                totalTCs += parseInt(ct.metrics.total || 0);
-                                totalCoverage += parseInt(ct.metrics.coverage || 0);
-                                totalPassed += parseInt(ct.metrics.passed || 0);
-                                totalFailed += parseInt(ct.metrics.failed || 0);
-                                totalBlocked += parseInt(ct.metrics.blocked || 0);
-
-                                // Merge unique lists
-                                ct.unique_cr_list.forEach(cr => mergedUniqueCRs.add(cr));
-                                ct.unique_jira_list.forEach(jira => mergedUniqueJiras.add(jira));
-                            });
-                        } else {
-                            // Similar metrics calculation for non-coverage type phase
-                            totalTCs = parseInt(phase.metrics.total || 0);
-                            totalCoverage = parseInt(phase.metrics.coverage || 0);
-                            totalPassed = parseInt(phase.metrics.passed || 0);
-                            totalFailed = parseInt(phase.metrics.failed || 0);
-                            totalBlocked = parseInt(phase.metrics.blocked || 0);
-
-                            // Merge unique lists directly from phase
-                            (phase.unique_cr_list || []).forEach(cr => mergedUniqueCRs.add(cr));
-                            (phase.unique_jira_list || []).forEach(jira => mergedUniqueJiras.add(jira));
-                        }
-
-                        const coveragePercentage = totalTCs > 0 ? (totalCoverage / totalTCs) * 100 : 0;
-                        const passPercentage = totalTCs > 0 ? (totalPassed / totalTCs) * 100 : 0;
-                        const failPercentage = totalTCs > 0 ? (totalFailed / totalTCs) * 100 : 0;
-                        const blockPercentage = totalTCs > 0 ? (totalBlocked / totalTCs) * 100 : 0;
-
-                        // Convert sets to sorted arrays
-                        const uniqueCRList = Array.from(mergedUniqueCRs).sort();
-                        const uniqueJiraList = Array.from(mergedUniqueJiras).sort();
-
-                        accumPhases.push({
-                            phase: phase.phase,
-                            metrics: {
-                                total: totalTCs,
-                                coverage: totalCoverage,
-                                coverage_percentage: coveragePercentage,
-                                passed: totalPassed,
-                                passed_percentage: passPercentage,
-                                failed: totalFailed,
-                                failed_percentage: failPercentage,
-                                blocked: totalBlocked,
-                                blocked_percentage: blockPercentage
-                            },
-                            unique_cr_list: uniqueCRList,
-                            unique_cr_count: uniqueCRList.length,
-                            unique_jira_list: uniqueJiraList,
-                            unique_jira_count: uniqueJiraList.length
-                        });
-
-                        return accumPhases;
-                    }, []);
-
-                    return {
-                        phases: processedPhases
-                    };
-                })
-                .filter(Boolean);
-        }
-
-        // Modify renderCumulativeTable to include new columns and list formatting
-        function renderCumulativeTable(data, targetElementId) {
-            const table = document.createElement('table');
-            table.className = 'coverage-table';
-
-            // Create header
-            const thead = document.createElement('thead');
-            const headerRow = document.createElement('tr');
-            const headers = [
-                'Phase', 
-                'Total TCs',
-                'Coverage', 'Coverage %',
-                'Passed', 'Pass %',
-                'Failed', 'Fail %',
-                'Blocked', 'Block %',
-                'Unique CRs',
-                'Unique JIRAs'
-            ];
-            headers.forEach(header => {
-                const th = document.createElement('th');
-                th.textContent = header;
-                headerRow.appendChild(th);
-            });
-            thead.appendChild(headerRow);
-            table.appendChild(thead);
-
-            // Create table body
-            const tbody = document.createElement('tbody');
-            data.forEach(sp => {
-                sp.phases.forEach(phase => {
-                    const tr = document.createElement('tr');
-                    const cells = [
-                        phase.phase,
-                        phase.metrics.total,
-                        phase.metrics.coverage,
-                        formatPercentage(phase.metrics.coverage_percentage),
-                        phase.metrics.passed,
-                        formatPercentage(phase.metrics.passed_percentage),
-                        phase.metrics.failed,
-                        formatPercentage(phase.metrics.failed_percentage),
-                        phase.metrics.blocked,
-                        formatPercentage(phase.metrics.blocked_percentage)
-                    ];
-
-                    cells.forEach(cellData => {
-                        const td = document.createElement('td');
-                        td.textContent = cellData;
-                        tr.appendChild(td);
-                    });
-
-                    // Add Unique CRs column
-                    const crTd = document.createElement('td');
-                    crTd.innerHTML = formatLongList(phase.unique_cr_list, phase.unique_cr_count);
-                    tr.appendChild(crTd);
-
-                    // Add Unique JIRAs column
-                    const jiraTd = document.createElement('td');
-                    jiraTd.innerHTML = formatLongList(phase.unique_jira_list, phase.unique_jira_count);
-                    tr.appendChild(jiraTd);
-
-                    tbody.appendChild(tr);
+                list.forEach(item => {
+                    const itemEl = document.createElement('div');
+                    itemEl.textContent = item;
+                    itemEl.style.cssText = `
+                        border: 1px solid #eee;
+                        padding: 2px;
+                        font-size: 0.8em;
+                        word-break: break-all;
+                        background-color: #f9f9f9;
+                        border-radius: 3px;
+                    `;
+                    listContainer.appendChild(itemEl);
                 });
+
+                const countEl = document.createElement('div');
+                countEl.textContent = `Total: ${count}`;
+                countEl.style.gridColumn = 'span 3';
+                countEl.style.textAlign = 'center';
+                countEl.style.fontWeight = 'bold';
+                listContainer.appendChild(countEl);
+
+                // Wrap in a parent div to allow "more" link
+                const wrapper = document.createElement('div');
+                wrapper.appendChild(listContainer);
+
+                // Add more link
+                const moreLink = document.createElement('a');
+                moreLink.href = '#';
+                moreLink.textContent = 'more...';
+                moreLink.className = 'show-more-list';
+                moreLink.setAttribute('data-title', 'Full List');
+                moreLink.setAttribute('data-list', encodeURIComponent(JSON.stringify(list)));
+                moreLink.style.cssText = `
+                    display: block;
+                    text-align: center;
+                    margin-top: 5px;
+                `;
+
+                wrapper.appendChild(moreLink);
+
+                return wrapper.innerHTML;
+            }
+
+            // If count exceeds threshold, show limited items with more link
+            const displayList = list.slice(0, LIST_THRESHOLD);
+            const listContainer = document.createElement('div');
+            listContainer.style.cssText = `
+                display: grid;
+                grid-template-columns: repeat(3, 1fr);
+                gap: 5px;
+                max-width: 300px;
+                max-height: 100px;
+                overflow-y: auto;
+            `;
+
+            displayList.forEach(item => {
+                const itemEl = document.createElement('div');
+                itemEl.textContent = item;
+                itemEl.style.cssText = `
+                    border: 1px solid #eee;
+                    padding: 2px;
+                    font-size: 0.8em;
+                    word-break: break-all;
+                    background-color: #f9f9f9;
+                    border-radius: 3px;
+                `;
+                listContainer.appendChild(itemEl);
             });
-            table.appendChild(tbody);
 
-            // Render the table
-            const targetElement = document.getElementById(targetElementId);
-            targetElement.innerHTML = '';
-            targetElement.appendChild(table);
+            const moreLink = document.createElement('a');
+            moreLink.href = '#';
+            moreLink.textContent = `more... (${count} total)`;
+            moreLink.className = 'show-more-list';
+            moreLink.setAttribute('data-title', 'Full List');
+            moreLink.setAttribute('data-list', encodeURIComponent(JSON.stringify(list)));
+            moreLink.style.cssText = `
+                grid-column: span 3;
+                text-align: center;
+                margin-top: 5px;
+            `;
 
-            // Add event listeners for "more" links
-            targetElement.addEventListener('click', (e) => {
-                if (e.target.classList.contains('show-more-list')) {
-                    e.preventDefault();
-                    const title = e.target.getAttribute('data-title');
-                    const list = JSON.parse(decodeURIComponent(e.target.getAttribute('data-list')));
-                    createListModal(title, list);
-                }
-            });
+            listContainer.appendChild(moreLink);
 
-            // Adjust column widths
-            adjustColumnWidths();
+            return listContainer.outerHTML;
         }
 
         // Rest of the existing code remains the same...
