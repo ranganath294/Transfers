@@ -1,108 +1,165 @@
-[
-{
-"sp_name": "Bonito.LA.1.0",
-"teams": [
-{
-"team_name": "BT",
-"phases": [
-{
-"phase": "ES",
-"date": "12-10-2024",
-"coverage_types": [
-{
-"coverage_type": "Legacy",
-"metrics": {
-"coverage_percentage": 100.0,
-"passed_percentage": 100.0,
-"failed_percentage": 0.0,
-"blocked_percentage": 0.0,
-"total": 93,
-"passed": 93,
-"failed": 0,
-"blocked": 0,
-"coverage": 93,
-},
-"unique_issue_count": 0,
-"unique_issue_list": [],
-"unique_cr_list": [],
-"unique_cr_count": 0,
-"unique_jira_list": [],
-"unique_jira_count": 0,
+// New function to render inner table for coverage types
+function renderInnerTable_1(phaseData, parentRow) {
+    // Create inner table container
+    const innerTableContainer = document.createElement('tr');
+    innerTableContainer.className = 'inner-table-container';
+    
+    const innerTableCell = document.createElement('td');
+    innerTableCell.setAttribute('colspan', '12');  // Match total columns
+    
+    const innerTable = document.createElement('table');
+    innerTable.className = 'inner-coverage-types-table';
+    innerTable.style.cssText = `
+        width: 98%;
+        margin: 10px auto;
+        border-collapse: collapse;
+        background-color: #f9f9f9;
+        box-shadow: 0 2px 3px rgba(0,0,0,0.1);
+    `;
+
+    // Create inner table header
+    const thead = document.createElement('thead');
+    const headerRow = document.createElement('tr');
+    headerRow.style.backgroundColor = '#328AA4';
+    headerRow.style.color = 'white';
+
+    const headers = [
+        'Coverage Type', 
+        'Total TCs',
+        'Coverage', 'Coverage %',
+        'Passed', 'Pass %',
+        'Failed', 'Fail %',
+        'Blocked', 'Block %',
+        'Unique CRs', 
+        'Unique JIRAs'
+    ];
+
+    headers.forEach(header => {
+        const th = document.createElement('th');
+        th.textContent = header;
+        th.style.padding = '8px';
+        th.style.border = '1px solid #ddd';
+        headerRow.appendChild(th);
+    });
+
+    thead.appendChild(headerRow);
+    innerTable.appendChild(thead);
+
+    // Create table body
+    const tbody = document.createElement('tbody');
+
+    // Assuming phase has coverage_types
+    (phaseData.coverage_types || []).forEach(coverageType => {
+        const tr = document.createElement('tr');
+        
+        const cells = [
+            coverageType.coverage_type,
+            coverageType.metrics.total,
+            coverageType.metrics.coverage,
+            formatPercentage(coverageType.metrics.coverage_percentage),
+            coverageType.metrics.passed,
+            formatPercentage(coverageType.metrics.passed_percentage),
+            coverageType.metrics.failed,
+            formatPercentage(coverageType.metrics.failed_percentage),
+            coverageType.metrics.blocked,
+            formatPercentage(coverageType.metrics.blocked_percentage)
+        ];
+
+        cells.forEach(cellData => {
+            const td = document.createElement('td');
+            td.textContent = cellData;
+            td.style.border = '1px solid #ddd';
+            td.style.padding = '6px';
+            tr.appendChild(td);
+        });
+
+        // Add Unique CRs column
+        const crTd = document.createElement('td');
+        crTd.innerHTML = formatLongList(coverageType.unique_cr_list, coverageType.unique_cr_count);
+        crTd.style.border = '1px solid #ddd';
+        crTd.style.padding = '6px';
+        tr.appendChild(crTd);
+
+        // Add Unique JIRAs column
+        const jiraTd = document.createElement('td');
+        jiraTd.innerHTML = formatLongList(coverageType.unique_jira_list, coverageType.unique_jira_count);
+        jiraTd.style.border = '1px solid #ddd';
+        jiraTd.style.padding = '6px';
+        tr.appendChild(jiraTd);
+
+        tbody.appendChild(tr);
+    });
+
+    innerTable.appendChild(tbody);
+    innerTableCell.appendChild(innerTable);
+    innerTableContainer.appendChild(innerTableCell);
+
+    // Insert the inner table row right after the parent row
+    parentRow.insertAdjacentElement('afterend', innerTableContainer);
+
+    return innerTableContainer;
 }
-]
+
+// Modify renderCumulativeTable to add expand/collapse functionality
+function renderCumulativeTable(data, targetElementId) {
+    // ... (previous implementation remains the same)
+
+    // Modify the phase row rendering to include expand icon
+    sp.phases.forEach((phase, phaseIndex) => {
+        const tr = document.createElement('tr');
+        
+        // Expand/Collapse column
+        const expandTd = document.createElement('td');
+        const expandIcon = document.createElement('span');
+        expandIcon.innerHTML = '➕';  // Plus icon
+        expandIcon.style.cssText = `
+            cursor: pointer;
+            padding: 0 5px;
+            font-weight: bold;
+            color: #328AA4;
+        `;
+        expandIcon.setAttribute('data-expanded', 'false');
+        
+        expandIcon.addEventListener('click', (e) => {
+            const parentRow = e.target.closest('tr');
+            const isExpanded = e.target.getAttribute('data-expanded') === 'true';
+            
+            // Remove any existing inner tables
+            const existingInnerTable = parentRow.nextElementSibling;
+            if (existingInnerTable && existingInnerTable.classList.contains('inner-table-container')) {
+                existingInnerTable.remove();
+                e.target.innerHTML = '➕';
+                e.target.setAttribute('data-expanded', 'false');
+                return;
+            }
+
+            // Render inner table
+            renderInnerTable_1(phase, parentRow);
+            e.target.innerHTML = '➖';  // Minus icon
+            e.target.setAttribute('data-expanded', 'true');
+        });
+
+        expandTd.appendChild(expandIcon);
+        tr.appendChild(expandTd);
+
+        // Rest of the row rendering remains the same...
+        const cells = [
+            phase.phase,
+            phase.metrics.total,
+            // ... (other cells)
+        ];
+
+        cells.forEach(cellData => {
+            const td = document.createElement('td');
+            td.textContent = cellData;
+            tr.appendChild(td);
+        });
+
+        // Add Unique CRs and JIRAs columns
+        // ... (previous implementation)
+
+        tbody.appendChild(tr);
+    });
+
+    // ... (rest of the implementation remains the same)
 }
-]
-},
-{
-"team_name": "WLAN",
-"phases": [
-{
-"phase": "ES",
-"date": "12-10-2024",
-"coverage_types": [
-{
-"coverage_type": "Legacy",
-"metrics": {
-"coverage_percentage": 100.0,
-"passed_percentage": 92.85714285714286,
-"failed_percentage": 7.142857142857142,
-"blocked_percentage": 0.0,
-"total": 210,
-"passed": 195,
-"failed": 15,
-"blocked": 0,
-"coverage": 210,
-},
-"unique_issue_count": 22,
-"unique_issue_list": [
-"CR-3967821",
-"CR-3909552",
-"CR-3912201",
-"CR-3922033",
-"CR-3934895",
-"CR-3946062",
-"CR-3909548",
-"QSTABILITY-18226561",
-"CR-3922749",
-"CR-3935008",
-"CR-3934986",
-"CR-3914456",
-"CR-3934952",
-"CR-3913391",
-"QSTABILITY-18347306",
-"CR-3933981",
-"QSTABILITY-18347228",
-"CR-3909315",
-"CR-3920604",
-"CR-3906649",
-"CR-3919955",
-"CR-3922983"
-],
-"unique_cr_list": [
-"CR-3967821",
-"CR-3909552",
-"CR-3912201",
-"CR-3922033",
-"CR-3934895",
-"CR-3946062",
-"CR-3909548",
-"CR-3922749",
-"CR-3935008",
-"CR-3934986",
-"CR-3914456",
-"CR-3934952",
-"CR-3913391",
-"CR-3933981",
-"CR-3909315",
-"CR-3920604",
-"CR-3906649",
-"CR-3919955",
-"CR-3922983"
-],
-"unique_cr_count": 19,
-"unique_jira_list": [
-"QSTABILITY-18226561",
-"QSTABILITY-18347306",
-"QSTABILITY-18347228"
-],
-"unique_jira_count": 3}]}]}]}]
