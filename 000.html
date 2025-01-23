@@ -1,222 +1,57 @@
-// Add this function to the existing script
-function renderCoverageTypeDetailsTable(phaseData) {
-    const table = document.createElement('table');
-    table.className = 'coverage-type-details-table';
-    table.style.cssText = `
-        width: calc(100% - 40px);
-        margin-left: 40px;
-        border-collapse: collapse;
-        background-color: #f4f7f9;
-        box-shadow: 0 2px 3px rgba(0,0,0,0.1);
-    `;
-
-    // Create header
-    const thead = document.createElement('thead');
-    const headerRow = document.createElement('tr');
-    const headers = [
-        'Coverage Type', 
-        'Total TCs',
-        'Coverage', 'Coverage %',
-        'Passed', 'Pass %',
-        'Failed', 'Fail %',
-        'Blocked', 'Block %',
-        'Unique CRs',
-        'Unique JIRAs'
-    ];
-    headers.forEach(header => {
-        const th = document.createElement('th');
-        th.textContent = header;
-        th.style.cssText = `
-            background-color: #4a9fc2;
-            color: white;
-            padding: 8px;
-            text-align: left;
-            border: 1px solid #ddd;
-        `;
-        headerRow.appendChild(th);
-    });
-    thead.appendChild(headerRow);
-    table.appendChild(thead);
-
-    // Create table body
-    const tbody = document.createElement('tbody');
-    phaseData.coverage_types.forEach(coverageType => {
-        const tr = document.createElement('tr');
-        tr.style.cssText = `
-            background-color: white;
-            border-bottom: 1px solid #e0e0e0;
-        `;
-
-        const cells = [
-            coverageType.coverage_type,
-            coverageType.metrics.total || '0',
-            coverageType.metrics.coverage || '0',
-            formatPercentage(coverageType.metrics.coverage_percentage),
-            coverageType.metrics.passed || '0',
-            formatPercentage(coverageType.metrics.passed_percentage),
-            coverageType.metrics.failed || '0',
-            formatPercentage(coverageType.metrics.failed_percentage),
-            coverageType.metrics.blocked || '0',
-            formatPercentage(coverageType.metrics.blocked_percentage)
-        ];
-
-        cells.forEach(cellData => {
-            const td = document.createElement('td');
-            td.textContent = cellData;
-            td.style.cssText = `
-                padding: 8px;
-                border: 1px solid #e0e0e0;
-            `;
-            tr.appendChild(td);
-        });
-
-        // Add Unique CRs column
-        const crTd = document.createElement('td');
-        crTd.innerHTML = formatLongList(coverageType.unique_cr_list, coverageType.unique_cr_count);
-        crTd.style.cssText = `
-            padding: 8px;
-            border: 1px solid #e0e0e0;
-        `;
-        tr.appendChild(crTd);
-
-        // Add Unique JIRAs column
-        const jiraTd = document.createElement('td');
-        jiraTd.innerHTML = formatLongList(coverageType.unique_jira_list, coverageType.unique_jira_count);
-        jiraTd.style.cssText = `
-            padding: 8px;
-            border: 1px solid #e0e0e0;
-        `;
-        tr.appendChild(jiraTd);
-
-        tbody.appendChild(tr);
-    });
-
-    table.appendChild(tbody);
-    return table;
-}
-
-// Modify renderCumulativeTable function to add expandable rows
-function renderCumulativeTable(data, targetElementId) {
-    const table = document.createElement('table');
-    table.className = 'coverage-table';
-
-    // Create header
-    const thead = document.createElement('thead');
-    const headerRow = document.createElement('tr');
-    const headers = [
-        '', // New column for expand/collapse icon
-        'Phase', 
-        'Total TCs',
-        'Coverage', 'Coverage %',
-        'Passed', 'Pass %',
-        'Failed', 'Fail %',
-        'Blocked', 'Block %',
-        'Unique CRs',
-        'Unique JIRAs'
-    ];
-    headers.forEach(header => {
-        const th = document.createElement('th');
-        th.textContent = header;
-        headerRow.appendChild(th);
-    });
-    thead.appendChild(headerRow);
-    table.appendChild(thead);
-
-    // Create table body
-    const tbody = document.createElement('tbody');
-    data.forEach(sp => {
-        sp.phases.forEach(phase => {
-            const tr = document.createElement('tr');
-            
-            // Expand/Collapse column
-            const expandTd = document.createElement('td');
-            const expandIcon = document.createElement('span');
-            expandIcon.innerHTML = '➕';
-            expandIcon.style.cssText = `
-                cursor: pointer;
-                font-weight: bold;
-                color: #328AA4;
-                padding: 0 5px;
-            `;
-            expandIcon.classList.add('expand-phase-details');
-            expandIcon.setAttribute('data-phase', JSON.stringify(phase));
-            expandTd.appendChild(expandIcon);
-            tr.appendChild(expandTd);
-
-            const cells = [
-                phase.phase,
-                phase.metrics.total,
-                phase.metrics.coverage,
-                formatPercentage(phase.metrics.coverage_percentage),
-                phase.metrics.passed,
-                formatPercentage(phase.metrics.passed_percentage),
-                phase.metrics.failed,
-                formatPercentage(phase.metrics.failed_percentage),
-                phase.metrics.blocked,
-                formatPercentage(phase.metrics.blocked_percentage)
-            ];
-
-            cells.forEach(cellData => {
-                const td = document.createElement('td');
-                td.textContent = cellData;
-                tr.appendChild(td);
-            });
-
-            // Add Unique CRs column
-            const crTd = document.createElement('td');
-            crTd.innerHTML = formatLongList(phase.unique_cr_list, phase.unique_cr_count);
-            tr.appendChild(crTd);
-
-            // Add Unique JIRAs column
-            const jiraTd = document.createElement('td');
-            jiraTd.innerHTML = formatLongList(phase.unique_jira_list, phase.unique_jira_count);
-            tr.appendChild(jiraTd);
-
-            tbody.appendChild(tr);
-        });
-    });
-    table.appendChild(tbody);
-
-    // Render the table
-    const targetElement = document.getElementById(targetElementId);
-    targetElement.innerHTML = '';
-    targetElement.appendChild(table);
-
-    // Add event listeners for expand/collapse icons
-    targetElement.addEventListener('click', (e) => {
-        if (e.target.classList.contains('expand-phase-details')) {
-            const phaseData = JSON.parse(e.target.getAttribute('data-phase'));
-            
-            // Check if coverage types exist
-            if (phaseData.coverage_types) {
-                // Remove any existing expanded rows
-                const existingExpandedRow = targetElement.querySelector('.expanded-phase-details');
-                if (existingExpandedRow) {
-                    existingExpandedRow.remove();
-                }
-
-                // Create a new row for coverage type details
-                const expandedTr = document.createElement('tr');
-                expandedTr.classList.add('expanded-phase-details');
-                const expandedTd = document.createElement('td');
-                expandedTd.setAttribute('colspan', '13');
-                
-                // Create and append coverage type details table
-                const coverageTypeTable = renderCoverageTypeDetailsTable(phaseData);
-                expandedTd.appendChild(coverageTypeTable);
-                expandedTr.appendChild(expandedTd);
-
-                // Insert the new row right after the clicked phase row
-                e.target.closest('tr').insertAdjacentElement('afterend', expandedTr);
-
-                // Change icon to minus
-                e.target.innerHTML = '➖';
-            } else {
-                alert('No coverage type details available for this phase.');
-            }
+// Add this function to the event listener in renderCumulativeTable
+targetElement.addEventListener('click', (e) => {
+    if (e.target.classList.contains('expand-phase-details')) {
+        // Get the current phase from the clicked row
+        const currentPhase = e.target.getAttribute('data-phase');
+        
+        // Check if there's an existing expanded row and remove it
+        const existingExpandedRow = targetElement.querySelector('.expanded-phase-details');
+        if (existingExpandedRow) {
+            existingExpandedRow.remove();
         }
-    });
 
-    // Adjust column widths
-    adjustColumnWidths();
-}
+        // Find the coverage types for the current SP, team, and phase
+        const selectedSP = document.getElementById('sp_name').value;
+        const selectedTeam = document.querySelector('input[name="team-filter"]:checked').value;
+
+        // Find the matching data in the original tableData
+        const spData = tableData.find(sp => sp.sp_name === selectedSP);
+        if (!spData) return;
+
+        const teamData = spData.teams.find(team => team.team_name === selectedTeam);
+        if (!teamData) return;
+
+        // Find the phase data
+        const phaseData = teamData.phases.find(phase => phase.phase === currentPhase);
+        if (!phaseData) return;
+
+        // Check if coverage types exist for this phase
+        if (phaseData.coverage_types && phaseData.coverage_types.length > 0) {
+            // Create a new row for coverage type details
+            const expandedTr = document.createElement('tr');
+            expandedTr.classList.add('expanded-phase-details');
+            const expandedTd = document.createElement('td');
+            expandedTd.setAttribute('colspan', '13');
+            
+            // Create and append coverage type details table
+            const coverageTypeTable = renderCoverageTypeDetailsTable(phaseData);
+            expandedTd.appendChild(coverageTypeTable);
+            expandedTr.appendChild(expandedTd);
+
+            // Insert the new row right after the clicked phase row
+            e.target.closest('tr').insertAdjacentElement('afterend', expandedTr);
+
+            // Change icon to minus
+            e.target.innerHTML = '➖';
+        } else {
+            alert('No coverage type details available for this phase.');
+        }
+    } else if (e.target.innerHTML === '➖') {
+        // Collapse the expanded row
+        const existingExpandedRow = targetElement.querySelector('.expanded-phase-details');
+        if (existingExpandedRow) {
+            existingExpandedRow.remove();
+            e.target.innerHTML = '➕';
+        }
+    }
+});
