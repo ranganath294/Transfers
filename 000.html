@@ -1,55 +1,94 @@
-targetElement.addEventListener('click', (e) => {
-    if (e.target.classList.contains('expand-phase-details')) {
-        // Get the current phase from the clicked row
-        const currentPhase = JSON.parse(e.target.getAttribute('data-phase'));
-        const selected_phase = currentPhase.phase;
+// Modify the renderCumulativeTable function to ensure proper data binding
+function renderCumulativeTable(data, targetElementId) {
+    const table = document.createElement('table');
+    table.className = 'coverage-table';
+    table.setAttribute('data-full-table-data', JSON.stringify(data));  // Store full data on the table
 
-        // Find the matching data in the original tableData
-        const selectedSP = document.getElementById('sp_name').value;
-        const selectedTeam = document.querySelector('input[name="team-filter"]:checked').value;
+    // Rest of the existing renderCumulativeTable function remains the same...
 
-        const spData = tableData.find(sp => sp.sp_name === selectedSP);
-        if (!spData) return;
+    // Replace the existing event listener with this more robust version
+    const targetElement = document.getElementById(targetElementId);
+    targetElement.innerHTML = '';
+    targetElement.appendChild(table);
 
-        const teamData = spData.teams.find(team => team.team_name === selectedTeam);
-        if (!teamData) return;
+    // Add event delegation for expand/collapse
+    targetElement.addEventListener('click', (e) => {
+        // Find the table to retrieve the full data
+        const table = e.target.closest('.coverage-table');
+        const fullTableData = JSON.parse(table.getAttribute('data-full-table-data'));
 
-        // Find the phase data
-        const phaseData = teamData.phases.find(phase => phase.phase === selected_phase);
+        if (e.target.classList.contains('expand-phase-details')) {
+            // Get the current phase from the clicked row
+            const currentPhase = JSON.parse(e.target.getAttribute('data-phase'));
+            const selected_phase = currentPhase.phase;
 
-        // Check if coverage types exist for this phase
-        if (phaseData.coverage_types && phaseData.coverage_types.length > 0) {
-            const clickedRow = e.target.closest('tr');
-            
-            // Check if this phase is already expanded
-            const existingExpandedRow = clickedRow.nextElementSibling;
-            const isAlreadyExpanded = existingExpandedRow && 
-                existingExpandedRow.classList.contains('expanded-phase-details');
+            // Find the matching data in the original tableData
+            const selectedSP = document.getElementById('sp_name').value;
+            const selectedTeam = document.querySelector('input[name="team-filter"]:checked').value;
 
-            if (isAlreadyExpanded) {
-                // Collapse the existing expanded row
-                existingExpandedRow.remove();
-                e.target.innerHTML = '➕';
+            // Use the full table data instead of global tableData
+            const spData = fullTableData.find(sp => sp.sp_name === selectedSP);
+            if (!spData) return;
+
+            const teamData = spData.teams.find(team => team.team_name === selectedTeam);
+            if (!teamData) return;
+
+            // Find the phase data
+            const phaseData = teamData.phases.find(phase => phase.phase === selected_phase);
+
+            // Check if coverage types exist for this phase
+            if (phaseData.coverage_types && phaseData.coverage_types.length > 0) {
+                const clickedRow = e.target.closest('tr');
+                
+                // Check if this phase is already expanded
+                const existingExpandedRow = clickedRow.nextElementSibling;
+                const isAlreadyExpanded = existingExpandedRow && 
+                    existingExpandedRow.classList.contains('expanded-phase-details');
+
+                if (isAlreadyExpanded) {
+                    // Collapse the existing expanded row
+                    existingExpandedRow.remove();
+                    e.target.innerHTML = '➕';
+                } else {
+                    // Create a new row for coverage type details
+                    const expandedTr = document.createElement('tr');
+                    expandedTr.classList.add('expanded-phase-details');
+                    const expandedTd = document.createElement('td');
+                    expandedTd.setAttribute('colspan', '13');
+
+                    // Create and append coverage type details table
+                    const coverageTypeTable = renderCoverageTypeDetailsTable(phaseData);
+                    expandedTd.appendChild(coverageTypeTable);
+                    expandedTr.appendChild(expandedTd);
+
+                    // Insert the new row right after the clicked phase row
+                    clickedRow.insertAdjacentElement('afterend', expandedTr);
+
+                    // Change icon to minus
+                    e.target.innerHTML = '➖';
+                }
             } else {
-                // Create a new row for coverage type details
-                const expandedTr = document.createElement('tr');
-                expandedTr.classList.add('expanded-phase-details');
-                const expandedTd = document.createElement('td');
-                expandedTd.setAttribute('colspan', '13');
+                alert('No coverage type details available for this phase.');
+            }
+        }
+    });
+}
 
-                // Create and append coverage type details table
-                const coverageTypeTable = renderCoverageTypeDetailsTable(phaseData);
-                expandedTd.appendChild(coverageTypeTable);
-                expandedTr.appendChild(expandedTd);
-
-                // Insert the new row right after the clicked phase row
-                clickedRow.insertAdjacentElement('afterend', expandedTr);
-
-                // Change icon to minus
-                e.target.innerHTML = '➖';
+// Modify the team filter event listeners to reset expansion state
+teamFilters.forEach(filter => {
+    filter.addEventListener('change', (e) => {
+        const selectedValue = e.target.value;
+        if (selectedValue === 'all') {
+            selectedTeams = ['all'];
+            if (tableData) {
+                renderCoverageTable(filterData(tableData, selectedTeams), 'tableContainer');
             }
         } else {
-            alert('No coverage type details available for this phase.');
+            selectedTeams = [selectedValue];
+            if (tableData) {
+                const cumulativeData = calculateCumulativeMetrics(tableData, selectedValue);
+                renderCumulativeTable(cumulativeData, 'tableContainer');
+            }
         }
-    }
+    });
 });
