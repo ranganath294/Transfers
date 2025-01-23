@@ -1,59 +1,59 @@
 // Add this function to the event listener in renderCumulativeTable
-            targetElement.addEventListener('click', (e) => {
-                if (e.target.classList.contains('expand-phase-details')) {
-                    // Get the current phase from the clicked row
-                    const currentPhase = JSON.parse(e.target.getAttribute('data-phase'));
-                    const selected_phase = currentPhase.phase;
-                    
-                    // Check if there's an existing expanded row and remove it
-                    const existingExpandedRow = targetElement.querySelector('.expanded-phase-details');
-                    if (existingExpandedRow) {
-                        existingExpandedRow.remove();
-                    }
+targetElement.addEventListener('click', (e) => {
+if (e.target.classList.contains('expand-phase-details')) {
+// Get the current phase from the clicked row
+const currentPhase = JSON.parse(e.target.getAttribute('data-phase'));
+const selected_phase = currentPhase.phase;
 
-                    // Find the coverage types for the current SP, team, and phase
-                    const selectedSP = document.getElementById('sp_name').value;
-                    const selectedTeam = document.querySelector('input[name="team-filter"]:checked').value;
+// Check if there's an existing expanded row and remove it
+const existingExpandedRow = targetElement.querySelector('.expanded-phase-details');
+if (existingExpandedRow) {
+existingExpandedRow.remove();
+}
 
-                    // Find the matching data in the original tableData
-                    const spData = tableData.find(sp => sp.sp_name === selectedSP);
-                    console.log(spData)
-                    if (!spData) return;
+// Find the coverage types for the current SP, team, and phase
+const selectedSP = document.getElementById('sp_name').value;
+const selectedTeam = document.querySelector('input[name="team-filter"]:checked').value;
 
-                    const teamData = spData.teams.find(team => team.team_name === selectedTeam);
-                    console.log(teamData)
-                    if (!teamData) return;
+// Find the matching data in the original tableData
+const spData = tableData.find(sp => sp.sp_name === selectedSP);
+console.log(spData)
+if (!spData) return;
 
-                    // Find the phase data
-                    const phaseData = teamData.phases.find(phase => phase.phase === selected_phase);
+const teamData = spData.teams.find(team => team.team_name === selectedTeam);
+console.log(teamData)
+if (!teamData) return;
 
-                    // Check if coverage types exist for this phase
-                    if (phaseData.coverage_types && phaseData.coverage_types.length > 0) {
-                        // Create a new row for coverage type details
-                        const expandedTr = document.createElement('tr');
-                        expandedTr.classList.add('expanded-phase-details');
-                        const expandedTd = document.createElement('td');
-                        expandedTd.setAttribute('colspan', '13');
-                        
-                        // Create and append coverage type details table
-                        const coverageTypeTable = renderCoverageTypeDetailsTable(phaseData);
-                        expandedTd.appendChild(coverageTypeTable);
-                        expandedTr.appendChild(expandedTd);
+// Find the phase data
+const phaseData = teamData.phases.find(phase => phase.phase === selected_phase);
 
-                        // Insert the new row right after the clicked phase row
-                        e.target.closest('tr').insertAdjacentElement('afterend', expandedTr);
+// Check if coverage types exist for this phase
+if (phaseData.coverage_types && phaseData.coverage_types.length > 0) {
+// Create a new row for coverage type details
+const expandedTr = document.createElement('tr');
+expandedTr.classList.add('expanded-phase-details');
+const expandedTd = document.createElement('td');
+expandedTd.setAttribute('colspan', '13');
 
-                        // Change icon to minus
-                        e.target.innerHTML = '➖';
-                    } else {
-                        alert('No coverage type details available for this phase.');
-                    }
-                } else if (e.target.innerHTML === '➖') {
-                    // Collapse the expanded row
-                    const existingExpandedRow = targetElement.querySelector('.expanded-phase-details');
-                    if (existingExpandedRow) {
-                        existingExpandedRow.remove();
-                        e.target.innerHTML = '➕';
-                    }
-                }
-            });
+// Create and append coverage type details table
+const coverageTypeTable = renderCoverageTypeDetailsTable(phaseData);
+expandedTd.appendChild(coverageTypeTable);
+expandedTr.appendChild(expandedTd);
+
+// Insert the new row right after the clicked phase row
+e.target.closest('tr').insertAdjacentElement('afterend', expandedTr);
+
+// Change icon to minus
+e.target.innerHTML = '➖';
+} else {
+alert('No coverage type details available for this phase.');
+}
+} else if (e.target.innerHTML === '➖') {
+// Collapse the expanded row
+const existingExpandedRow = targetElement.querySelector('.expanded-phase-details');
+if (existingExpandedRow) {
+existingExpandedRow.remove();
+e.target.innerHTML = '➕';
+}
+}
+});
