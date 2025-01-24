@@ -43,3 +43,97 @@ function createExpandButton() {
     
     return expandBtn;
 }
+
+function renderCumulativeTable(data, targetElementId) {
+    const table = document.createElement('table');
+    table.className = 'coverage-table';
+
+    // Create header
+    const thead = document.createElement('thead');
+    const headerRow = document.createElement('tr');
+    const headers = [
+        '', // New column for expand/collapse icon
+        'Phase', 
+        'Total TCs',
+        'Coverage', 'Coverage %',
+        'Passed', 'Pass %',
+        'Failed', 'Fail %',
+        'Blocked', 'Block %',
+        'Unique CRs',
+        'Unique JIRAs'
+    ];
+    headers.forEach(header => {
+        const th = document.createElement('th');
+        th.textContent = header;
+        headerRow.appendChild(th);
+    });
+    thead.appendChild(headerRow);
+    table.appendChild(thead);
+
+    // Create table body
+    const tbody = document.createElement('tbody');
+    data.forEach((sp, spIndex) => {
+        sp.phases.forEach((phase, phaseIndex) => {
+            // Main row
+            const tr = document.createElement('tr');
+            tr.dataset.spIndex = spIndex;
+            tr.dataset.phaseIndex = phaseIndex;
+
+            // Expand/Collapse column
+            const expandTd = document.createElement('td');
+            const expandBtn = createExpandButton();
+            expandTd.appendChild(expandBtn);
+            tr.appendChild(expandTd);
+
+            const cells = [
+                phase.phase,
+                phase.metrics.total,
+                phase.metrics.coverage,
+                formatPercentage(phase.metrics.coverage_percentage),
+                phase.metrics.passed,
+                formatPercentage(phase.metrics.passed_percentage),
+                phase.metrics.failed,
+                formatPercentage(phase.metrics.failed_percentage),
+                phase.metrics.blocked,
+                formatPercentage(phase.metrics.blocked_percentage)
+            ];
+
+            cells.forEach(cellData => {
+                const td = document.createElement('td');
+                td.textContent = cellData;
+                tr.appendChild(td);
+            });
+
+            // Add Unique CRs column
+            const crTd = document.createElement('td');
+            crTd.innerHTML = formatLongList(phase.unique_cr_list, phase.unique_cr_count);
+            tr.appendChild(crTd);
+
+            // Add Unique JIRAs column
+            const jiraTd = document.createElement('td');
+            jiraTd.innerHTML = formatLongList(phase.unique_jira_list, phase.unique_jira_count);
+            tr.appendChild(jiraTd);
+
+            tbody.appendChild(tr);
+        });
+    });
+    table.appendChild(tbody);
+
+    // Render the table
+    const targetElement = document.getElementById(targetElementId);
+    targetElement.innerHTML = '';
+    targetElement.appendChild(table);
+
+    // Add event listeners for "more" links
+    targetElement.addEventListener('click', (e) => {
+        if (e.target.classList.contains('show-more-list')) {
+            e.preventDefault();
+            const title = e.target.getAttribute('data-title');
+            const list = JSON.parse(decodeURIComponent(e.target.getAttribute('data-list')));
+            createListModal(title, list);
+        }
+    });
+
+    // Adjust column widths
+    adjustColumnWidths();
+}
