@@ -1,82 +1,82 @@
 function calculateCumulativeMetrics(data, selectedTeam) {
-            return data
-                .filter(sp => sp.teams.some(team => team.team_name === selectedTeam))
-                .map(sp => {
-                    const teamData = sp.teams.find(team => team.team_name === selectedTeam);
-                    if (!teamData) return null;
+    return data
+        .filter(sp => sp.teams.some(team => team.team_name === selectedTeam))
+        .map(sp => {
+            const teamData = sp.teams.find(team => team.team_name === selectedTeam);
+            if (!teamData) return null;
 
-                    const processedPhases = teamData.phases.reduce((accumPhases, phase) => {
-                        // Cumulative metrics calculation (similar to previous implementation)
-                        let totalTCs = 0;
-                        let totalCoverage = 0;
-                        let totalPassed = 0;
-                        let totalFailed = 0;
-                        let totalBlocked = 0;
-                        
-                        // Merged lists for unique CRs and JIRAs
-                        const mergedUniqueCRs = new Set();
-                        const mergedUniqueJiras = new Set();
+            const processedPhases = teamData.phases.reduce((accumPhases, phase) => {
+                // Cumulative metrics calculation (similar to previous implementation)
+                let totalTCs = 0;
+                let totalCoverage = 0;
+                let totalPassed = 0;
+                let totalFailed = 0;
+                let totalBlocked = 0;
+                
+                // Merged lists for unique CRs and JIRAs
+                const mergedUniqueCRs = new Set();
+                const mergedUniqueJiras = new Set();
 
-                        if (phase.coverage_types) {
-                            phase.coverage_types.forEach(ct => {
-                                // Metrics calculation
-                                totalTCs += parseInt(ct.metrics.total || 0);
-                                totalCoverage += parseInt(ct.metrics.coverage || 0);
-                                totalPassed += parseInt(ct.metrics.passed || 0);
-                                totalFailed += parseInt(ct.metrics.failed || 0);
-                                totalBlocked += parseInt(ct.metrics.blocked || 0);
+                if (phase.coverage_types) {
+                    phase.coverage_types.forEach(ct => {
+                        // Metrics calculation
+                        totalTCs += parseInt(ct.metrics.total || 0);
+                        totalCoverage += parseInt(ct.metrics.coverage || 0);
+                        totalPassed += parseInt(ct.metrics.passed || 0);
+                        totalFailed += parseInt(ct.metrics.failed || 0);
+                        totalBlocked += parseInt(ct.metrics.blocked || 0);
 
-                                // Merge unique lists
-                                ct.unique_cr_list.forEach(cr => mergedUniqueCRs.add(cr));
-                                ct.unique_jira_list.forEach(jira => mergedUniqueJiras.add(jira));
-                            });
-                        } else {
-                            // Similar metrics calculation for non-coverage type phase
-                            totalTCs = parseInt(phase.metrics.total || 0);
-                            totalCoverage = parseInt(phase.metrics.coverage || 0);
-                            totalPassed = parseInt(phase.metrics.passed || 0);
-                            totalFailed = parseInt(phase.metrics.failed || 0);
-                            totalBlocked = parseInt(phase.metrics.blocked || 0);
+                        // Merge unique lists
+                        ct.unique_cr_list.forEach(cr => mergedUniqueCRs.add(cr));
+                        ct.unique_jira_list.forEach(jira => mergedUniqueJiras.add(jira));
+                    });
+                } else {
+                    // Similar metrics calculation for non-coverage type phase
+                    totalTCs = parseInt(phase.metrics.total || 0);
+                    totalCoverage = parseInt(phase.metrics.coverage || 0);
+                    totalPassed = parseInt(phase.metrics.passed || 0);
+                    totalFailed = parseInt(phase.metrics.failed || 0);
+                    totalBlocked = parseInt(phase.metrics.blocked || 0);
 
-                            // Merge unique lists directly from phase
-                            (phase.unique_cr_list || []).forEach(cr => mergedUniqueCRs.add(cr));
-                            (phase.unique_jira_list || []).forEach(jira => mergedUniqueJiras.add(jira));
-                        }
+                    // Merge unique lists directly from phase
+                    (phase.unique_cr_list || []).forEach(cr => mergedUniqueCRs.add(cr));
+                    (phase.unique_jira_list || []).forEach(jira => mergedUniqueJiras.add(jira));
+                }
 
-                        const coveragePercentage = totalTCs > 0 ? (totalCoverage / totalTCs) * 100 : 0;
-                        const passPercentage = totalTCs > 0 ? (totalPassed / totalTCs) * 100 : 0;
-                        const failPercentage = totalTCs > 0 ? (totalFailed / totalTCs) * 100 : 0;
-                        const blockPercentage = totalTCs > 0 ? (totalBlocked / totalTCs) * 100 : 0;
+                const coveragePercentage = totalTCs > 0 ? (totalCoverage / totalTCs) * 100 : 0;
+                const passPercentage = totalTCs > 0 ? (totalPassed / totalTCs) * 100 : 0;
+                const failPercentage = totalTCs > 0 ? (totalFailed / totalTCs) * 100 : 0;
+                const blockPercentage = totalTCs > 0 ? (totalBlocked / totalTCs) * 100 : 0;
 
-                        // Convert sets to sorted arrays
-                        const uniqueCRList = Array.from(mergedUniqueCRs).sort();
-                        const uniqueJiraList = Array.from(mergedUniqueJiras).sort();
+                // Convert sets to sorted arrays
+                const uniqueCRList = Array.from(mergedUniqueCRs).sort();
+                const uniqueJiraList = Array.from(mergedUniqueJiras).sort();
 
-                        accumPhases.push({
-                            phase: phase.phase,
-                            metrics: {
-                                total: totalTCs,
-                                coverage: totalCoverage,
-                                coverage_percentage: coveragePercentage,
-                                passed: totalPassed,
-                                passed_percentage: passPercentage,
-                                failed: totalFailed,
-                                failed_percentage: failPercentage,
-                                blocked: totalBlocked,
-                                blocked_percentage: blockPercentage
-                            },
-                            unique_cr_list: uniqueCRList,
-                            unique_cr_count: uniqueCRList.length,
-                            unique_jira_list: uniqueJiraList,
-                            unique_jira_count: uniqueJiraList.length
-                        });
+                accumPhases.push({
+                    phase: phase.phase,
+                    metrics: {
+                        total: totalTCs,
+                        coverage: totalCoverage,
+                        coverage_percentage: coveragePercentage,
+                        passed: totalPassed,
+                        passed_percentage: passPercentage,
+                        failed: totalFailed,
+                        failed_percentage: failPercentage,
+                        blocked: totalBlocked,
+                        blocked_percentage: blockPercentage
+                    },
+                    unique_cr_list: uniqueCRList,
+                    unique_cr_count: uniqueCRList.length,
+                    unique_jira_list: uniqueJiraList,
+                    unique_jira_count: uniqueJiraList.length
+                });
 
-                        return accumPhases;
-                    }, []);
+                return accumPhases;
+            }, []);
 
-                    return {
-                        phases: processedPhases
-                    };
-                })
-                .filter(Boolean);
-        }
+            return {
+                phases: processedPhases
+            };
+        })
+        .filter(Boolean);
+}
