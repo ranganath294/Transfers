@@ -1,8 +1,5 @@
-function handleExpandDetails(event) {
-    const btn = event.currentTarget;
-    const parentRow = btn.closest('tr');
-    const detailRow = parentRow.nextElementSibling;
-    
+// Function to handle expand details logging
+function handleExpandDetailsLogging() {
     // Get selected SP from dropdown
     const spSelect = document.getElementById('sp_name');
     const selectedSP = spSelect.options[spSelect.selectedIndex].text;
@@ -10,7 +7,11 @@ function handleExpandDetails(event) {
     // Get selected Team from filters
     const selectedTeam = document.querySelector('input[name="team-filter"]:checked').value;
     
-    // Get phase from the row (second column)
+    // Get the clicked button's parent row
+    const btn = event.currentTarget;
+    const parentRow = btn.closest('tr');
+    
+    // Get phase from the row (second column after expand column)
     const phaseCell = parentRow.querySelector('td:nth-child(2)');
     const phase = phaseCell.textContent;
     
@@ -20,8 +21,15 @@ function handleExpandDetails(event) {
         Team: selectedTeam,
         Phase: phase
     });
+}
+
+// Function to handle row expansion/collapse
+function handleRowExpand(event) {
+    const btn = event.currentTarget;
+    const parentRow = btn.closest('tr');
+    const detailRow = parentRow.nextElementSibling;
     
-    // Existing expand/collapse logic
+    // Toggle detail row visibility
     if (detailRow.style.display === 'none') {
         // Expand
         detailRow.style.display = 'table-row';
@@ -40,11 +48,8 @@ function handleExpandDetails(event) {
     }
 }
 
-// Modify the renderCumulativeTable function to use the new handler
-function renderCumulativeTable(data, targetElementId) {
-    // ... (previous code remains the same)
-
-    // When creating the expand button
+// Function to create expand button
+function createExpandButton() {
     const expandBtn = document.createElement('button');
     expandBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#328AA4" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-plus-circle">
         <circle cx="12" cy="12" r="10"></circle>
@@ -59,14 +64,74 @@ function renderCumulativeTable(data, targetElementId) {
         padding: 4px;
         transition: transform 0.2s ease;
     `;
+    
+    // Add event listeners
+    expandBtn.addEventListener('click', handleExpandDetailsLogging);
+    expandBtn.addEventListener('click', handleRowExpand);
+    
+    // Hover effects
     expandBtn.addEventListener('mouseenter', (e) => {
         e.currentTarget.style.transform = 'scale(1.1)';
     });
     expandBtn.addEventListener('mouseleave', (e) => {
         e.currentTarget.style.transform = 'scale(1)';
     });
-    // Add click event listener using the new handler
-    expandBtn.addEventListener('click', handleExpandDetails);
     
-    // ... (rest of the code remains the same)
+    return expandBtn;
+}
+
+// Modified renderCumulativeTable to use the new button creation
+function renderCumulativeTable(data, targetElementId) {
+    const table = document.createElement('table');
+    table.className = 'coverage-table';
+
+    // Create header
+    const thead = document.createElement('thead');
+    const headerRow = document.createElement('tr');
+    const headers = [
+        '', // New column for expand/collapse icon
+        'Phase', 
+        'Total TCs',
+        'Coverage', 'Coverage %',
+        'Passed', 'Pass %',
+        'Failed', 'Fail %',
+        'Blocked', 'Block %',
+        'Unique CRs',
+        'Unique JIRAs'
+    ];
+    headers.forEach(header => {
+        const th = document.createElement('th');
+        th.textContent = header;
+        headerRow.appendChild(th);
+    });
+    thead.appendChild(headerRow);
+    table.appendChild(thead);
+
+    // Create table body
+    const tbody = document.createElement('tbody');
+    data.forEach((sp, spIndex) => {
+        sp.phases.forEach((phase, phaseIndex) => {
+            // Main row
+            const tr = document.createElement('tr');
+            tr.dataset.spIndex = spIndex;
+            tr.dataset.phaseIndex = phaseIndex;
+
+            // Expand/Collapse column
+            const expandTd = document.createElement('td');
+            const expandBtn = createExpandButton();
+            expandTd.appendChild(expandBtn);
+            tr.appendChild(expandTd);
+
+            // Rest of the table row creation remains the same as before
+            // ... (previous implementation)
+
+            tbody.appendChild(tr);
+
+            // Hidden detail row
+            // ... (previous implementation)
+        });
+    });
+    
+    // Rest of the function remains the same
+    // ... (previous implementation)
 }
