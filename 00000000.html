@@ -1,69 +1,51 @@
-// Helper function to create expand/collapse button for inner table
-function createInnerTableExpandButton(isExpanded = false) {
-    const btn = document.createElement('button');
-    btn.innerHTML = isExpanded 
-        ? `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#328AA4" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-minus-circle">
-            <circle cx="12" cy="12" r="10"></circle>
-            <line x1="12" y1="12" x2="12" y2="12"></line>
-          </svg>`
-        : `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#328AA4" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-plus-circle">
-            <circle cx="12" cy="12" r="10"></circle>
-            <line x1="12" y1="8" x2="12" y2="16"></line>
-            <line x1="8" y1="12" x2="16" y2="12"></line>
-          </svg>`;
-    
-    btn.className = 'inner-table-expand-btn';
-    btn.style.cssText = `
-        background: none;
-        border: none;
-        cursor: pointer;
-        padding: 4px;
-        transition: transform 0.2s ease;
-    `;
-    
-    return btn;
-}
+function calculateInnerTable1Metrics(phaseData, tableData, selectedTeam) {
+    // Find the SP and team in the original table data
+    const spData = tableData.find(sp => sp.sp_name === phaseData.sp_name);
+    if (!spData) return [];
 
-// Calculation function for inner table 1
-function calculateInnerTable1Metrics(phaseData) {
-    // This function will process the detailed metrics for a specific phase
+    // Find the specific team data
+    const teamData = spData.teams.find(team => team.team_name === selectedTeam);
+    if (!teamData) return [];
+
+    // Filter phases that match the current phase and have coverage types
+    const matchingPhases = teamData.phases.filter(
+        phase => phase.phase === phaseData.phase && phase.coverage_types
+    );
+
+    // Process coverage types
     const detailedMetrics = [];
-
-    // Check if coverage_types exists and has entries
-    if (phaseData.coverage_types) {
-        phaseData.coverage_types.forEach(coverageType => {
-            // Create an entry for each coverage type
-            detailedMetrics.push({
-                coverage_type: coverageType.coverage_type,
-                metrics: coverageType.metrics,
-                unique_cr_list: coverageType.unique_cr_list || [],
-                unique_cr_count: coverageType.unique_cr_list ? coverageType.unique_cr_list.length : 0,
-                unique_jira_list: coverageType.unique_jira_list || [],
-                unique_jira_count: coverageType.unique_jira_list ? coverageType.unique_jira_list.length : 0
+    matchingPhases.forEach(phase => {
+        if (phase.coverage_types) {
+            phase.coverage_types.forEach(coverageType => {
+                detailedMetrics.push({
+                    coverage_type: coverageType.coverage_type,
+                    metrics: coverageType.metrics,
+                    unique_cr_list: coverageType.unique_cr_list || [],
+                    unique_cr_count: coverageType.unique_cr_list ? coverageType.unique_cr_list.length : 0,
+                    unique_jira_list: coverageType.unique_jira_list || [],
+                    unique_jira_count: coverageType.unique_jira_list ? coverageType.unique_jira_list.length : 0
+                });
             });
-        });
-    } else {
-        // If no coverage types, use the phase-level metrics
-        detailedMetrics.push({
-            coverage_type: 'All',
-            metrics: phaseData.metrics,
-            unique_cr_list: phaseData.unique_cr_list || [],
-            unique_cr_count: phaseData.unique_cr_list ? phaseData.unique_cr_list.length : 0,
-            unique_jira_list: phaseData.unique_jira_list || [],
-            unique_jira_count: phaseData.unique_jira_list ? phaseData.unique_jira_list.length : 0
-        });
-    }
+        }
+    });
 
     return detailedMetrics;
 }
 
-function renderInnerTable1(phaseData, targetRow) {
+// Modify renderInnerTable1 to pass additional parameters
+function renderInnerTable1(phaseData, targetRow, tableData) {
+    // Get the selected team from the team filter
+    const selectedTeam = document.querySelector('input[name="team-filter"]:checked').value;
+
+    // Calculate detailed metrics using the full table data
+    const detailedMetrics = calculateInnerTable1Metrics(phaseData, tableData, selectedTeam);
+
     // Create inner table
     const innerTable = document.createElement('table');
     innerTable.className = 'coverage-table inner-table-1';
     innerTable.style.width = '100%';
 
-    // Create header
+    // Create header (same as before)
     const thead = document.createElement('thead');
     const headerRow = document.createElement('tr');
     const headers = [
@@ -87,9 +69,6 @@ function renderInnerTable1(phaseData, targetRow) {
     // Create body
     const tbody = document.createElement('tbody');
     
-    // Calculate detailed metrics
-    const detailedMetrics = calculateInnerTable1Metrics(phaseData);
-
     detailedMetrics.forEach(entry => {
         const tr = document.createElement('tr');
 
@@ -149,9 +128,12 @@ function renderInnerTable1(phaseData, targetRow) {
     });
 }
 
-// Modify renderCumulativeTable to add expand functionality
+// Modify renderCumulativeTable to pass table data
 function renderCumulativeTable(data, targetElementId) {
-    // ... [previous implementation remains the same]
+    // Store tableData as a variable in the scope
+    let tableData = null;
+
+    // Existing code for rendering the table...
 
     // Modify expand button event listener
     expandBtn.addEventListener('click', (event) => {
@@ -174,8 +156,11 @@ function renderCumulativeTable(data, targetElementId) {
             </svg>`;
         } else {
             // Expand
-            const phaseData = data[0].phases[phaseIndex];
-            renderInnerTable1(phaseData, parentRow);
+            const phaseData = {
+                ...data[0].phases[phaseIndex],
+                sp_name: document.getElementById('sp_name').value // Get current SP name
+            };
+            renderInnerTable1(phaseData, parentRow, tableData);
             btn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#328AA4" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-minus-circle">
                 <circle cx="12" cy="12" r="10"></circle>
                 <line x1="12" y1="12" x2="12" y2="12"></line>
@@ -183,5 +168,19 @@ function renderCumulativeTable(data, targetElementId) {
         }
     });
 
-    // ... [rest of the previous implementation]
+    // Capture tableData when fetching
+    const originalFetch = async function() {
+        try {
+            const response = await fetch(`{% url 'cst_reporting_views:coverage_report' %}?${params.toString()}`);
+            if (!response.ok) throw new Error('Network response was not ok');
+            const responseData = await response.json();
+            tableData = responseData["table_data"];
+            // Rest of the existing fetch logic...
+        } catch (error) {
+            console.error('Error fetching data:', error);
+            alert('Error fetching data. Please try again.');
+        } finally {
+            setLoadingState(false);
+        }
+    };
 }
