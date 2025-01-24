@@ -1,1 +1,88 @@
-Now there are multiple teams in team filters right. It i sworking only for the team which is selected first. Then if we move to other team then there its not working but again when we move to first selected team its working
+function attachPhaseDetailsExpander(targetElement) {
+    // Remove any existing event listeners to prevent multiple bindings
+    const oldHandler = targetElement.onclick;
+    if (oldHandler) {
+        targetElement.removeEventListener('click', oldHandler);
+    }
+
+    // Add a new click event listener specifically for phase details expansion
+    targetElement.addEventListener('click', (e) => {
+        if (e.target.classList.contains('expand-phase-details')) {
+            // Get the current phase from the clicked row
+            const currentPhase = JSON.parse(e.target.getAttribute('data-phase'));
+            const selected_phase = currentPhase.phase;
+    
+            // Find the matching data in the original tableData
+            const selectedSP = document.getElementById('sp_name').value;
+            const selectedTeam = document.querySelector('input[name="team-filter"]:checked').value;
+    
+            const spData = tableData.find(sp => sp.sp_name === selectedSP);
+            if (!spData) return;
+    
+            const teamData = spData.teams.find(team => team.team_name === selectedTeam);
+            if (!teamData) return;
+    
+            // Find the phase data
+            const phaseData = teamData.phases.find(phase => phase.phase === selected_phase);
+    
+            // Check if coverage types exist for this phase
+            if (phaseData.coverage_types && phaseData.coverage_types.length > 0) {
+                const clickedRow = e.target.closest('tr');
+                
+                // Check if this phase is already expanded
+                const existingExpandedRow = clickedRow.nextElementSibling;
+                const isAlreadyExpanded = existingExpandedRow && 
+                    existingExpandedRow.classList.contains('expanded-phase-details');
+    
+                if (isAlreadyExpanded) {
+                    // Collapse the existing expanded row
+                    existingExpandedRow.remove();
+                    e.target.innerHTML = '➕';
+                } else {
+                    // Create a new row for coverage type details
+                    const expandedTr = document.createElement('tr');
+                    expandedTr.classList.add('expanded-phase-details');
+                    const expandedTd = document.createElement('td');
+                    expandedTd.setAttribute('colspan', '13');
+    
+                    // Create and append coverage type details table
+                    const coverageTypeTable = renderCoverageTypeDetailsTable(phaseData);
+                    expandedTd.appendChild(coverageTypeTable);
+                    expandedTr.appendChild(expandedTd);
+    
+                    // Insert the new row right after the clicked phase row
+                    clickedRow.insertAdjacentElement('afterend', expandedTr);
+    
+                    // Change icon to minus
+                    e.target.innerHTML = '➖';
+                }
+            } else {
+                alert('No coverage type details available for this phase.');
+            }
+        }
+
+        // Handle the "more" links for lists
+        if (e.target.classList.contains('show-more-list')) {
+            e.preventDefault();
+            const title = e.target.getAttribute('data-title');
+            const list = JSON.parse(decodeURIComponent(e.target.getAttribute('data-list')));
+            createListModal(title, list);
+        }
+    });
+}
+
+// Modify renderCumulativeTable to use the new attacher
+function renderCumulativeTable(data, targetElementId) {
+    // ... existing rendering code ...
+
+    // Render the table
+    const targetElement = document.getElementById(targetElementId);
+    targetElement.innerHTML = '';
+    targetElement.appendChild(table);
+
+    // Attach the expander specifically to this table
+    attachPhaseDetailsExpander(targetElement);
+
+    // Adjust column widths
+    adjustColumnWidths();
+}
