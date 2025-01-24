@@ -1,139 +1,82 @@
-function handleExpandDetailsLogging(event) {
-    // Get selected SP from dropdown
-    const spSelect = document.getElementById('sp_name');
-    const selectedSP = spSelect.options[spSelect.selectedIndex].text;
-    
-    // Get selected Team from filters
-    const selectedTeam = document.querySelector('input[name="team-filter"]:checked').value;
-    
-    // Get the clicked button's parent row
-    const btn = event.currentTarget;
-    const parentRow = btn.closest('tr');
-    
-    // Get phase from the row (second column after expand column)
-    const phaseCell = parentRow.querySelector('td:nth-child(2)');
-    const phase = phaseCell.textContent;
-    
-    // Log details to console
-    console.log('Expanded Details:', {
-        SP: selectedSP,
-        Team: selectedTeam,
-        Phase: phase
-    });
-}
+function calculateCumulativeMetrics(data, selectedTeam) {
+            return data
+                .filter(sp => sp.teams.some(team => team.team_name === selectedTeam))
+                .map(sp => {
+                    const teamData = sp.teams.find(team => team.team_name === selectedTeam);
+                    if (!teamData) return null;
 
-function createExpandButton() {
-    const expandBtn = document.createElement('button');
-    expandBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#328AA4" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-plus-circle">
-        <circle cx="12" cy="12" r="10"></circle>
-        <line x1="12" y1="8" x2="12" y2="16"></line>
-        <line x1="8" y1="12" x2="16" y2="12"></line>
-    </svg>`;
-    expandBtn.className = 'expand-btn';
-    expandBtn.style.cssText = `
-        background: none;
-        border: none;
-        cursor: pointer;
-        padding: 4px;
-        transition: transform 0.2s ease;
-    `;
-    
-    // Add event listener for logging
-    expandBtn.addEventListener('click', handleExpandDetailsLogging);
-    
-    return expandBtn;
-}
+                    const processedPhases = teamData.phases.reduce((accumPhases, phase) => {
+                        // Cumulative metrics calculation (similar to previous implementation)
+                        let totalTCs = 0;
+                        let totalCoverage = 0;
+                        let totalPassed = 0;
+                        let totalFailed = 0;
+                        let totalBlocked = 0;
+                        
+                        // Merged lists for unique CRs and JIRAs
+                        const mergedUniqueCRs = new Set();
+                        const mergedUniqueJiras = new Set();
 
-function renderCumulativeTable(data, targetElementId) {
-    const table = document.createElement('table');
-    table.className = 'coverage-table';
+                        if (phase.coverage_types) {
+                            phase.coverage_types.forEach(ct => {
+                                // Metrics calculation
+                                totalTCs += parseInt(ct.metrics.total || 0);
+                                totalCoverage += parseInt(ct.metrics.coverage || 0);
+                                totalPassed += parseInt(ct.metrics.passed || 0);
+                                totalFailed += parseInt(ct.metrics.failed || 0);
+                                totalBlocked += parseInt(ct.metrics.blocked || 0);
 
-    // Create header
-    const thead = document.createElement('thead');
-    const headerRow = document.createElement('tr');
-    const headers = [
-        '', // New column for expand/collapse icon
-        'Phase', 
-        'Total TCs',
-        'Coverage', 'Coverage %',
-        'Passed', 'Pass %',
-        'Failed', 'Fail %',
-        'Blocked', 'Block %',
-        'Unique CRs',
-        'Unique JIRAs'
-    ];
-    headers.forEach(header => {
-        const th = document.createElement('th');
-        th.textContent = header;
-        headerRow.appendChild(th);
-    });
-    thead.appendChild(headerRow);
-    table.appendChild(thead);
+                                // Merge unique lists
+                                ct.unique_cr_list.forEach(cr => mergedUniqueCRs.add(cr));
+                                ct.unique_jira_list.forEach(jira => mergedUniqueJiras.add(jira));
+                            });
+                        } else {
+                            // Similar metrics calculation for non-coverage type phase
+                            totalTCs = parseInt(phase.metrics.total || 0);
+                            totalCoverage = parseInt(phase.metrics.coverage || 0);
+                            totalPassed = parseInt(phase.metrics.passed || 0);
+                            totalFailed = parseInt(phase.metrics.failed || 0);
+                            totalBlocked = parseInt(phase.metrics.blocked || 0);
 
-    // Create table body
-    const tbody = document.createElement('tbody');
-    data.forEach((sp, spIndex) => {
-        sp.phases.forEach((phase, phaseIndex) => {
-            // Main row
-            const tr = document.createElement('tr');
-            tr.dataset.spIndex = spIndex;
-            tr.dataset.phaseIndex = phaseIndex;
+                            // Merge unique lists directly from phase
+                            (phase.unique_cr_list || []).forEach(cr => mergedUniqueCRs.add(cr));
+                            (phase.unique_jira_list || []).forEach(jira => mergedUniqueJiras.add(jira));
+                        }
 
-            // Expand/Collapse column
-            const expandTd = document.createElement('td');
-            const expandBtn = createExpandButton();
-            expandTd.appendChild(expandBtn);
-            tr.appendChild(expandTd);
+                        const coveragePercentage = totalTCs > 0 ? (totalCoverage / totalTCs) * 100 : 0;
+                        const passPercentage = totalTCs > 0 ? (totalPassed / totalTCs) * 100 : 0;
+                        const failPercentage = totalTCs > 0 ? (totalFailed / totalTCs) * 100 : 0;
+                        const blockPercentage = totalTCs > 0 ? (totalBlocked / totalTCs) * 100 : 0;
 
-            const cells = [
-                phase.phase,
-                phase.metrics.total,
-                phase.metrics.coverage,
-                formatPercentage(phase.metrics.coverage_percentage),
-                phase.metrics.passed,
-                formatPercentage(phase.metrics.passed_percentage),
-                phase.metrics.failed,
-                formatPercentage(phase.metrics.failed_percentage),
-                phase.metrics.blocked,
-                formatPercentage(phase.metrics.blocked_percentage)
-            ];
+                        // Convert sets to sorted arrays
+                        const uniqueCRList = Array.from(mergedUniqueCRs).sort();
+                        const uniqueJiraList = Array.from(mergedUniqueJiras).sort();
 
-            cells.forEach(cellData => {
-                const td = document.createElement('td');
-                td.textContent = cellData;
-                tr.appendChild(td);
-            });
+                        accumPhases.push({
+                            phase: phase.phase,
+                            metrics: {
+                                total: totalTCs,
+                                coverage: totalCoverage,
+                                coverage_percentage: coveragePercentage,
+                                passed: totalPassed,
+                                passed_percentage: passPercentage,
+                                failed: totalFailed,
+                                failed_percentage: failPercentage,
+                                blocked: totalBlocked,
+                                blocked_percentage: blockPercentage
+                            },
+                            unique_cr_list: uniqueCRList,
+                            unique_cr_count: uniqueCRList.length,
+                            unique_jira_list: uniqueJiraList,
+                            unique_jira_count: uniqueJiraList.length
+                        });
 
-            // Add Unique CRs column
-            const crTd = document.createElement('td');
-            crTd.innerHTML = formatLongList(phase.unique_cr_list, phase.unique_cr_count);
-            tr.appendChild(crTd);
+                        return accumPhases;
+                    }, []);
 
-            // Add Unique JIRAs column
-            const jiraTd = document.createElement('td');
-            jiraTd.innerHTML = formatLongList(phase.unique_jira_list, phase.unique_jira_count);
-            tr.appendChild(jiraTd);
-
-            tbody.appendChild(tr);
-        });
-    });
-    table.appendChild(tbody);
-
-    // Render the table
-    const targetElement = document.getElementById(targetElementId);
-    targetElement.innerHTML = '';
-    targetElement.appendChild(table);
-
-    // Add event listeners for "more" links
-    targetElement.addEventListener('click', (e) => {
-        if (e.target.classList.contains('show-more-list')) {
-            e.preventDefault();
-            const title = e.target.getAttribute('data-title');
-            const list = JSON.parse(decodeURIComponent(e.target.getAttribute('data-list')));
-            createListModal(title, list);
+                    return {
+                        phases: processedPhases
+                    };
+                })
+                .filter(Boolean);
         }
-    });
-
-    // Adjust column widths
-    adjustColumnWidths();
-}
