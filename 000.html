@@ -1,5 +1,4 @@
-// Function to handle expand details logging
-function handleExpandDetailsLogging() {
+function handleExpandDetailsLogging(event) {
     // Get selected SP from dropdown
     const spSelect = document.getElementById('sp_name');
     const selectedSP = spSelect.options[spSelect.selectedIndex].text;
@@ -23,32 +22,6 @@ function handleExpandDetailsLogging() {
     });
 }
 
-// Function to handle row expansion/collapse
-function handleRowExpand(event) {
-    const btn = event.currentTarget;
-    const parentRow = btn.closest('tr');
-    const detailRow = parentRow.nextElementSibling;
-    
-    // Toggle detail row visibility
-    if (detailRow.style.display === 'none') {
-        // Expand
-        detailRow.style.display = 'table-row';
-        btn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#328AA4" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-minus-circle">
-            <circle cx="12" cy="12" r="10"></circle>
-            <line x1="12" y1="12" x2="12" y2="12"></line>
-        </svg>`;
-    } else {
-        // Collapse
-        detailRow.style.display = 'none';
-        btn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#328AA4" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-plus-circle">
-            <circle cx="12" cy="12" r="10"></circle>
-            <line x1="12" y1="8" x2="12" y2="16"></line>
-            <line x1="8" y1="12" x2="16" y2="12"></line>
-        </svg>`;
-    }
-}
-
-// Function to create expand button
 function createExpandButton() {
     const expandBtn = document.createElement('button');
     expandBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#328AA4" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-plus-circle">
@@ -65,73 +38,8 @@ function createExpandButton() {
         transition: transform 0.2s ease;
     `;
     
-    // Add event listeners
+    // Add event listener for logging
     expandBtn.addEventListener('click', handleExpandDetailsLogging);
-    expandBtn.addEventListener('click', handleRowExpand);
-    
-    // Hover effects
-    expandBtn.addEventListener('mouseenter', (e) => {
-        e.currentTarget.style.transform = 'scale(1.1)';
-    });
-    expandBtn.addEventListener('mouseleave', (e) => {
-        e.currentTarget.style.transform = 'scale(1)';
-    });
     
     return expandBtn;
-}
-
-// Modified renderCumulativeTable to use the new button creation
-function renderCumulativeTable(data, targetElementId) {
-    const table = document.createElement('table');
-    table.className = 'coverage-table';
-
-    // Create header
-    const thead = document.createElement('thead');
-    const headerRow = document.createElement('tr');
-    const headers = [
-        '', // New column for expand/collapse icon
-        'Phase', 
-        'Total TCs',
-        'Coverage', 'Coverage %',
-        'Passed', 'Pass %',
-        'Failed', 'Fail %',
-        'Blocked', 'Block %',
-        'Unique CRs',
-        'Unique JIRAs'
-    ];
-    headers.forEach(header => {
-        const th = document.createElement('th');
-        th.textContent = header;
-        headerRow.appendChild(th);
-    });
-    thead.appendChild(headerRow);
-    table.appendChild(thead);
-
-    // Create table body
-    const tbody = document.createElement('tbody');
-    data.forEach((sp, spIndex) => {
-        sp.phases.forEach((phase, phaseIndex) => {
-            // Main row
-            const tr = document.createElement('tr');
-            tr.dataset.spIndex = spIndex;
-            tr.dataset.phaseIndex = phaseIndex;
-
-            // Expand/Collapse column
-            const expandTd = document.createElement('td');
-            const expandBtn = createExpandButton();
-            expandTd.appendChild(expandBtn);
-            tr.appendChild(expandTd);
-
-            // Rest of the table row creation remains the same as before
-            // ... (previous implementation)
-
-            tbody.appendChild(tr);
-
-            // Hidden detail row
-            // ... (previous implementation)
-        });
-    });
-    
-    // Rest of the function remains the same
-    // ... (previous implementation)
 }
