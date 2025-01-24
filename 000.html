@@ -1,186 +1,72 @@
+function handleExpandDetails(event) {
+    const btn = event.currentTarget;
+    const parentRow = btn.closest('tr');
+    const detailRow = parentRow.nextElementSibling;
+    
+    // Get selected SP from dropdown
+    const spSelect = document.getElementById('sp_name');
+    const selectedSP = spSelect.options[spSelect.selectedIndex].text;
+    
+    // Get selected Team from filters
+    const selectedTeam = document.querySelector('input[name="team-filter"]:checked').value;
+    
+    // Get phase from the row (second column)
+    const phaseCell = parentRow.querySelector('td:nth-child(2)');
+    const phase = phaseCell.textContent;
+    
+    // Log details to console
+    console.log('Expanded Details:', {
+        SP: selectedSP,
+        Team: selectedTeam,
+        Phase: phase
+    });
+    
+    // Existing expand/collapse logic
+    if (detailRow.style.display === 'none') {
+        // Expand
+        detailRow.style.display = 'table-row';
+        btn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#328AA4" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-minus-circle">
+            <circle cx="12" cy="12" r="10"></circle>
+            <line x1="12" y1="12" x2="12" y2="12"></line>
+        </svg>`;
+    } else {
+        // Collapse
+        detailRow.style.display = 'none';
+        btn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#328AA4" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-plus-circle">
+            <circle cx="12" cy="12" r="10"></circle>
+            <line x1="12" y1="8" x2="12" y2="16"></line>
+            <line x1="8" y1="12" x2="16" y2="12"></line>
+        </svg>`;
+    }
+}
+
+// Modify the renderCumulativeTable function to use the new handler
 function renderCumulativeTable(data, targetElementId) {
-    const table = document.createElement('table');
-    table.className = 'coverage-table';
+    // ... (previous code remains the same)
 
-    // Create header
-    const thead = document.createElement('thead');
-    const headerRow = document.createElement('tr');
-    const headers = [
-        '', // New column for expand/collapse icon
-        'Phase', 
-        'Total TCs',
-        'Coverage', 'Coverage %',
-        'Passed', 'Pass %',
-        'Failed', 'Fail %',
-        'Blocked', 'Block %',
-        'Unique CRs',
-        'Unique JIRAs'
-    ];
-    headers.forEach(header => {
-        const th = document.createElement('th');
-        th.textContent = header;
-        headerRow.appendChild(th);
+    // When creating the expand button
+    const expandBtn = document.createElement('button');
+    expandBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#328AA4" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-plus-circle">
+        <circle cx="12" cy="12" r="10"></circle>
+        <line x1="12" y1="8" x2="12" y2="16"></line>
+        <line x1="8" y1="12" x2="16" y2="12"></line>
+    </svg>`;
+    expandBtn.className = 'expand-btn';
+    expandBtn.style.cssText = `
+        background: none;
+        border: none;
+        cursor: pointer;
+        padding: 4px;
+        transition: transform 0.2s ease;
+    `;
+    expandBtn.addEventListener('mouseenter', (e) => {
+        e.currentTarget.style.transform = 'scale(1.1)';
     });
-    thead.appendChild(headerRow);
-    table.appendChild(thead);
-
-    // Create table body
-    const tbody = document.createElement('tbody');
-    data.forEach((sp, spIndex) => {
-        sp.phases.forEach((phase, phaseIndex) => {
-            // Main row
-            const tr = document.createElement('tr');
-            tr.dataset.spIndex = spIndex;
-            tr.dataset.phaseIndex = phaseIndex;
-
-            // Expand/Collapse column
-            const expandTd = document.createElement('td');
-            const expandBtn = document.createElement('button');
-            expandBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#328AA4" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-plus-circle">
-                <circle cx="12" cy="12" r="10"></circle>
-                <line x1="12" y1="8" x2="12" y2="16"></line>
-                <line x1="8" y1="12" x2="16" y2="12"></line>
-            </svg>`;
-            expandBtn.className = 'expand-btn';
-            expandBtn.style.cssText = `
-                background: none;
-                border: none;
-                cursor: pointer;
-                padding: 4px;
-                transition: transform 0.2s ease;
-            `;
-            expandBtn.addEventListener('mouseenter', (e) => {
-                e.currentTarget.style.transform = 'scale(1.1)';
-            });
-            expandBtn.addEventListener('mouseleave', (e) => {
-                e.currentTarget.style.transform = 'scale(1)';
-            });
-            expandTd.appendChild(expandBtn);
-            tr.appendChild(expandTd);
-
-            const cells = [
-                phase.phase,
-                phase.metrics.total,
-                phase.metrics.coverage,
-                formatPercentage(phase.metrics.coverage_percentage),
-                phase.metrics.passed,
-                formatPercentage(phase.metrics.passed_percentage),
-                phase.metrics.failed,
-                formatPercentage(phase.metrics.failed_percentage),
-                phase.metrics.blocked,
-                formatPercentage(phase.metrics.blocked_percentage)
-            ];
-
-            cells.forEach(cellData => {
-                const td = document.createElement('td');
-                td.textContent = cellData;
-                tr.appendChild(td);
-            });
-
-            // Add Unique CRs column
-            const crTd = document.createElement('td');
-            crTd.innerHTML = formatLongList(phase.unique_cr_list, phase.unique_cr_count);
-            tr.appendChild(crTd);
-
-            // Add Unique JIRAs column
-            const jiraTd = document.createElement('td');
-            jiraTd.innerHTML = formatLongList(phase.unique_jira_list, phase.unique_jira_count);
-            tr.appendChild(jiraTd);
-
-            tbody.appendChild(tr);
-
-            // Hidden detail row
-            const detailTr = document.createElement('tr');
-            detailTr.classList.add('detail-row');
-            detailTr.style.display = 'none';
-            const detailTd = document.createElement('td');
-            detailTd.setAttribute('colspan', headers.length);
-            
-            // Create detail content
-            const detailContent = document.createElement('div');
-            detailContent.style.cssText = `
-                padding: 15px;
-                background-color: #f9f9f9;
-                border: 1px solid #eee;
-                margin: 10px;
-                border-radius: 5px;
-            `;
-
-            // Add some detailed information
-            detailContent.innerHTML = `
-                <h4 style="margin-bottom: 10px; color: #328AA4;">Detailed Phase Insights</h4>
-                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px;">
-                    <div>
-                        <strong>Total Test Cases:</strong> ${phase.metrics.total}
-                    </div>
-                    <div>
-                        <strong>Coverage:</strong> ${formatPercentage(phase.metrics.coverage_percentage)}
-                    </div>
-                    <div>
-                        <strong>Passed:</strong> ${phase.metrics.passed} (${formatPercentage(phase.metrics.passed_percentage)})
-                    </div>
-                    <div>
-                        <strong>Failed:</strong> ${phase.metrics.failed} (${formatPercentage(phase.metrics.failed_percentage)})
-                    </div>
-                    <div>
-                        <strong>Blocked:</strong> ${phase.metrics.blocked} (${formatPercentage(phase.metrics.blocked_percentage)})
-                    </div>
-                    <div>
-                        <strong>Unique CRs:</strong> ${phase.unique_cr_count}
-                    </div>
-                    <div>
-                        <strong>Unique JIRAs:</strong> ${phase.unique_jira_count}
-                    </div>
-                </div>
-            `;
-
-            detailTd.appendChild(detailContent);
-            detailTr.appendChild(detailTd);
-            tbody.appendChild(detailTr);
-        });
+    expandBtn.addEventListener('mouseleave', (e) => {
+        e.currentTarget.style.transform = 'scale(1)';
     });
-    table.appendChild(tbody);
-
-    // Render the table
-    const targetElement = document.getElementById(targetElementId);
-    targetElement.innerHTML = '';
-    targetElement.appendChild(table);
-
-    // Add event listeners for expand buttons and "more" links
-    targetElement.addEventListener('click', (e) => {
-        // Expand/Collapse functionality
-        if (e.target.closest('.expand-btn')) {
-            const btn = e.target.closest('.expand-btn');
-            const parentRow = btn.closest('tr');
-            const detailRow = parentRow.nextElementSibling;
-            
-            if (detailRow.style.display === 'none') {
-                // Expand
-                detailRow.style.display = 'table-row';
-                btn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#328AA4" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-minus-circle">
-                    <circle cx="12" cy="12" r="10"></circle>
-                    <line x1="12" y1="12" x2="12" y2="12"></line>
-                </svg>`;
-            } else {
-                // Collapse
-                detailRow.style.display = 'none';
-                btn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#328AA4" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-plus-circle">
-                    <circle cx="12" cy="12" r="10"></circle>
-                    <line x1="12" y1="8" x2="12" y2="16"></line>
-                    <line x1="8" y1="12" x2="16" y2="12"></line>
-                </svg>`;
-            }
-        }
-
-        // Existing "more" links functionality
-        if (e.target.classList.contains('show-more-list')) {
-            e.preventDefault();
-            const title = e.target.getAttribute('data-title');
-            const list = JSON.parse(decodeURIComponent(e.target.getAttribute('data-list')));
-            createListModal(title, list);
-        }
-    });
-
-    // Adjust column widths
-    adjustColumnWidths();
+    // Add click event listener using the new handler
+    expandBtn.addEventListener('click', handleExpandDetails);
+    
+    // ... (rest of the code remains the same)
 }
