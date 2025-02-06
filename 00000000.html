@@ -1,17 +1,7 @@
-// Modify renderCumulativeTable to properly handle card creation
 function renderCumulativeTable(tableData, data, targetElementId) {
+    console.log("renderCumulativeTable");
     const targetElement = document.getElementById(targetElementId);
     targetElement.innerHTML = ''; // Clear everything first
-
-    // Create card element
-    const card = document.createElement('div');
-    card.className = 'card';
-    card.id = 'reportCard'; // Add an ID to easily reference this card
-
-    // Create card body element
-    const cardBody = document.createElement('div');
-    cardBody.className = 'card-body';
-    cardBody.id = 'reportCardBody'; // Add an ID to easily reference the card body
 
     // Create button container
     const buttonContainer = document.createElement('div');
@@ -24,7 +14,7 @@ function renderCumulativeTable(tableData, data, targetElementId) {
     buttonGroup.setAttribute('role', 'group');
     buttonGroup.setAttribute('aria-label', 'Report filters');
 
-    // Create buttons (same as before)
+    // Create Complete Report button
     const completeReportInput = document.createElement('input');
     completeReportInput.type = 'radio';
     completeReportInput.className = 'btn-check team-filter';
@@ -38,6 +28,7 @@ function renderCumulativeTable(tableData, data, targetElementId) {
     completeReportLabel.setAttribute('for', 'complete-report');
     completeReportLabel.textContent = 'Complete Report';
 
+    // Create CR Verification button
     const crVerificationInput = document.createElement('input');
     crVerificationInput.type = 'radio';
     crVerificationInput.className = 'btn-check team-filter';
@@ -50,33 +41,35 @@ function renderCumulativeTable(tableData, data, targetElementId) {
     crVerificationLabel.setAttribute('for', 'cr-verification');
     crVerificationLabel.textContent = 'CR Verification';
 
-    // Append elements
+    // Append buttons to button group
     buttonGroup.appendChild(completeReportInput);
     buttonGroup.appendChild(completeReportLabel);
     buttonGroup.appendChild(crVerificationInput);
     buttonGroup.appendChild(crVerificationLabel);
+
+    // Append button group to button container
     buttonContainer.appendChild(buttonGroup);
-    cardBody.appendChild(buttonContainer);
 
-    // Create a container for the table content
-    const tableContainer = document.createElement('div');
-    tableContainer.id = 'tableContainer';
-    cardBody.appendChild(tableContainer);
+    // Create content container for tables
+    const contentContainer = document.createElement('div');
+    contentContainer.id = 'reportContentContainer';
 
-    card.appendChild(cardBody);
-    targetElement.appendChild(card);
+    // Append both containers to target element
+    targetElement.appendChild(buttonContainer);
+    targetElement.appendChild(contentContainer);
 
-    // Modify event listeners
+    // Add event listeners for report filter buttons
     completeReportInput.addEventListener('change', () => {
         if (completeReportInput.checked) {
-            const tableContainer = document.getElementById('tableContainer');
-            tableContainer.innerHTML = ''; // Clear previous content
-            renderCompleteReportInCumulativeTable(tableData, data, tableContainer);
+            console.log('Complete Report clicked');
+            contentContainer.innerHTML = ''; // Clear the content container
+            renderCompleteReportInCumulativeTable(tableData, data, contentContainer);
         }
     });
 
     crVerificationInput.addEventListener('change', async () => {
         if (crVerificationInput.checked) {
+            console.log('CR Verification clicked');
             const spSelect = document.getElementById('sp_name');
             const selectedSp = spSelect.value;
             if (!selectedSp) {
@@ -84,8 +77,7 @@ function renderCumulativeTable(tableData, data, targetElementId) {
                 return;
             }
 
-            const tableContainer = document.getElementById('tableContainer');
-            tableContainer.innerHTML = ''; // Clear previous content
+            contentContainer.innerHTML = ''; // Clear the content container
 
             let columnNames;
             if (!crVerificationData) {
@@ -106,7 +98,14 @@ function renderCumulativeTable(tableData, data, targetElementId) {
                 columnNames = Object.keys(crVerificationData[Object.keys(crVerificationData)[0]][Object.keys(crVerificationData[Object.keys(crVerificationData)[0]])[0]][0]);
             }
 
-            renderCRVerificationInCumulativeTable(crVerificationData, columnNames, tableContainer);
+            const cardElement = document.createElement('div');
+            cardElement.className = 'card';
+            const cardBody = document.createElement('div');
+            cardBody.className = 'card-body';
+            cardElement.appendChild(cardBody);
+            contentContainer.appendChild(cardElement);
+
+            renderCRVerificationInCumulativeTable(crVerificationData, columnNames, cardBody);
         }
     });
 
@@ -121,24 +120,29 @@ function renderCumulativeTable(tableData, data, targetElementId) {
     });
 
     // Initial render of Complete Report
-    renderCompleteReportInCumulativeTable(tableData, data, document.getElementById('tableContainer'));
+    renderCompleteReportInCumulativeTable(tableData, data, contentContainer);
 }
 
-// Modify renderCompleteReportInCumulativeTable and renderCRVerificationInCumulativeTable
 function renderCompleteReportInCumulativeTable(tableData, data, targetElement) {
     targetElement.innerHTML = ''; // Clear existing content
+
+    // Create table element
     const table = document.createElement('table');
     table.className = 'coverage-table';
-    // ... rest of the function remains the same ...
+    
+    // Rest of the table creation code remains the same...
+    
     targetElement.appendChild(table);
     adjustColumnWidths();
 }
 
 function renderCRVerificationInCumulativeTable(tableData, columnNames, targetElement) {
-    targetElement.innerHTML = ''; // Clear existing content
+    // Create table element
     const table = document.createElement('table');
     table.className = 'coverage-table';
-    // ... rest of the function remains the same ...
+    
+    // Rest of the table creation code remains the same...
+    
     targetElement.appendChild(table);
     adjustColumnWidths();
 }
