@@ -39,7 +39,7 @@
 <style>
 .container {
     padding: 2rem;
-    max-width: 1500px;
+    max-width: 100%;
 }
 .btn-group {
     margin-right: 10px;
@@ -91,6 +91,7 @@
         const teamFiltersContainer = document.getElementById('teamFilters');
         let selectedTeams = ['all'];
         let tableData = null;
+        let crVerificationData = null;  // Global variable to store CR Verification data
 
         function adjustColumnWidths() {
             const table = document.querySelector('.coverage-table');
@@ -832,14 +833,9 @@
                 }
             });
         }
-        
-        function renderCumulativeTable(tableData, data, targetElementId) {
-            // Store tableData as a variable in the scope
-            // let tableData = null;
-            console.log(tableData)
-            console.log("renderCumulativeTable")
-            console.log(data)
 
+        function renderCompleteReportInCumulativeTable(tableData, data, targetElement) {
+            // Create table element
             const table = document.createElement('table');
             table.className = 'coverage-table';
         
@@ -877,25 +873,22 @@
                     // Expand/Collapse column
                     const expandTd = document.createElement('td');
                     const expandBtn = createExpandButton();
-
                     // Modify expand button event listener
                     expandBtn.addEventListener('click', (event) => {
                         const btn = event.currentTarget;
                         const parentRow = btn.closest('tr');
                         const spIndex = parentRow.dataset.spIndex;
                         const phaseIndex = parentRow.dataset.phaseIndex;
-
                         // Check if inner table is already expanded
                         const existingInnerTable = parentRow.nextElementSibling;
                         const isCurrentlyExpanded = existingInnerTable && existingInnerTable.classList.contains('inner-table-1-row');
-
                         if (isCurrentlyExpanded) {
                             // Collapse
                             existingInnerTable.remove();
                             btn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#328AA4" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" class="feather feather-plus-circle">
-                                <circle cx="12" cy="12" r="10"></circle>
-                                <line x1="12" y1="8" x2="12" y2="16"></line>
-                                <line x1="8" y1="12" x2="16" y2="12"></line>
+                            <circle cx="12" cy="12" r="10"></circle>
+                            <line x1="12" y1="8" x2="12" y2="16"></line>
+                            <line x1="8" y1="12" x2="16" y2="12"></line>
                             </svg>`;
                         } else {
                             // Expand
@@ -905,12 +898,11 @@
                             };
                             renderInnerTable1(phaseData, parentRow, tableData);
                             btn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#328AA4" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" class="feather feather-minus-circle">
-                                <circle cx="12" cy="12" r="10"></circle>
-                                <line x1="8" y1="12" x2="16" y2="12"></line>
+                            <circle cx="12" cy="12" r="10"></circle>
+                            <line x1="8" y1="12" x2="16" y2="12"></line>
                             </svg>`;
                         }
                     });
-
                     expandTd.appendChild(expandBtn);
                     tr.appendChild(expandTd);
         
@@ -926,7 +918,6 @@
                         phase.metrics.blocked,
                         formatPercentage(phase.metrics.blocked_percentage)
                     ];
-        
                     cells.forEach(cellData => {
                         const td = document.createElement('td');
                         td.textContent = cellData;
@@ -948,10 +939,190 @@
             });
             table.appendChild(tbody);
         
-            // Render the table
+            // Clear existing table if any
+            targetElement.querySelector('table')?.remove();
+        
+            // Append table to card body
+            targetElement.appendChild(table);
+        }
+
+        function renderCRVerificationInCumulativeTable(tableData, columnNames, targetElement) {
+            // Create card element
+            const card = document.createElement('div');
+            card.className = 'card';
+        
+            // Create card body element
+            const cardBody = document.createElement('div');
+            cardBody.className = 'card-body';
+        
+            // Create table element
+            const table = document.createElement('table');
+            table.className = 'coverage-table';
+        
+            // Create header
+            const thead = document.createElement('thead');
+            const headerRow = document.createElement('tr');
+            columnNames.forEach(header => {
+                const th = document.createElement('th');
+                th.textContent = header;
+                headerRow.appendChild(th);
+            });
+            thead.appendChild(headerRow);
+            table.appendChild(thead);
+        
+            // Create table body
+            const tbody = document.createElement('tbody');
+            for (const team in tableData) {
+                for (const phase in tableData[team]) {
+                    tableData[team][phase].forEach(rowData => {
+                        const tr = document.createElement('tr');
+                        columnNames.forEach(columnName => {
+                            const td = document.createElement('td');
+                            td.textContent = rowData[columnName] !== null ? rowData[columnName] : '';
+                            tr.appendChild(td);
+                        });
+                        tbody.appendChild(tr);
+                    });
+                }
+            }
+            table.appendChild(tbody);
+        
+            // Append table to card body
+            cardBody.appendChild(table);
+        
+            // Append card body to card
+            card.appendChild(cardBody);
+
+            // Clear existing table if any
+            targetElement.querySelector('table')?.remove();
+        
+            // Append table to card body
+            targetElement.appendChild(card);
+        
+            // Adjust column widths
+            adjustColumnWidths();
+        }
+        
+        function renderCumulativeTable(tableData, data, targetElementId) {
+            // Store tableData as a variable in the scope
+            // let tableData = null;
+            console.log(tableData)
+            console.log("renderCumulativeTable")
+            console.log(data)
+
+            // Create card element
+            const card = document.createElement('div');
+            card.className = 'card';
+
+            // Create card body element
+            const cardBody = document.createElement('div');
+            cardBody.className = 'card-body';
+
+            // Create button container
+            const buttonContainer = document.createElement('div');
+            buttonContainer.id = 'cumulativeTableFilters';
+            buttonContainer.className = 'mb-3';
+
+            // Create button group
+            const buttonGroup = document.createElement('div');
+            buttonGroup.className = 'btn-group';
+            buttonGroup.setAttribute('role', 'group');
+            buttonGroup.setAttribute('aria-label', 'Report filters');
+
+            // Create Complete Report button
+            const completeReportInput = document.createElement('input');
+            completeReportInput.type = 'radio';
+            completeReportInput.className = 'btn-check team-filter';
+            completeReportInput.name = 'report-filter';
+            completeReportInput.id = 'complete-report';
+            completeReportInput.value = 'complete-report';
+            completeReportInput.checked = true;
+
+            const completeReportLabel = document.createElement('label');
+            completeReportLabel.className = 'btn btn-outline-primary';
+            completeReportLabel.setAttribute('for', 'complete-report');
+            completeReportLabel.textContent = 'Complete Report';
+
+            // Create CR Verification button
+            const crVerificationInput = document.createElement('input');
+            crVerificationInput.type = 'radio';
+            crVerificationInput.className = 'btn-check team-filter';
+            crVerificationInput.name = 'report-filter';
+            crVerificationInput.id = 'cr-verification';
+            crVerificationInput.value = 'cr-verification';
+
+            const crVerificationLabel = document.createElement('label');
+            crVerificationLabel.className = 'btn btn-outline-primary';
+            crVerificationLabel.setAttribute('for', 'cr-verification');
+            crVerificationLabel.textContent = 'CR Verification';
+
+            // Append buttons to button group
+            buttonGroup.appendChild(completeReportInput);
+            buttonGroup.appendChild(completeReportLabel);
+            buttonGroup.appendChild(crVerificationInput);
+            buttonGroup.appendChild(crVerificationLabel);
+
+            // Append button group to button container
+            buttonContainer.appendChild(buttonGroup);
+
+            // Append button container to card body
+            cardBody.appendChild(buttonContainer);
+
+            // Append card body to card
+            card.appendChild(cardBody);
+        
+            // Render the card
             const targetElement = document.getElementById(targetElementId);
             targetElement.innerHTML = '';
-            targetElement.appendChild(table);
+            targetElement.appendChild(card);
+
+            // Add event listeners for report filter buttons
+            completeReportInput.addEventListener('change', () => {
+                if (completeReportInput.checked) {
+                    console.log('Complete Report clicked');
+                    renderCompleteReportInCumulativeTable(tableData, data, cardBody);
+                }
+            });
+
+            crVerificationInput.addEventListener('change', async () => {
+                if (crVerificationInput.checked) {
+                    console.log('CR Verification clicked');
+                    const spSelect = document.getElementById('sp_name');
+                    const selectedSp = spSelect.value;
+                    if (!selectedSp) {
+                        alert('Please select an SP first');
+                        return;
+                    }
+        
+                    let columnNames;
+                    if (!crVerificationData) {
+                        // Fetch data if not already stored
+                        const params = new URLSearchParams();
+                        params.append('sp_name', selectedSp);
+                        try {
+                            const response = await fetch(`{% url 'cst_reporting_views:get_cr_verification_data' %}?${params.toString()}`);
+                            if (!response.ok) throw new Error('Network response was not ok');
+                            const responseData = await response.json();
+                            crVerificationData = responseData["data"];  // Store fetched data
+                            columnNames = responseData["column_names"];
+                            console.log(crVerificationData);
+                            console.log(columnNames);
+                        } catch (error) {
+                            console.error('Error fetching data:', error);
+                            alert('Error fetching data. Please try again.');
+                            return;
+                        } finally {
+                            //setLoadingState(false);
+                        }
+                    } else {
+                        // Use stored data
+                        columnNames = Object.keys(crVerificationData[Object.keys(crVerificationData)[0]][Object.keys(crVerificationData[Object.keys(crVerificationData)[0]])[0]][0]);
+                    }
+        
+                    // Render the CR Verification table
+                    renderCRVerificationInCumulativeTable(crVerificationData, columnNames, cardBody);
+                }
+            });
         
             // Add event listeners for "more" links
             targetElement.addEventListener('click', (e) => {
@@ -965,6 +1136,9 @@
         
             // Adjust column widths
             adjustColumnWidths();
+
+            // Initial render of Complete Report
+            renderCompleteReportInCumulativeTable(tableData, data, cardBody);
         }
     });
     
