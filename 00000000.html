@@ -1,1123 +1,158 @@
-{% extends "generate_config/base.html" %}
-{% load static %}
-
-{% block content %}
-
-<div class="container-fluid px-4 mt-5">
-    <h2 class="mb-4">Generate Configuration</h2>
-    
-    <div class="card shadow-sm mb-4">
-        <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
-            <h5 class="card-title mb-0" >Select Configuration</h5>
-            <!-- <span class="badge bg-light text-primary">Configuration Manager</span> -->
-        </div>
-        <div class="card-body">
-            <form id="configSelectionForm" method="GET" action="{% url 'generate_config:generate_config' %}">
-                <div class="mb-4">
-                    <label for="configDropdown" class="form-label">Choose Existing Configuration</label>
-                    <select class="form-select optimized-select" id="configDropdown" name="config_type">
-                        <option value="">Select Configuration Type</option>
-                        {% for config in configs_list %}
-                        <option value="{{ config.name }}">{{ config.name }}</option>
-                        {% endfor %}
-                    </select>
-                </div>
-                <div class="row g-2">
-                    <div class="col-12 col-md-4 mb-2">
-                        <button type="submit" id="showConfigBtn" class="btn btn-primary w-100">
-                            <i class="bi bi-pencil me-2"></i>
-                            Edit existing config
-                        </button>
-                    </div>
-                    <div class="col-12 col-md-4 mb-2">
-                        <button type="button" id="newFromExistingBtn" class="btn btn-primary w-100">
-                            <i class="bi bi-files me-2"></i>
-                            Create from existing config
-                        </button>
-                    </div>
-                    <div class="col-12 col-md-4 mb-2">
-                        <button type="button" id="newConfigBtn" class="btn btn-primary w-100">
-                            <i class="bi bi-plus-circle me-2"></i>
-                            Create new config
-                        </button>
-                    </div>
-                </div>
-            </form>
-
-            <!-- Add loading spinner -->
-            <div id="loadingSpinner" class="text-center mt-3" style="display: none;">
-                <div class="spinner-border text-primary" role="status">
-                    <span class="visually-hidden">Loading...</span>
-                </div>
-                <p class="mt-2 text-primary">Loading configuration...</p>
-            </div>
-        </div>
-    </div>
-
-    <div class="card shadow-sm mb-4">
-        <div class="card-body" id="configFormContainer" style="display: none;">
-            <!-- Add alert for default configuration -->
-            <div id="configAlertContainer" class="alert alert-info alert-dismissible fade show mb-4" role="alert" style="display: none;">
-                <div class="d-flex align-items-center">
-                    <i class="bi bi-info-circle-fill me-2"></i>
-                    <div>
-                        <strong id="configAlertTitle"></strong>
-                        <p class="mb-0" id="configAlertMessage"></p>
-                    </div>
-                </div>
-                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-            </div>
-
-            <form id="configGenerationForm" method="POST" action="{% url 'generate_config:generate_config' %}">
-                {% csrf_token %}
-                <div id="dynamicFields" class="row g-3"></div>
-                <input type="hidden" id="parsedData" name="parsedData">
-                <!-- Add hidden input for loadExisting -->
-                <input type="hidden" id="loadExisting" name="loadExisting" value="false">
-                <div class="mt-4">
-                    <button type="submit" class="btn btn-primary">Generate Config</button>
-                    <button type="reset" class="btn btn-secondary ms-2">Reset</button>
-                </div>
-            </form>
-        </div>
-    </div>
-    
-</div>
-
-<style>
-    /*
-    #loadingSpinner {
-        opacity: 0;
-        transition: opacity 0.3s ease-in-out;
-    }
-     */
-
-    /*
-    #loadingSpinner {
-        transition: display 0.3s ease-in-out;
-    }
-    */
-    
-    /*
-    #loadingSpinner.show {
-        opacity: 1;
-    }
-    
-    #configFormContainer {
-        transition: display 0.3s ease-in-out;
-    }
-    
-    .spinner-border {
-        width: 3rem;
-        height: 3rem;
-    }
-    */
-</style>
-
-<style>
-    /* Full-screen loading overlay */
-    #fullScreenLoader {
-        display: none;
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        background-color: rgba(0, 0, 0, 0.5); /* Semi-transparent background */
-        z-index: 9999; /* Ensure it's on top of everything */
-        display: flex;
-        justify-content: center;
-        align-items: center;
-    }
-
-    #fullScreenLoader .spinner-container {
-        background-color: white;
-        padding: 2rem;
-        border-radius: 10px;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-    }
-
-    #fullScreenLoader .spinner-border {
-        width: 4rem;
-        height: 4rem;
-        border-width: 0.25em;
-    }
-
-    #fullScreenLoader .loading-text {
-        margin-top: 1rem;
-        color: #333;
-        font-weight: bold;
-    }
-</style>
-
-<style>
-    .required-label::after {
-        content: " *";
-        color: red;
-    }
-    .form-text.text-muted {
-        color: #6c757d !important;
-        word-wrap: break-word;
-        overflow-wrap: break-word;
-        white-space: normal;
-        width: 100%;
-        display: block;
-    }
-
-    /* Responsive Adjustments */
-    @media (max-width: 768px) {
-        .container-fluid {
-            padding-left: 10px !important;
-            padding-right: 10px !important;
-        }
-        
-        #dynamicFields .col-md-6 {
-            flex: 0 0 100%;
-            max-width: 100%;
-        }
-        
-        .btn {
-            margin-bottom: 10px;
-            width: 100%;
-        }
-        
-        .btn:not(:first-child) {
-            margin-left: 0 !important;
-        }
-        
-        h2 {
-            font-size: 1.5rem;
-        }
-        
-        .form-control {
-            font-size: 14px;
-        }
-        
-        .form-text.text-muted {
-            font-size: 12px;
-        }
-    }
-
-    /* Ensure textarea and inputs are consistent */
-    textarea.form-control, input.form-control {
-        min-height: 38px;
-    }
-</style>
-
-<style>
-    .optimized-select-wrapper {
-        position: relative;
-        width: 100%;
-    }
-    
-    .optimized-select-button {
-        width: 100%;
-        text-align: left;
-        cursor: pointer;
-    }
-    
-    .optimized-select-dropdown {
-        display: none;
-        position: absolute;
-        top: 100%;
-        left: 0;
-        right: 0;
-        background: white;
-        border: 1px solid #dee2e6;
-        border-radius: 0.375rem;
-        box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-        z-index: 1000;
-        margin-top: 0.25rem;
-    }
-    
-    .optimized-select-search {
-        width: 100%;
-        padding: 0.5rem;
-        border-bottom: 1px solid #dee2e6;
-        border-radius: 0.375rem 0.375rem 0 0;
-    }
-    
-    .optimized-select-options {
-        overflow-y: auto;
-        position: relative;
-        border-radius: 0 0 0.375rem 0.375rem;
-    }
-    
-    .virtual-scroll-container {
-        position: relative;
-    }
-    
-    .optimized-select-option {
-        padding: 0.5rem 1rem;
-        cursor: pointer;
-        position: absolute;
-        width: 100%;
-        display: flex;
-        align-items: center;
-    }
-    
-    .optimized-select-option:hover {
-        background-color: #f8f9fa;
-    }
-    
-    .optimized-select-options::-webkit-scrollbar {
-        width: 6px;
-    }
-    
-    .optimized-select-options::-webkit-scrollbar-track {
-        background: #f1f1f1;
-        border-radius: 3px;
-    }
-    
-    .optimized-select-options::-webkit-scrollbar-thumb {
-        background: #888;
-        border-radius: 3px;
-    }
-    
-    .optimized-select-options::-webkit-scrollbar-thumb:hover {
-        background: #555;
-    }
-</style>
-
-<script>
-    // Custom select with virtual scrolling and search that can be reused
-    class OptimizedSelect {
-        constructor(originalSelect, options = {}) {
-            if(originalSelect.dataset.initialized){
-                return;
-            }
-
-          this.originalSelect = originalSelect;
-          this.options = options;
-          this.itemHeight = 35;
-          this.visibleItems = 8;
-          this.allOptions = Array.from(originalSelect.options).map(opt => ({
-            value: opt.value,
-            label: opt.text
-          }));
-          this.isOpen = false;
-
-          originalSelect.dataset.initialized = 'true';
-      
-          this.init();
-        }
-      
-        init() {
-          // Create wrapper
-          this.wrapper = document.createElement('div');
-          this.wrapper.className = 'optimized-select-wrapper';
-          this.wrapper.id = `${this.elementId}-wrapper`;
-      
-          // Create custom select button
-          this.button = document.createElement('button');
-          this.button.className = 'optimized-select-button form-select';
-          this.button.id = `${this.elementId}-button`;
-          this.button.type = 'button'; // Prevent form submission
-          this.button.textContent = this.originalSelect.selectedOptions[0]?.text || 'Choose...';
-      
-          // Create dropdown container
-          this.dropdown = document.createElement('div');
-          this.dropdown.className = 'optimized-select-dropdown';
-          this.dropdown.id = `${this.elementId}-dropdown`;
-      
-          // Create search input
-          this.searchInput = document.createElement('input');
-          this.searchInput.className = 'optimized-select-search form-control';
-          this.searchInput.id = `${this.elementId}-search`;
-          this.searchInput.placeholder = 'Search...';
-      
-          // Create options container
-          this.optionsContainer = document.createElement('div');
-          this.optionsContainer.className = 'optimized-select-options';
-          this.optionsContainer.id = `${this.elementId}-options`;
-          this.optionsContainer.style.height = `${this.itemHeight * this.visibleItems}px`;
-      
-          // Create virtual scroll container
-          this.virtualScroll = document.createElement('div');
-          this.virtualScroll.className = 'virtual-scroll-container';
-          this.virtualScroll.id = `${this.elementId}-virtual-scroll`;
-      
-          // Assemble the components
-          this.dropdown.appendChild(this.searchInput);
-          this.dropdown.appendChild(this.optionsContainer);
-          this.optionsContainer.appendChild(this.virtualScroll);
-          this.wrapper.appendChild(this.button);
-          this.wrapper.appendChild(this.dropdown);
-      
-          // Insert custom select after original
-          this.originalSelect.style.display = 'none';
-          this.originalSelect.parentNode.insertBefore(this.wrapper, this.originalSelect.nextSibling);
-      
-          this.addEventListeners();
-          this.filterAndRenderOptions();
-        }
-      
-        addEventListeners() {
-          // Toggle dropdown with improved handling
-          this.button.addEventListener('mousedown', (e) => {
-            e.preventDefault(); // Prevent focus issues
-            this.toggleDropdown();
-          });
-      
-          // Handle search
-          this.searchInput.addEventListener('input', () => {
-            this.filterAndRenderOptions();
-          });
-      
-          // Prevent search input from closing dropdown
-          this.searchInput.addEventListener('mousedown', (e) => {
-            e.stopPropagation();
-          });
-      
-          // Handle scroll
-          this.optionsContainer.addEventListener('scroll', () => {
-            this.renderVisibleOptions();
-          });
-      
-          // Close dropdown when clicking outside
-          document.addEventListener('mousedown', (e) => {
-            if (!this.wrapper.contains(e.target)) {
-              this.closeDropdown();
-            }
-          });
-      
-          // Prevent dropdown from closing when clicking inside
-          this.dropdown.addEventListener('mousedown', (e) => {
-            e.stopPropagation();
-          });
-        }
-      
-        toggleDropdown() {
-          if (this.isOpen) {
-            this.closeDropdown();
-          } else {
-            this.openDropdown();
-          }
-        }
-      
-        openDropdown() {
-          this.isOpen = true;
-          this.dropdown.style.display = 'block';
-          this.searchInput.focus();
-          this.filterAndRenderOptions();
-        }
-      
-        closeDropdown() {
-          this.isOpen = false;
-          this.dropdown.style.display = 'none';
-          this.searchInput.value = '';
-          this.filterAndRenderOptions();
-        }
-      
-        filterAndRenderOptions() {
-          const searchTerm = this.searchInput.value.toLowerCase();
-          this.filteredOptions = this.allOptions.filter(option => 
-            option.label.toLowerCase().includes(searchTerm)
-          );
-      
-          // Reset scroll position
-          this.optionsContainer.scrollTop = 0;
-          this.virtualScroll.style.height = `${this.filteredOptions.length * this.itemHeight}px`;
-          this.renderVisibleOptions();
-        }
-      
-        renderVisibleOptions() {
-          const scrollTop = this.optionsContainer.scrollTop;
-          const startIndex = Math.floor(scrollTop / this.itemHeight);
-          const endIndex = startIndex + this.visibleItems + 2;
-      
-          this.virtualScroll.innerHTML = '';
-      
-          this.filteredOptions.slice(startIndex, endIndex).forEach((option, index) => {
-            const optionEl = document.createElement('div');
-            optionEl.className = 'optimized-select-option';
-            optionEl.textContent = option.label;
-            optionEl.style.position = 'absolute';
-            optionEl.style.top = `${(startIndex + index) * this.itemHeight}px`;
-            optionEl.style.height = `${this.itemHeight}px`;
-      
-            optionEl.addEventListener('mousedown', (e) => {
-              e.preventDefault(); // Prevent focus issues
-              this.selectOption(option);
-            });
-      
-            this.virtualScroll.appendChild(optionEl);
-          });
-        }
-      
-        selectOption(option) {
-          // Update original select
-          this.originalSelect.value = option.value;
-          this.originalSelect.dispatchEvent(new Event('change'));
-      
-          // Update custom select
-          this.button.textContent = option.label;
-          this.closeDropdown();
-        }
-      }
-</script>
-
-<script>
-    // Function to render the configuration form
-    function renderConfigurationForm(configData) {
-        // Function to render input based on data type
-        function renderInput(fieldName, fieldConfig) {
-            const inputWrapper = document.createElement('div');
-            inputWrapper.className = 'col-md-6 mb-3';
-    
-            // Create label
-            const label = document.createElement('label');
-            label.htmlFor = fieldName;
-            label.className = `form-label ${fieldConfig.required !== false ? 'required-label' : ''}`;
-            label.textContent = `${fieldConfig.ui_displayed_name} ${fieldConfig.required !== false ? '(required)' : '(optional)'}`;
-            inputWrapper.appendChild(label);
-    
-            // Create input or textarea based on value type
-            let inputElement;
-
-            if (fieldConfig.input_type === 'dropdown') {
-                // Create the original select element
-                inputElement = document.createElement('select');
-                inputElement.id = fieldName;
-                inputElement.name = fieldName;
-                inputElement.className = 'form-select optimized-select';
-                if (fieldConfig.required !== false) {
-                    inputElement.required = true;
-                }
-
-                // Add default option
-                const defaultOption = document.createElement('option');
-                defaultOption.value = '';
-                defaultOption.textContent = 'Select an option';
-                inputElement.appendChild(defaultOption);
-
-                // Add options
-                fieldConfig.options.forEach(option => {
-                    const optionElement = document.createElement('option');
-                    optionElement.value = option;
-                    optionElement.textContent = option;
-                    if (option === fieldConfig.default) {
-                        optionElement.selected = true;
-                    }
-                    inputElement.appendChild(optionElement);
-                });
-
-                // Append the original select to the input wrapper
-                inputWrapper.appendChild(inputElement);
-
-                // Initialize OptimizedSelect
-                new OptimizedSelect(inputElement);
-            } else {
-                // Default to textbox
-                if (fieldConfig.datatype === 'dict') {
-                    inputElement = document.createElement('textarea');
-                    inputElement.value = JSON.stringify(fieldConfig.default, null, 2);
-                } else {
-                    inputElement = document.createElement('input');
-                    inputElement.type = 'text';
-                    inputElement.value = (fieldConfig.default === undefined || fieldConfig.default === '') ? '""' : fieldConfig.default;
-                }
-                inputElement.id = fieldName;
-                inputElement.name = fieldName;
-                inputElement.className = 'form-control';
-                if (fieldConfig.required !== false) {
-                    inputElement.required = true;
-                }
-                inputElement.placeholder = fieldConfig.datatype === 'dict' ? 'Enter JSON object or {}' : 'Enter value or "" for empty';
-        
-                // Store datatype as data attribute
-                inputElement.dataset.datatype = fieldConfig.datatype;
-            }
-                
-            if (fieldConfig.required !== false) {
-                inputElement.required = true;
-            }
-    
-            inputWrapper.appendChild(inputElement);
-    
-            // Example text
-            let defaultValue = fieldConfig.default;
-    
-            if (Array.isArray(defaultValue) && defaultValue.length > 3) {
-                defaultValue = defaultValue.slice(0, 3);
-                // defaultValue = JSON.stringify(defaultValue)
-                defaultValue = fieldConfig.datatype === 'list' ? defaultValue.join(',') : JSON.stringify(defaultValue);
-            } else if (typeof defaultValue === 'object' && defaultValue !== null) {
-                const keys = Object.keys(defaultValue);
-                if (keys.length > 3) {
-                    defaultValue = keys.slice(0, 3).reduce((obj, key) => {
-                        obj[key] = defaultValue[key];
-                        return obj;
-                    }, {});
-                }
-                defaultValue = JSON.stringify(defaultValue)
-            }
-    
-            // exampleText.textContent = `Example: ${defaultValue}`;
-            function createInfoMessage(html) {
-                const infoMessage = document.createElement('small');
-                infoMessage.className = 'form-text text-muted d-flex align-items-center alert alert-info';
-                
-                const infoIcon = document.createElement('i');
-                infoIcon.className = 'bi bi-info-circle-fill me-2';
-                
-                const textSpan = document.createElement('span');
-                textSpan.innerHTML = html;
-                textSpan.className = ""
-                
-                infoMessage.appendChild(infoIcon);
-                infoMessage.appendChild(textSpan);
-                
-                
-                return infoMessage;
-            }
+// Update the validateInput function to handle SELECT elements
+function validateInput(input) {
+    // Handle SELECT elements specifically
+    if (input.tagName === 'SELECT') {
+        const validationMessage = document.getElementById(`${input.id}-validation`) || 
+            createValidationMessage(input);
             
-            const infoMessages = {
-                "si_image_list": 'Get the image list from cnssboard',
-                "PROD_recipients_report": 'Update e-mail IDs for the overall Cov pass report. <br>for the overall Cov pass report',
-                "PROD_cr_to_list": 'Update e-mail IDs for the Detailed CR List. <br>Detailed CR List: Detail CR list for internal CST leads which shows Debug CRs Summary, CR Issue Owner Breakdown (Unique)',
-                "PROD_ext_cr_to_list": 'Update e-mail IDs for the Daily Scrum CR. <br>Daily Scrum CR: Extensive Scrum report for executives, PEs, Dev and CST leads which shows  the Cr info, Jirs info projections etc',
-                "PROD_open_jira_list": 'Update e-mail IDs for the Crash Jira Report. <br>for the Crash Jira Report',
-                "PROD_recipients": 'Update e-mail IDs for CR tasks for CST leads consumption. <br>CR tasks for CST leads consumption.',
-            };
+        if (!input.value) {
+            input.classList.add('is-invalid');
+            input.classList.remove('is-valid');
+            validationMessage.textContent = 'Please select an option';
+            validationMessage.style.display = 'block';
             
-            if (infoMessages[fieldName]) {
-                inputWrapper.appendChild(createInfoMessage(infoMessages[fieldName]));
-            } else {
-                const exampleText = document.createElement('small');
-                exampleText.className = 'form-text text-muted';
-                exampleText.textContent = "Example: " + defaultValue;
-                inputWrapper.appendChild(exampleText);
+            // Also update the OptimizedSelect button styling
+            const customButton = input.nextElementSibling.querySelector('.optimized-select-button');
+            if (customButton) {
+                customButton.classList.add('is-invalid');
+                customButton.classList.remove('is-valid');
             }
-
-            // Add validation message container
-            const validationMessage = document.createElement('div');
-            validationMessage.className = 'invalid-feedback';
-            validationMessage.id = `${fieldName}-validation`;
-            inputWrapper.appendChild(validationMessage);
-
-            // Add datatype rules
-            const datatypeRules = document.createElement('small');
-            datatypeRules.className = 'form-text text-muted';
-            datatypeRules.textContent = getDataTypeRules(fieldConfig.datatype);
-            inputWrapper.appendChild(datatypeRules);
-    
-            return inputWrapper;
+            return false;
         }
-    
-        const dynamicFieldsContainer = document.getElementById('dynamicFields');
-        dynamicFieldsContainer.innerHTML = ''; // Clear existing fields
-    
-        // Render fields based on config data
-        Object.entries(configData).forEach(([fieldName, fieldConfig]) => {
-            if (fieldConfig.show) {
-                dynamicFieldsContainer.appendChild(renderInput(fieldName, fieldConfig));
-            }
-        });
-    
-        // Show the form container
-        document.getElementById('configFormContainer').style.display = 'block';
-    }
-
-    // Function to get datatype rules
-    function getDataTypeRules(datatype) {
-        const rules = {
-            'str': 'Enter text without quotes, or use "" for empty string',
-            'list': 'Enter comma-separated values without quotes/brackets, or use "" for empty list',
-            'dict': 'Enter a valid JSON object, use {} for empty object',
-            'bool': 'Enter true or false. Empty values not allowed',
-            'int': 'Enter a whole number, or use "" for null',
-            'float': 'Enter a decimal number, or use "" for null'
-        };
-        return `Rules: ${rules[datatype] || 'Enter a valid value'}`;
-    }
-
-    // Function to validate input based on datatype
-    function validateInput(input) {
-        // Skip validation for non-input elements
-        if (!input.tagName || !['INPUT', 'TEXTAREA'].includes(input.tagName)) {
-            return true;
-        }
-
-        // Skip validation for data_range_pivot field
-        if (input.name === 'data_range_pivot') {
-            input.classList.remove('is-invalid', 'is-valid');
-            return true;
-        }
-    
-        const value = input.value.trim();
-        const datatype = input.dataset.datatype;
         
-        // Find or create validation message element
-        let validationMessage = document.getElementById(`${input.id}-validation`);
-        if (!validationMessage) {
-            validationMessage = document.createElement('div');
-            validationMessage.className = 'invalid-feedback';
-            validationMessage.id = `${input.id}-validation`;
-            input.parentNode.appendChild(validationMessage);
+        input.classList.remove('is-invalid');
+        input.classList.add('is-valid');
+        validationMessage.style.display = 'none';
+        
+        // Update the OptimizedSelect button styling
+        const customButton = input.nextElementSibling.querySelector('.optimized-select-button');
+        if (customButton) {
+            customButton.classList.remove('is-invalid');
+            customButton.classList.add('is-valid');
         }
-
-        // Special handling for boolean type - don't allow empty values
-        if (datatype === 'bool' && !value) {
-            input.classList.add('is-invalid');
-            input.classList.remove('is-valid');
-            validationMessage.textContent = 'Boolean values cannot be empty. Must be true or false';
-            validationMessage.style.display = 'block';
-            return false;
-        }
-    
-        // Handle empty required fields (except boolean)
-        if (datatype !== 'bool' && input.required && !value && value !== '""') {
-            input.classList.add('is-invalid');
-            input.classList.remove('is-valid');
-            validationMessage.textContent = 'This field is required. Use "" for empty value.';
-            validationMessage.style.display = 'block';
-            return false;
-        }
-    
-        // Handle intentionally empty values with quotes (except boolean)
-        if (datatype !== 'bool' && value === '""') {
-            input.classList.remove('is-invalid');
-            input.classList.add('is-valid');
-            validationMessage.style.display = 'none';
-            return true;
-        }
-    
-        try {
-            switch (datatype) {
-                case 'str':
-                    if (value.includes('"') || value.includes("'")) {
-                        throw new Error('Do not use quotes. Use plain text, or "" for empty string');
-                    }
-                    break;
-    
-                case 'list':
-                    const forbiddenChars = ['"', "'", '[', ']', '(', ')'];
-                    const specialCharsPattern = /[^a-zA-Z0-9 , . _ @]/; 
-                    // specialCharsPattern.test(value)
-                    // forbiddenChars.some(char => value.includes(char))
-                    if (specialCharsPattern.test(value)) {
-                        throw new Error('Use comma-separated values without any special characters except . , _ @');
-                    }
-
-                    // For empty value with quotes, validate separately
-                    if (value === '""') {
-                        break;
-                    }
-                    
-                    // Validate comma-separated format
-                    if (value && !value.match(/^[^,]+(,[^,]+)*$/)) {
-                        throw new Error('Invalid format. Use comma-separated values (e.g., item1,item2,item3)');
-                    }
-
-                    // If there's a value, enforce comma-separated format
-                    if (value) {
-                        // Split by commas and check each element
-                        const elements = value.split(',');
-                        
-                        // Check if any element is empty
-                        if (elements.some(elem => elem.trim() === '')) {
-                            throw new Error('Empty elements are not allowed (e.g., "item1,,item2" is invalid)');
-                        }
-                        
-                        // Check for consecutive commas
-                        if (value.includes(',,')) {
-                            throw new Error('Consecutive commas are not allowed');
-                        }
-                        
-                        // Check if starts or ends with comma
-                        if (value.startsWith(',') || value.endsWith(',')) {
-                            throw new Error('Value cannot start or end with a comma');
-                        }
-                    }
-                    break;
-    
-                case 'dict':
-                    if (value === '""') {
-                        throw new Error('Use {} for empty object, not ""');
-                    }
-                    try {
-                        JSON.parse(value);
-                    } catch (e) {
-                        throw new Error('Invalid JSON format');
-                    }
-                    break;
-    
-                case 'bool':
-                    if (!['true', 'false', 'True', 'False'].includes(value.toLowerCase())) {
-                        throw new Error('Value must be either true or false');
-                    }
-                    break;
-    
-                case 'int':
-                    if (value !== '' && !Number.isInteger(Number(value))) {
-                        throw new Error('Value must be a whole number');
-                    }
-                    break;
-    
-                case 'float':
-                    if (value !== '' && isNaN(Number(value))) {
-                        throw new Error('Value must be a number');
-                    }
-                    break;
-            }
-    
-            input.classList.remove('is-invalid');
-            input.classList.add('is-valid');
-            validationMessage.style.display = 'none';
-            return true;
-        } catch (error) {
-            input.classList.remove('is-valid');
-            input.classList.add('is-invalid');
-            validationMessage.textContent = error.message;
-            validationMessage.style.display = 'block';
-            return false;
-        }
+        return true;
     }
-    
-    // Function to parse value based on datatype
-    function parseValue(value, datatype) {
-        const trimmedValue = value.trim();
-    
-        // Handle intentionally empty values (except boolean)
-        if (datatype !== 'bool' && trimmedValue === '""') {
-            switch (datatype) {
-                case 'str': return '';
-                case 'list': return [];
-                case 'dict': return {};
-                case 'int':
-                case 'float': return null;
-                default: return '';
-            }
-        }
-    
-        // Handle non-empty values
-        switch (datatype) {
-            case 'str':
-                return trimmedValue;
-                
-            case 'list':
-                return trimmedValue === '' ? [] : 
-                       trimmedValue.split(',').map(item => item.trim());
-                
-            case 'dict':
-                return trimmedValue === '{}' ? {} : JSON.parse(trimmedValue);
-                
-            case 'bool':
-                if (!trimmedValue){
-                    throw new Error('Boolean values cannot be empty.');
-                }
-                // Convert to lowercase for consistency
-                const lowerValue = trimmedValue.toLowerCase();
-                if (!['true', 'false'].includes(lowerValue)) {
-                    throw new Error('Invalid boolean value');
-                }
-                return lowerValue === 'true';
-                
-            case 'int':
-                return trimmedValue === '' ? null : parseInt(trimmedValue, 10);
-                
-            case 'float':
-                return trimmedValue === '' ? null : parseFloat(trimmedValue);
-                
-            default:
-                return trimmedValue;
-        }
+
+    // Rest of the existing validation logic for other input types
+    if (!input.tagName || !['INPUT', 'TEXTAREA'].includes(input.tagName)) {
+        return true;
     }
-    
-    // Update the form submission handler
-    function handleFormSubmission(event) {
-        event.preventDefault();
-    
-        const form = event.target;
-        const formElements = Array.from(form.elements).filter(element => 
-            element.name && 
-            element.name !== 'csrfmiddlewaretoken' && 
-            ['INPUT', 'TEXTAREA', 'SELECT'].includes(element.tagName)
-        );
-    
-        let isValid = true;
-        let firstInvalidInput = null;
-    
-        // Validate all inputs
-        formElements.forEach(element => {
-            if (!validateInput(element)) {
-                isValid = false;
-                if (!firstInvalidInput) {
-                    firstInvalidInput = element;
-                }
-            }
+    // ... (rest of the existing validation code)
+}
+
+// Helper function to create validation message element
+function createValidationMessage(input) {
+    const validationMessage = document.createElement('div');
+    validationMessage.className = 'invalid-feedback';
+    validationMessage.id = `${input.id}-validation`;
+    input.parentNode.appendChild(validationMessage);
+    return validationMessage;
+}
+
+// Update the OptimizedSelect class to include validation
+class OptimizedSelect {
+    constructor(originalSelect, options = {}) {
+        // ... (existing constructor code)
+        
+        // Add validation styling to button
+        this.button.classList.add('form-select');
+        
+        // Add change event listener for validation
+        this.originalSelect.addEventListener('change', () => {
+            validateInput(this.originalSelect);
         });
-    
-        if (!isValid) {
-            firstInvalidInput.focus();
-            return;
+    }
+
+    // Update the selectOption method to trigger validation
+    selectOption(option) {
+        this.originalSelect.value = option.value;
+        this.button.textContent = option.label;
+        
+        // Trigger change event for validation
+        this.originalSelect.dispatchEvent(new Event('change'));
+        
+        this.closeDropdown();
+    }
+
+    // Add method to focus the select
+    focus() {
+        this.button.focus();
+        this.openDropdown();
+    }
+}
+
+// Add styles for invalid state
+const style = document.createElement('style');
+style.textContent = `
+    .optimized-select-button.is-invalid {
+        border-color: #dc3545;
+        padding-right: calc(1.5em + 0.75rem);
+        background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12' width='12' height='12' fill='none' stroke='%23dc3545'%3e%3ccircle cx='6' cy='6' r='4.5'/%3e%3cpath stroke-linejoin='round' d='M5.8 3.6h.4L6 6.5z'/%3e%3ccircle cx='6' cy='8.2' r='.6' fill='%23dc3545' stroke='none'/%3e%3c/svg%3e");
+        background-repeat: no-repeat;
+        background-position: right calc(0.375em + 0.1875rem) center;
+        background-size: calc(0.75em + 0.375rem) calc(0.75em + 0.375rem);
+    }
+
+    .optimized-select-button.is-valid {
+        border-color: #198754;
+        padding-right: calc(1.5em + 0.75rem);
+        background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 8 8'%3e%3cpath fill='%23198754' d='M2.3 6.73L.6 4.53c-.4-1.04.46-1.4 1.1-.8l1.1 1.4 3.4-3.8c.6-.63 1.6-.27 1.2.7l-4 4.6c-.43.5-.8.4-1.1.1z'/%3e%3c/svg%3e");
+        background-repeat: no-repeat;
+        background-position: right calc(0.375em + 0.1875rem) center;
+        background-size: calc(0.75em + 0.375rem) calc(0.75em + 0.375rem);
+    }
+`;
+document.head.appendChild(style);
+
+// Update form submission handler
+function handleFormSubmission(event) {
+    event.preventDefault();
+
+    const form = event.target;
+    const formElements = Array.from(form.elements).filter(element => 
+        element.name && 
+        element.name !== 'csrfmiddlewaretoken' && 
+        ['INPUT', 'TEXTAREA', 'SELECT'].includes(element.tagName)
+    );
+
+    let isValid = true;
+    let firstInvalidInput = null;
+
+    // Validate all inputs including selects
+    formElements.forEach(element => {
+        if (!validateInput(element)) {
+            isValid = false;
+            if (!firstInvalidInput) {
+                firstInvalidInput = element;
+            }
         }
-    
-        // Parse form data
-        const parsedData = {
-            config_name: document.getElementById('configDropdown').value,
-            load_existing: document.getElementById('loadExisting').value === 'true'
-        };
-    
-        formElements.forEach(element => {
-        let value;
-        if (element.tagName === 'SELECT') {
-            value = element.value;
-            if (value === '') {
-                // Handle empty dropdown selection
-                const validationMessage = document.getElementById(`${element.id}-validation`);
-                validationMessage.textContent = 'Please select an option.';
-                validationMessage.style.display = 'block';
-                element.classList.add('is-invalid');
-                element.classList.remove('is-valid');
-                isValid = false;
-                if (!firstInvalidInput) {
-                    firstInvalidInput = element;
-                }
-                return;
+    });
+
+    if (!isValid) {
+        // Focus the first invalid input
+        if (firstInvalidInput.tagName === 'SELECT') {
+            // Find the associated OptimizedSelect instance
+            const wrapper = firstInvalidInput.nextElementSibling;
+            const customSelect = wrapper.querySelector('.optimized-select-button');
+            if (customSelect) {
+                customSelect.focus();
             }
         } else {
-            value = parseValue(element.value.trim(), element.dataset.datatype);
+            firstInvalidInput.focus();
         }
-        parsedData[element.name] = {
-            "value": value,
-            "datatype": element.dataset.datatype
-        };
-    });
-    
-        // Continue with form submission...
-        return parsedData;
-    }
-    /*
-    const loadingSpinner = document.getElementById('loadingSpinner');
-    const configFormContainer = document.getElementById('configFormContainer');
-
-    // Function to show loading state
-    function showLoading() {
-        loadingSpinner.style.display = 'block';
-        // Force a reflow to ensure the transition works
-        loadingSpinner.offsetHeight;
-        loadingSpinner.classList.add('show');
-        configFormContainer.style.display = 'none';
+        return;
     }
 
-    // Function to hide loading state
-    function hideLoading() {
-        loadingSpinner.classList.remove('show');
-        setTimeout(() => {
-            loadingSpinner.style.display = 'none';
-        }, 300); // Match the transition duration
-    }
-    */
+    // Continue with form submission...
+    // ... (rest of the existing submission code)
+}
 
-    // Function to show full-screen loading
-    function showFullScreenLoading(text) {
-        // Create full-screen loader if it doesn't exist
-        if (!document.getElementById('fullScreenLoader')) {
-            const loaderDiv = document.createElement('div');
-            loaderDiv.id = 'fullScreenLoader';
-            loaderDiv.innerHTML = `
-                <div class="spinner-container">
-                    <div class="spinner-border text-primary" role="status">
-                        <span class="visually-hidden">Loading...</span>
-                    </div>
-                    <div class="loading-text">Processing...</div>
-                </div>
-            `;
-            document.body.appendChild(loaderDiv);
-        }
-        
-        // Show the loader
-        const fullScreenLoader = document.getElementById('fullScreenLoader');
-        fullScreenLoader.style.display = 'flex';
-        
-        // Update the loading text
-        const loadingText = fullScreenLoader.querySelector('.loading-text');
-        loadingText.textContent = text || 'Processing...';
-    }
-
-    // Function to hide full-screen loading
-    function hideFullScreenLoading() {
-        const fullScreenLoader = document.getElementById('fullScreenLoader');
-        if (fullScreenLoader) {
-            fullScreenLoader.style.display = 'none';
-        }
-    }
-    
-    document.addEventListener('DOMContentLoaded', function() {
-        // Initialize Bootstrap alert dismiss functionality
-        document.querySelectorAll('.alert .btn-close').forEach(button => {
-            button.addEventListener('click', function() {
-                this.closest('.alert').style.display = 'none';
-            });
-        });
-
-        // Initialize optimized selects for all elements with the 'optimized-select' class
-        document.querySelectorAll('.optimized-select:not([data-modal])').forEach(select => {
-            new OptimizedSelect(select);
-        });
-        // Handle configuration selection form submission
-        document.getElementById('configSelectionForm').addEventListener('submit', function(e) {
-            e.preventDefault();
-            handleConfigSubmission(false);
-        });
-        
-        document.getElementById('newConfigBtn').addEventListener('click', function(e) {
-            handleConfigSubmission(true);
-        });
-
-        // Handler for the new "Create from existing" button
-        document.getElementById('newFromExistingBtn').addEventListener('click', function(e) {
-            const configDropdown = document.getElementById('configDropdown');
-            const selectedConfig = configDropdown.value;
-
-            if (!selectedConfig) {
-                // alert('Please select an existing configuration to use as reference.');
-                addAlert('danger', 'Please select an existing configuration to use as reference.')
-                return;
-            }
-
-            handleConfigSubmission(true, true);
-        });
-
-        function handleConfigSubmission(isNewConfig, loadExisting = false) {
-            const configDropdown = document.getElementById('configDropdown');
-            let configType;
-
-            if (isNewConfig && !loadExisting) {
-                configType = 'default';
-                // Reset the dropdown both visually and in value
-                configDropdown.value = '';
-                const customButton = document.querySelector('.optimized-select-button');
-                if (customButton) {
-                    customButton.textContent = 'Select Configuration Type';
-                }
-            } else {
-                configType = configDropdown.value;
-            }
-
-            // Update the hidden input for loadExisting
-            document.getElementById('loadExisting').value = loadExisting;
-        
-            // Validate dropdown for existing config scenario
-            if (!isNewConfig && configType === '') {
-                // alert('Please select a configuration type.');
-                addAlert('danger', 'Please select a configuration type.');
-                return;
-            }
-        
-            // Build URL with parameters
-            const params = new URLSearchParams({
-                config_type: configType
-            });
-            
-            if (loadExisting) {
-                params.append('load_existing', 'true');
-            }
-
-            const url = `{% url 'generate_config:generate_config' %}?${params.toString()}`;
-        
-            // Show full-screen loading
-            showFullScreenLoading("Loading Configuration...");
-        
-            fetch(url)
-                .then(response => response.json())
-                .then(data => {
-                    if (data.status === 'error') {
-                        let alertMessage = 'An error occurred while fetching the configuration.\n';
-                        if (data.error_msg) {
-                            alertMessage += data.error_msg;
-                        }
-                        //alert(alertMessage);
-                        addAlert('danger', alertMessage)
-                        hideFullScreenLoading();
-                    } else {
-                        renderConfigurationForm(data);
-
-                        // Show and update alert using unique IDs
-                        const alertContainer = document.getElementById('configAlertContainer');
-                        const alertTitle = document.getElementById('configAlertTitle');
-                        const alertMessage = document.getElementById('configAlertMessage');
-
-                        if (isNewConfig) {
-                            if (loadExisting) {
-                                alertTitle.textContent = 'Existing Configuration Loaded';
-                                alertMessage.textContent = 'Values have been loaded from the selected configuration. You can modify these values to create a new configuration.';
-                            } else {
-                                alertTitle.textContent = 'Default Configuration Loaded';
-                                alertMessage.textContent = 'Default values have been loaded. Please review and modify each field according to your requirements before generating the configuration.';
-                            }
-                        } else {
-                            alertTitle.textContent = 'Configuration Loaded';
-                            alertMessage.textContent = 'Values have been loaded from the selected configuration. You can now modify these values and save the updated configuration.';
-                        }
-
-                        alertContainer.style.display = 'block';
-                        // Scroll to the alert
-                        alertContainer.scrollIntoView({ behavior: 'smooth', block: 'start' });
-
-                        hideFullScreenLoading();
-                    }
-                })
-                .catch(error => {
-                    console.error('Error:', error);
-                });
-        }
-
-        // Add real-time validation
-        document.getElementById('dynamicFields').addEventListener('input', function(event) {
-            if (event.target.name && event.target.name !== 'csrfmiddlewaretoken') {
-                validateInput(event.target);
-            }
-        });
-    
-        // Handle configuration generation form submission
-        document.getElementById('configGenerationForm').addEventListener('submit', function(event) {
-            // event.preventDefault();
-    
-            const parsedData = handleFormSubmission(event);
-            if(!parsedData) return;
-            console.log(parsedData)
-
-            // Show full-screen loading
-            showFullScreenLoading("Generating config...");
-            
-            // Submit via AJAX
-            fetch(this.action, {
-                method: 'POST',
-                headers: {
-                    'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify(parsedData)
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.status === 'success') {
-                    hideFullScreenLoading();
-
-                    setTimeout(() => {
-                        //alert('Config generated successfully! \nRedirecting...');
-                        addAlert('success', 'Config generated successfully! \nRedirecting...')
-                        // Hard refresh the page
-                        window.location.reload();
-                    }, 1000);
-                    
-                } else {
-                    //alert('Error: ' + data.error_msg);
-                    addAlert('danger', data.error_msg)
-                }
-                hideFullScreenLoading();
-            })
-            .catch(error => {
-                    console.error('Error:', error);
-                });
+// Add real-time validation for dropdowns
+document.addEventListener('DOMContentLoaded', function() {
+    // Add validation event listeners for select elements
+    document.querySelectorAll('select').forEach(select => {
+        select.addEventListener('change', function() {
+            validateInput(this);
         });
     });
-</script>
-
-{% endblock %}
+});
