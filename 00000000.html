@@ -1,143 +1,2787 @@
-// Update the OptimizedSelect class
-class OptimizedSelect {
-    constructor(originalSelect, options = {}) {
-        if(originalSelect.dataset.initialized){
-            return;
+{% extends 'base.html' %}
+
+{% block content %}
+
+<div class="alert-container px-5">
+
+</div>
+
+<div class="container container-fluid">
+
+    <h1 class="page-title">Coverage Report</h1>
+
+    <div class="card mb-3">
+
+        <div class="card-body">
+
+            <div class="row mb-3">
+
+                <div class="col-md-6">
+
+                    <div class="form-group">
+
+                        <label for="sp_name" class="form-label">Select SP:</label>
+
+                        <div class="input-group">
+
+                            <select id="sp_name" name="sp_name" class="form-select">
+
+                                <option value="">--No SP Selected--</option>
+
+                                {% for sp_name in sp_names %}
+
+                                    <option value="{{ sp_name }}" {% if sp_name == selected_sp %}selected{% endif %}>{{ sp_name }}</option>
+
+                                {% endfor %}
+
+                            </select>
+
+                            <button id="getDataBtn" class="btn btn-primary">Get Data</button>
+
+                        </div>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+            <div id="teamFilters" style="display: none;" class="mb-3">
+
+                <div class="btn-group" role="group" aria-label="Test Team filters">
+
+                    <input type="radio" class="btn-check team-filter" name="team-filter" id="all" value="all" checked>
+
+                    <label class="btn btn-outline-primary" for="all">All Teams</label>
+
+                    <input type="radio" class="btn-check team-filter" name="team-filter" id="bt" value="BT">
+
+                    <label class="btn btn-outline-primary" for="bt">BT</label>
+
+                    <input type="radio" class="btn-check team-filter" name="team-filter" id="wlan" value="WLAN">
+
+                    <label class="btn btn-outline-primary" for="wlan">WLAN</label>
+
+                </div>
+
+            </div>
+
+            <div id="tableContainer" class="table-responsive">
+
+                <!-- Table will be rendered here -->
+
+            </div>
+
+        </div>
+
+    </div>
+
+</div>
+
+<style>
+
+.container {
+
+    padding: 2rem;
+
+    max-width: 100%;
+
+}
+
+.btn-group {
+
+    margin-right: 10px;
+
+}
+
+.btn-group .btn {
+
+    margin-right: 2px;
+
+}
+
+.coverage-table {
+
+    border-collapse: collapse;
+
+    width: 100%;
+
+    margin: 20px 0;
+
+    table-layout: auto;  /* Allow columns to size based on content */
+
+    border: 1px solid black; /* Solid black border for the table */
+
+}
+
+.coverage-table th,
+
+.coverage-table td {
+
+    border: 1px solid black; /* Solid black borders for table cells */
+
+    padding: 8px;
+
+    text-align: left;
+
+    font-size: 15px; /* Set font size to 15px */
+
+    color: black; /* Set text color to black */
+
+    white-space: nowrap;  /* Prevent wrapping in data cells */
+
+}
+
+.coverage-table th {
+
+    background-color: #328AA4; /* Set background color for headers */
+
+    font-weight: bold;
+
+    color: white; /* Set text color for headers to white */
+
+    position: relative;
+
+    white-space: normal;  /* Allow header text to wrap */
+
+    word-wrap: break-word;  /* Break long words if necessary */
+
+    min-width: 50px;  /* Minimum width for columns */
+
+    max-width: 150px;  /* Maximum width for headers */
+
+    overflow: hidden;
+
+    text-overflow: ellipsis;  /* Show ellipsis for overflowing header text */
+
+}
+
+.coverage-table tbody tr:nth-child(even) {
+
+    background-color: #f9f9f9;
+
+}
+
+/* Add horizontal scrolling for the table container if needed */
+
+.table-responsive {
+
+    overflow-x: auto;
+
+    max-width: 100%;
+
+}
+
+</style>
+
+<script>
+
+    document.addEventListener('DOMContentLoaded', function() {
+
+        const getDataBtn = document.getElementById('getDataBtn');
+
+        const teamFilters = document.querySelectorAll('.team-filter');
+
+        const teamFiltersContainer = document.getElementById('teamFilters');
+
+        let selectedTeams = ['all'];
+
+        let tableData = null;
+
+        let crVerificationData = null;  // Global variable to store CR Verification data
+
+        let crVerificationColumnNames = null;  // Global variable to store CR Verification Coloumns data
+
+        function adjustColumnWidths() {
+
+            const table = document.querySelector('.coverage-table');
+
+            if (!table) return;
+
+        
+
+            // Reset any previously set widths
+
+            const cells = table.querySelectorAll('th, td');
+
+            cells.forEach(cell => cell.style.width = '');
+
+        
+
+            // Let the browser render the table first
+
+            setTimeout(() => {
+
+                const headerCells = table.querySelectorAll('th');
+
+                const bodyCells = Array.from(table.querySelectorAll('tbody tr:first-child td'));
+
+        
+
+                // Calculate maximum width needed for data cells in each column
+
+                bodyCells.forEach((cell, index) => {
+
+                    const columnCells = Array.from(table.querySelectorAll(`tbody td:nth-child(${index + 1})`));
+
+                    const maxWidth = Math.max(...columnCells.map(cell => cell.offsetWidth));
+
+                    
+
+                    // Set width based on data content
+
+                    columnCells.forEach(cell => cell.style.width = `${maxWidth}px`);
+
+                    if (headerCells[index]) {
+
+                        headerCells[index].style.width = `${maxWidth}px`;
+
+                    }
+
+                });
+
+            }, 0);
+
         }
 
-        this.originalSelect = originalSelect;
-        this.options = options;
-        this.itemHeight = 35;
-        this.visibleItems = 8;
-        this.allOptions = Array.from(originalSelect.options).map(opt => ({
-            value: opt.value,
-            label: opt.text
-        }));
-        this.isOpen = false;
-
-        originalSelect.dataset.initialized = 'true';
     
-        this.init();
 
-        // Add validation styling to button
-        this.button.classList.add('form-select');
-        
-        // Add change event listener for validation
-        this.originalSelect.addEventListener('change', () => {
-            validateInput(this.originalSelect);
+        // Handle team filter changes
+
+        teamFilters.forEach(filter => {
+
+            filter.addEventListener('change', (e) => {
+
+                const selectedValue = e.target.value;
+
+                if (selectedValue === 'all') {
+
+                    selectedTeams = ['all'];
+
+                    if (tableData) {
+
+                        renderCoverageTable(filterData(tableData, selectedTeams), 'tableContainer');
+
+                    }
+
+                } else {
+
+                    selectedTeams = [selectedValue];
+
+                    if (tableData) {
+
+                        const cumulativeData = calculateCumulativeMetrics(tableData, selectedValue);
+
+                        renderCumulativeTable(tableData, cumulativeData, 'tableContainer');
+
+                    }
+
+                }
+
+            });
+
         });
 
-        // Store instance in the select element
-        originalSelect.optimizedSelect = this;
-    }
+    
 
-    // ... (keep existing methods)
+        function setLoadingState(isLoading) {
 
-    focus() {
-        // Focus the button and open the dropdown
-        this.button.focus();
-        this.openDropdown();
-        
-        // Scroll the dropdown into view if needed
-        this.dropdown.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-    }
+            getDataBtn.disabled = isLoading;
 
-    openDropdown() {
-        this.isOpen = true;
-        this.dropdown.style.display = 'block';
-        this.searchInput.value = '';
-        this.searchInput.focus();
-        this.filterAndRenderOptions();
-    }
+            getDataBtn.innerHTML = isLoading ? 'Loading...' : 'Get Data';
 
-    // ... (keep other existing methods)
-}
-
-// Update the handleFormSubmission function
-function handleFormSubmission(event) {
-    event.preventDefault();
-
-    const form = event.target;
-    const formElements = Array.from(form.elements).filter(element => 
-        element.name && 
-        element.name !== 'csrfmiddlewaretoken' && 
-        ['INPUT', 'TEXTAREA', 'SELECT'].includes(element.tagName)
-    );
-
-    let isValid = true;
-    let firstInvalidInput = null;
-
-    // Validate all inputs
-    formElements.forEach(element => {
-        if (!validateInput(element)) {
-            isValid = false;
-            if (!firstInvalidInput) {
-                firstInvalidInput = element;
-            }
         }
+
+    
+
+        // Handle Get Data button click
+
+        getDataBtn.addEventListener('click', async function() {
+
+            // Reset team filter to "All"
+
+            const teamFilters = document.querySelectorAll('.team-filter');
+
+            teamFilters.forEach(filter => {
+
+                if (filter.value === 'all') {
+
+                filter.checked = true;
+
+                } else {
+
+                filter.checked = false;
+
+                }
+
+            });
+
+            const spSelect = document.getElementById('sp_name');
+
+            const selectedSp = spSelect.value;
+
+            if (!selectedSp) {
+
+                addAlert('danger', 'Please select an SP first')
+
+                // alert('Please select an SP first');
+
+                return;
+
+            }
+
+            setLoadingState(true);
+
+            const params = new URLSearchParams();
+
+            params.append('sp_name', selectedSp);
+
+            if (selectedTeams.includes('all')) {
+
+                params.append('teams', 'all');
+
+            } else {
+
+                selectedTeams.forEach(team => params.append('teams', team));
+
+            }
+
+            try {
+
+                const response = await fetch(`{% url 'cst_reporting_views:coverage_report' %}?${params.toString()}`);
+
+                if (!response.ok) throw new Error('Network response was not ok');
+
+                const responseData = await response.json();
+
+                tableData = responseData["table_data"];
+
+                console.log(tableData);
+
+                teamFiltersContainer.style.display = 'block';
+
+                // Fetch CR Verification data in the background
+
+                console.log("Fetching CR Verification")
+
+                fetchCRVerificationData();
+
+                
+
+                console.log("Fetching Coverage Report Data")
+
+                renderCoverageTable(tableData, 'tableContainer');
+
+            } catch (error) {
+
+                console.error('Error fetching data:', error);
+
+                addAlert('danger', `Error fetching data. Please try again.\n ${error}`)
+
+                //alert('Error fetching data. Please try again.');
+
+            } finally {
+
+                setLoadingState(false);
+
+            }
+
+        });
+
+        // Function to fetch CR Verification data
+
+        async function fetchCRVerificationData() {
+
+            const spSelect = document.getElementById('sp_name');
+
+            const selectedSp = spSelect.value;
+
+            if (!selectedSp) return;
+
+            const params = new URLSearchParams();
+
+            params.append('sp_name', selectedSp);
+
+            try {
+
+                const response = await fetch(`{% url 'cst_reporting_views:get_cr_verification_data' %}?${params.toString()}`);
+
+                if (!response.ok) throw new Error('Network response was not ok');
+
+                const responseData = await response.json();
+
+                crVerificationData = responseData["data"];
+
+                crVerificationColumnNames = responseData["column_names"];
+
+                console.log('CR Verification Data Fetched:', crVerificationData);
+
+            } catch (error) {
+
+                console.error('Error fetching CR Verification data:', error);
+
+            }
+
+        }
+
+    
+
+        // Helper function to filter data based on selected teams
+
+        function filterData(data, selectedTeams) {
+
+            if (selectedTeams.includes('all')) {
+
+                return data;
+
+            }
+
+            return data.map(sp => ({
+
+                ...sp,
+
+                teams: sp.teams.filter(team => selectedTeams.includes(team.team_name))
+
+            })).filter(sp => sp.teams.length > 0);
+
+        }
+
+    
+
+        // Helper functions
+
+        function calculateSpRowspan(sp) {
+
+            return sp.teams.reduce((acc, team) => {
+
+                return acc + calculateTeamRowspan(team);
+
+            }, 0);
+
+        }
+
+    
+
+        function calculateTeamRowspan(team) {
+
+            return team.phases.reduce((acc, phase) => {
+
+                if (phase.coverage_types) {
+
+                    return acc + phase.coverage_types.length;
+
+                }
+
+                return acc + 1;
+
+            }, 0);
+
+        }
+
+    
+
+        function formatPercentage(value) {
+
+            return value ? value.toFixed(2) + '%' : '0.00%';
+
+        }
+
+    
+
+        // Function to render the coverage table
+
+        function renderCoverageTable(data, targetElementId) {
+
+            const table = document.createElement('table');
+
+            table.className = 'coverage-table';
+
+            // Create header
+
+            const thead = document.createElement('thead');
+
+            const headerRow = document.createElement('tr');
+
+            const headers = [
+
+                'SP Name', 'Test Team', 'Date', 'Phase', 'Coverage Type',
+
+                'Total TCs', 'Coverage', 'Coverage %', 'Passed', 'Pass %',
+
+                'Failed', 'Fail %', 'Blocked', 'Block %', 'Unique Issues Issued'
+
+            ];
+
+            headers.forEach(header => {
+
+                const th = document.createElement('th');
+
+                th.textContent = header;
+
+                headerRow.appendChild(th);
+
+            });
+
+            thead.appendChild(headerRow);
+
+            table.appendChild(thead);
+
+            // Create table body
+
+            const tbody = document.createElement('tbody');
+
+            data.forEach(sp => {
+
+                const spRowspan = calculateSpRowspan(sp);
+
+                let isFirstSpRow = true;
+
+                sp.teams.forEach(team => {
+
+                    const teamRowspan = calculateTeamRowspan(team);
+
+                    let isFirstTeamRow = true;
+
+                    team.phases.forEach(phase => {
+
+                        if (phase.coverage_types) {
+
+                            // Handle multiple coverage types
+
+                            phase.coverage_types.forEach((coverageType, ctIndex) => {
+
+                                const tr = document.createElement('tr');
+
+                                // SP Name column
+
+                                if (isFirstSpRow) {
+
+                                    const tdSp = document.createElement('td');
+
+                                    tdSp.textContent = sp.sp_name;
+
+                                    tdSp.rowSpan = spRowspan;
+
+                                    tr.appendChild(tdSp);
+
+                                    isFirstSpRow = false;
+
+                                }
+
+                                // Team Name column
+
+                                if (isFirstTeamRow) {
+
+                                    const tdTeam = document.createElement('td');
+
+                                    tdTeam.textContent = team.team_name;
+
+                                    tdTeam.rowSpan = teamRowspan;
+
+                                    tr.appendChild(tdTeam);
+
+                                    isFirstTeamRow = false;
+
+                                }
+
+                                // Phase date
+
+                                if (ctIndex === 0) {
+
+                                    const tdDate = document.createElement('td');
+
+                                    tdDate.textContent = phase.date;
+
+                                    tdDate.rowSpan = phase.coverage_types.length;
+
+                                    tr.appendChild(tdDate);
+
+                                    const tdPhase = document.createElement('td');
+
+                                    tdPhase.textContent = phase.phase;
+
+                                    tdPhase.rowSpan = phase.coverage_types.length;
+
+                                    tr.appendChild(tdPhase);
+
+                                }
+
+                                // Coverage type and metrics
+
+                                const cells = [
+
+                                    coverageType.coverage_type,
+
+                                    coverageType.metrics.total || '0',
+
+                                    coverageType.metrics.coverage || '0',
+
+                                    formatPercentage(coverageType.metrics.coverage_percentage),
+
+                                    coverageType.metrics.passed || '0',
+
+                                    formatPercentage(coverageType.metrics.passed_percentage),
+
+                                    coverageType.metrics.failed || '0',
+
+                                    formatPercentage(coverageType.metrics.failed_percentage),
+
+                                    coverageType.metrics.blocked || '0',
+
+                                    formatPercentage(coverageType.metrics.blocked_percentage),
+
+                                    coverageType.unique_issue_count
+
+                                ];
+
+                                cells.forEach(cellData => {
+
+                                    const td = document.createElement('td');
+
+                                    td.textContent = cellData;
+
+                                    tr.appendChild(td);
+
+                                });
+
+                                tbody.appendChild(tr);
+
+                            });
+
+                        } else {
+
+                            // Handle single coverage type
+
+                            const tr = document.createElement('tr');
+
+                            if (isFirstSpRow) {
+
+                                const tdSp = document.createElement('td');
+
+                                tdSp.textContent = sp.sp_name;
+
+                                tdSp.rowSpan = spRowspan;
+
+                                tr.appendChild(tdSp);
+
+                                isFirstSpRow = false;
+
+                            }
+
+                            if (isFirstTeamRow) {
+
+                                const tdTeam = document.createElement('td');
+
+                                tdTeam.textContent = team.team_name;
+
+                                tdTeam.rowSpan = teamRowspan;
+
+                                tr.appendChild(tdTeam);
+
+                                isFirstTeamRow = false;
+
+                            }
+
+                            const cells = [
+
+                                phase.date,
+
+                                phase.phase,
+
+                                'All',
+
+                                phase.metrics.total || '0',
+
+                                phase.metrics.coverage || '0',
+
+                                formatPercentage(phase.metrics.coverage_percentage),
+
+                                phase.metrics.passed || '0',
+
+                                formatPercentage(phase.metrics.passed_percentage),
+
+                                phase.metrics.failed || '0',
+
+                                formatPercentage(phase.metrics.failed_percentage),
+
+                                phase.metrics.blocked || '0',
+
+                                formatPercentage(phase.metrics.blocked_percentage),
+
+                                phase.unique_issue_count
+
+                            ];
+
+                            cells.forEach(cellData => {
+
+                                const td = document.createElement('td');
+
+                                td.textContent = cellData;
+
+                                tr.appendChild(td);
+
+                            });
+
+                            tbody.appendChild(tr);
+
+                        }
+
+                    });
+
+                });
+
+            });
+
+            table.appendChild(tbody);
+
+            // Add basic styles
+
+            const style = document.createElement('style');
+
+            style.textContent = `
+
+            .coverage-table {
+
+                border-collapse: collapse;
+
+                width: 100%;
+
+                margin: 20px 0;
+
+            }
+
+            .coverage-table th, .coverage-table td {
+
+                border: 1px solid #ddd;
+
+                padding: 8px;
+
+                text-align: left;
+
+            }
+
+            .coverage-table th {
+
+                background-color: #f5f5f5;
+
+                font-weight: bold;
+
+            }
+
+            .coverage-table tbody tr:nth-child(even) {
+
+                background-color: #f9f9f9;
+
+            }
+
+            `;
+
+            document.head.appendChild(style);
+
+            // Render the table
+
+            const targetElement = document.getElementById(targetElementId);
+
+            targetElement.innerHTML = '';
+
+            targetElement.appendChild(table);
+
+            // Adjust column widths
+
+            adjustColumnWidths();
+
+        }
+
+        // Configuration for list display
+
+        const LIST_THRESHOLD = 15;
+
+        // Function to create a modal for displaying full lists
+
+        function formatLongList(list, count) {
+
+            // Create a wrapper div
+
+            const wrapper = document.createElement('div');
+
+            wrapper.style.cssText = `
+
+                display: flex;
+
+                flex-direction: column;
+
+                max-width: 300px;
+
+            `;
+
+        
+
+            // Total count display
+
+            const totalCountEl = document.createElement('div');
+
+            totalCountEl.textContent = `Total: ${count}`;
+
+            totalCountEl.style.cssText = `
+
+                font-weight: 500;
+
+                margin-bottom: 5px;
+
+                text-align: left;
+
+            `;
+
+            wrapper.appendChild(totalCountEl);
+
+        
+
+            // List display logic remains similar to previous implementation
+
+            if (count <= LIST_THRESHOLD) {
+
+                const listContainer = document.createElement('div');
+
+                listContainer.style.cssText = `
+
+                    display: grid;
+
+                    grid-template-columns: repeat(3, 1fr);
+
+                    gap: 5px;
+
+                    max-width: 420px;
+
+                    max-height: 200px;
+
+                    overflow-y: auto;
+
+                `;
+
+        
+
+                list.forEach(item => {
+
+                    const itemEl = document.createElement('div');
+
+                    itemEl.textContent = item;
+
+                    itemEl.style.cssText = `
+
+                        border: 1px solid #eee;
+
+                        padding: 2px;
+
+                        font-size: 0.8em;
+
+                        word-break: break-all;
+
+                        background-color: #d4e4e6;
+
+                        border-radius: 3px;
+
+                    `;
+
+                    listContainer.appendChild(itemEl);
+
+                });
+
+        
+
+                wrapper.appendChild(listContainer);
+
+        
+
+                // Add more link if needed
+
+                if (count > LIST_THRESHOLD) {
+
+                    const moreLink = document.createElement('a');
+
+                    moreLink.href = '#';
+
+                    moreLink.textContent = 'more...';
+
+                    moreLink.className = 'show-more-list';
+
+                    moreLink.setAttribute('data-title', `Full List (${count} items)`);
+
+                    moreLink.setAttribute('data-list', encodeURIComponent(JSON.stringify(list)));
+
+                    moreLink.style.cssText = `
+
+                        display: block;
+
+                        text-align: center;
+
+                        margin-top: 5px;
+
+                    `;
+
+                    wrapper.appendChild(moreLink);
+
+                }
+
+            } else {
+
+                const displayList = list.slice(0, LIST_THRESHOLD);
+
+                const listContainer = document.createElement('div');
+
+                listContainer.style.cssText = `
+
+                    display: grid;
+
+                    grid-template-columns: repeat(3, 1fr);
+
+                    gap: 5px;
+
+                    max-width: 420px;
+
+                    max-height: 200px;
+
+                    overflow-y: auto;
+
+                `;
+
+        
+
+                displayList.forEach(item => {
+
+                    const itemEl = document.createElement('div');
+
+                    itemEl.textContent = item;
+
+                    itemEl.style.cssText = `
+
+                        border: 1px solid #eee;
+
+                        padding: 2px;
+
+                        font-size: 0.8em;
+
+                        word-break: break-all;
+
+                        background-color: #d4e4e6;
+
+                        border-radius: 3px;
+
+                    `;
+
+                    listContainer.appendChild(itemEl);
+
+                });
+
+        
+
+                wrapper.appendChild(listContainer);
+
+        
+
+                // More link
+
+                const moreLink = document.createElement('a');
+
+                moreLink.href = '#';
+
+                moreLink.textContent = `more... (${count} total)`;
+
+                moreLink.className = 'show-more-list';
+
+                moreLink.setAttribute('data-title', `Full List (${count} items)`);
+
+                moreLink.setAttribute('data-list', encodeURIComponent(JSON.stringify(list)));
+
+                moreLink.style.cssText = `
+
+                    display: block;
+
+                    text-align: center;
+
+                    margin-top: 5px;
+
+                `;
+
+                wrapper.appendChild(moreLink);
+
+            }
+
+        
+
+            return wrapper.innerHTML;
+
+        }
+
+        
+
+        function createListModal(title, list) {
+
+            // First, remove any existing modals and overlays to prevent multiple layers
+
+            const existingModal = document.querySelector('.list-modal');
+
+            const existingOverlay = document.querySelector('.list-modal-overlay');
+
+            if (existingModal) existingModal.remove();
+
+            if (existingOverlay) existingOverlay.remove();
+
+        
+
+            // Create modal container
+
+            const modal = document.createElement('div');
+
+            modal.className = 'list-modal';
+
+            modal.style.cssText = `
+
+                position: fixed;
+
+                top: 50%;
+
+                left: 50%;
+
+                transform: translate(-50%, -50%);
+
+                background: white;
+
+                border: 1px solid #ccc;
+
+                box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+
+                width: 80vw;
+
+                max-width: 1000px;
+
+                max-height: 70vh;
+
+                overflow: hidden;
+
+                z-index: 1000;
+
+                border-radius: 8px;
+
+            `;
+
+        
+
+            // Header with close functionality
+
+            const header = document.createElement('div');
+
+            header.style.cssText = `
+
+                display: flex;
+
+                justify-content: space-between;
+
+                align-items: center;
+
+                padding: 10px;
+
+                border-bottom: 1px solid #eee;
+
+                background-color: #328AA4;
+
+                color: white;
+
+            `;
+
+            
+
+            // Title
+
+            const titleEl = document.createElement('h3');
+
+            titleEl.textContent = `Full List (${list.length} items)`;
+
+            titleEl.style.margin = '0';
+
+        
+
+            // Close button with clear close functionality
+
+            const closeBtn = document.createElement('button');
+
+            closeBtn.textContent = '✕';
+
+            closeBtn.style.cssText = `
+
+                background: none;
+
+                border: none;
+
+                font-size: 20px;
+
+                cursor: pointer;
+
+                color: white;
+
+            `;
+
+        
+
+            // Overlay with same close functionality
+
+            const overlay = document.createElement('div');
+
+            overlay.className = 'list-modal-overlay';
+
+            overlay.style.cssText = `
+
+                position: fixed;
+
+                top: 0;
+
+                left: 0;
+
+                width: 100%;
+
+                height: 100%;
+
+                background: rgba(0,0,0,0.5);
+
+                z-index: 999;
+
+            `;
+
+        
+
+            // Unified close function
+
+            function closeModal() {
+
+                if (modal.parentNode) modal.remove();
+
+                if (overlay.parentNode) overlay.remove();
+
+            }
+
+        
+
+            // Add close event listeners
+
+            closeBtn.addEventListener('click', closeModal);
+
+            overlay.addEventListener('click', closeModal);
+
+        
+
+            header.appendChild(titleEl);
+
+            header.appendChild(closeBtn);
+
+        
+
+            // Rest of the modal creation remains the same...
+
+            const content = document.createElement('div');
+
+            content.style.cssText = `
+
+                max-height: 50vh;
+
+                overflow-y: auto;
+
+                padding: 10px;
+
+            `;
+
+        
+
+            const listContainer = document.createElement('div');
+
+            listContainer.style.cssText = `
+
+                display: grid;
+
+                grid-template-columns: repeat(4, 1fr);
+
+                gap: 10px;
+
+                padding: 10px;
+
+            `;
+
+        
+
+            list.forEach(item => {
+
+                const itemEl = document.createElement('div');
+
+                itemEl.textContent = item;
+
+                itemEl.style.cssText = `
+
+                    border: 1px solid #eee;
+
+                    padding: 5px;
+
+                    background-color: #d4e4e6;
+
+                    border-radius: 4px;
+
+                    word-break: break-all;
+
+                `;
+
+                listContainer.appendChild(itemEl);
+
+            });
+
+        
+
+            content.appendChild(listContainer);
+
+        
+
+            modal.appendChild(header);
+
+            modal.appendChild(content);
+
+        
+
+            document.body.appendChild(overlay);
+
+            document.body.appendChild(modal);
+
+        }
+
+        // Modify calculateCumulativeMetrics to merge unique lists
+
+        function calculateCumulativeMetrics(data, selectedTeam) {
+
+            return data
+
+                .filter(sp => sp.teams.some(team => team.team_name === selectedTeam))
+
+                .map(sp => {
+
+                    const teamData = sp.teams.find(team => team.team_name === selectedTeam);
+
+                    if (!teamData) return null;
+
+                    const processedPhases = teamData.phases.reduce((accumPhases, phase) => {
+
+                        // Cumulative metrics calculation (similar to previous implementation)
+
+                        let totalTCs = 0;
+
+                        let totalCoverage = 0;
+
+                        let totalPassed = 0;
+
+                        let totalFailed = 0;
+
+                        let totalBlocked = 0;
+
+                        
+
+                        // Merged lists for unique CRs and JIRAs
+
+                        const mergedUniqueCRs = new Set();
+
+                        const mergedUniqueJiras = new Set();
+
+                        if (phase.coverage_types) {
+
+                            phase.coverage_types.forEach(ct => {
+
+                                // Metrics calculation
+
+                                totalTCs += parseInt(ct.metrics.total || 0);
+
+                                totalCoverage += parseInt(ct.metrics.coverage || 0);
+
+                                totalPassed += parseInt(ct.metrics.passed || 0);
+
+                                totalFailed += parseInt(ct.metrics.failed || 0);
+
+                                totalBlocked += parseInt(ct.metrics.blocked || 0);
+
+                                // Merge unique lists
+
+                                ct.unique_cr_list.forEach(cr => mergedUniqueCRs.add(cr));
+
+                                ct.unique_jira_list.forEach(jira => mergedUniqueJiras.add(jira));
+
+                            });
+
+                        } else {
+
+                            // Similar metrics calculation for non-coverage type phase
+
+                            totalTCs = parseInt(phase.metrics.total || 0);
+
+                            totalCoverage = parseInt(phase.metrics.coverage || 0);
+
+                            totalPassed = parseInt(phase.metrics.passed || 0);
+
+                            totalFailed = parseInt(phase.metrics.failed || 0);
+
+                            totalBlocked = parseInt(phase.metrics.blocked || 0);
+
+                            // Merge unique lists directly from phase
+
+                            (phase.unique_cr_list || []).forEach(cr => mergedUniqueCRs.add(cr));
+
+                            (phase.unique_jira_list || []).forEach(jira => mergedUniqueJiras.add(jira));
+
+                        }
+
+                        const coveragePercentage = totalTCs > 0 ? (totalCoverage / totalTCs) * 100 : 0;
+
+                        const passPercentage = totalTCs > 0 ? (totalPassed / totalTCs) * 100 : 0;
+
+                        const failPercentage = totalTCs > 0 ? (totalFailed / totalTCs) * 100 : 0;
+
+                        const blockPercentage = totalTCs > 0 ? (totalBlocked / totalTCs) * 100 : 0;
+
+                        // Convert sets to sorted arrays
+
+                        const uniqueCRList = Array.from(mergedUniqueCRs).sort();
+
+                        const uniqueJiraList = Array.from(mergedUniqueJiras).sort();
+
+                        accumPhases.push({
+
+                            phase: phase.phase,
+
+                            metrics: {
+
+                                total: totalTCs,
+
+                                coverage: totalCoverage,
+
+                                coverage_percentage: coveragePercentage,
+
+                                passed: totalPassed,
+
+                                passed_percentage: passPercentage,
+
+                                failed: totalFailed,
+
+                                failed_percentage: failPercentage,
+
+                                blocked: totalBlocked,
+
+                                blocked_percentage: blockPercentage
+
+                            },
+
+                            unique_cr_list: uniqueCRList,
+
+                            unique_cr_count: uniqueCRList.length,
+
+                            unique_jira_list: uniqueJiraList,
+
+                            unique_jira_count: uniqueJiraList.length
+
+                        });
+
+                        return accumPhases;
+
+                    }, []);
+
+                    return {
+
+                        phases: processedPhases
+
+                    };
+
+                })
+
+                .filter(Boolean);
+
+        }
+
+        
+
+        function createExpandButton() {
+
+            const expandBtn = document.createElement('button');
+
+            expandBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#328AA4" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" class="feather feather-plus-circle">
+
+                <circle cx="12" cy="12" r="10"></circle>
+
+                <line x1="12" y1="8" x2="12" y2="16"></line>
+
+                <line x1="8" y1="12" x2="16" y2="12"></line>
+
+            </svg>`;
+
+            expandBtn.className = 'expand-btn';
+
+            expandBtn.style.cssText = `
+
+                background: none;
+
+                border: none;
+
+                cursor: pointer;
+
+                padding: 4px;
+
+                transition: transform 0.2s ease;
+
+            `;
+
+            
+
+            return expandBtn;
+
+        }
+
+        // Calculation function for inner table 1
+
+        function calculateInnerTable1Metrics(phaseData, tableData, selectedTeam) {
+
+            // Find the SP and team in the original table data
+
+            const spData = tableData.find(sp => sp.sp_name === phaseData.sp_name);
+
+            if (!spData) return [];
+
+        
+
+            // Find the specific team data
+
+            const teamData = spData.teams.find(team => team.team_name === selectedTeam);
+
+            if (!teamData) return [];
+
+        
+
+            // Filter phases that match the current phase and have coverage types
+
+            const matchingPhases = teamData.phases.filter(
+
+                phase => phase.phase === phaseData.phase && phase.coverage_types
+
+            );
+
+        
+
+            // Process coverage types
+
+            const detailedMetrics = [];
+
+            matchingPhases.forEach(phase => {
+
+                if (phase.coverage_types) {
+
+                    phase.coverage_types.forEach(coverageType => {
+
+                        detailedMetrics.push({
+
+                            coverage_type: coverageType.coverage_type,
+
+                            metrics: coverageType.metrics,
+
+                            unique_cr_list: coverageType.unique_cr_list || [],
+
+                            unique_cr_count: coverageType.unique_cr_list ? coverageType.unique_cr_list.length : 0,
+
+                            unique_jira_list: coverageType.unique_jira_list || [],
+
+                            unique_jira_count: coverageType.unique_jira_list ? coverageType.unique_jira_list.length : 0
+
+                        });
+
+                    });
+
+                }
+
+            });
+
+        
+
+            return detailedMetrics;
+
+        }
+
+        // Modify renderInnerTable1 to pass additional parameters
+
+        function renderInnerTable1(phaseData, targetRow, tableData) {
+
+            // Get the selected team from the team filter
+
+            const selectedTeam = document.querySelector('input[name="team-filter"]:checked').value;
+
+            // Calculate detailed metrics using the full table data
+
+            const detailedMetrics = calculateInnerTable1Metrics(phaseData, tableData, selectedTeam);
+
+            // Create inner table
+
+            const innerTable = document.createElement('table');
+
+            innerTable.className = 'coverage-table inner-table-1';
+
+            innerTable.style.width = '100%';
+
+            // Create header (same as before)
+
+            const thead = document.createElement('thead');
+
+            const headerRow = document.createElement('tr');
+
+            const headers = [
+
+                'Coverage Type', 
+
+                'Total TCs',
+
+                'Coverage', 'Coverage %',
+
+                'Passed', 'Pass %',
+
+                'Failed', 'Fail %',
+
+                'Blocked', 'Block %',
+
+                'Unique CRs',
+
+                'Unique JIRAs'
+
+            ];
+
+            headers.forEach(header => {
+
+                const th = document.createElement('th');
+
+                th.textContent = header;
+
+                headerRow.appendChild(th);
+
+            });
+
+            thead.appendChild(headerRow);
+
+            innerTable.appendChild(thead);
+
+            // Create body
+
+            const tbody = document.createElement('tbody');
+
+            
+
+            detailedMetrics.forEach(entry => {
+
+                const tr = document.createElement('tr');
+
+                const cells = [
+
+                    entry.coverage_type,
+
+                    entry.metrics.total,
+
+                    entry.metrics.coverage,
+
+                    formatPercentage(entry.metrics.coverage_percentage),
+
+                    entry.metrics.passed,
+
+                    formatPercentage(entry.metrics.passed_percentage),
+
+                    entry.metrics.failed,
+
+                    formatPercentage(entry.metrics.failed_percentage),
+
+                    entry.metrics.blocked,
+
+                    formatPercentage(entry.metrics.blocked_percentage)
+
+                ];
+
+                cells.forEach(cellData => {
+
+                    const td = document.createElement('td');
+
+                    td.textContent = cellData;
+
+                    tr.appendChild(td);
+
+                });
+
+                // Unique CRs column
+
+                const crTd = document.createElement('td');
+
+                crTd.innerHTML = formatLongList(entry.unique_cr_list, entry.unique_cr_count);
+
+                tr.appendChild(crTd);
+
+                // Unique JIRAs column
+
+                const jiraTd = document.createElement('td');
+
+                jiraTd.innerHTML = formatLongList(entry.unique_jira_list, entry.unique_jira_count);
+
+                tr.appendChild(jiraTd);
+
+                tbody.appendChild(tr);
+
+            });
+
+            innerTable.appendChild(tbody);
+
+            // Create a new row to span across all columns
+
+            const innerTableRow = document.createElement('tr');
+
+            const innerTableCell = document.createElement('td');
+
+            innerTableCell.setAttribute('colspan', '13');
+
+            innerTableCell.appendChild(innerTable);
+
+            innerTableRow.appendChild(innerTableCell);
+
+            innerTableRow.classList.add('inner-table-1-row');
+
+            // Insert the inner table row after the clicked row
+
+            targetRow.insertAdjacentElement('afterend', innerTableRow);
+
+            // Add event listeners for "more" links in the inner table
+
+            innerTableCell.addEventListener('click', (e) => {
+
+                if (e.target.classList.contains('show-more-list')) {
+
+                    e.preventDefault();
+
+                    const title = e.target.getAttribute('data-title');
+
+                    const list = JSON.parse(decodeURIComponent(e.target.getAttribute('data-list')));
+
+                    createListModal(title, list);
+
+                }
+
+            });
+
+        }
+
+        function renderCompleteReportInCumulativeTable(tableData, data, targetElement) {
+
+            targetElement.innerHTML = ''; // Clear existing content
+
+            // Create table element
+
+            const table = document.createElement('table');
+
+            table.className = 'coverage-table';
+
+        
+
+            // Create header
+
+            const thead = document.createElement('thead');
+
+            const headerRow = document.createElement('tr');
+
+            const headers = [
+
+                '', // New column for expand/collapse icon
+
+                'Phase', 
+
+                'Total TCs',
+
+                'Coverage', 'Coverage %',
+
+                'Passed', 'Pass %',
+
+                'Failed', 'Fail %',
+
+                'Blocked', 'Block %',
+
+                'Unique CRs',
+
+                'Unique JIRAs'
+
+            ];
+
+            headers.forEach(header => {
+
+                const th = document.createElement('th');
+
+                th.textContent = header;
+
+                headerRow.appendChild(th);
+
+            });
+
+            thead.appendChild(headerRow);
+
+            table.appendChild(thead);
+
+        
+
+            // Create table body
+
+            const tbody = document.createElement('tbody');
+
+            data.forEach((sp, spIndex) => {
+
+                sp.phases.forEach((phase, phaseIndex) => {
+
+                    // Main row
+
+                    const tr = document.createElement('tr');
+
+                    tr.dataset.spIndex = spIndex;
+
+                    tr.dataset.phaseIndex = phaseIndex;
+
+        
+
+                    // Expand/Collapse column
+
+                    const expandTd = document.createElement('td');
+
+                    const expandBtn = createExpandButton();
+
+                    // Modify expand button event listener
+
+                    expandBtn.addEventListener('click', (event) => {
+
+                        const btn = event.currentTarget;
+
+                        const parentRow = btn.closest('tr');
+
+                        const spIndex = parentRow.dataset.spIndex;
+
+                        const phaseIndex = parentRow.dataset.phaseIndex;
+
+                        // Check if inner table is already expanded
+
+                        const existingInnerTable = parentRow.nextElementSibling;
+
+                        const isCurrentlyExpanded = existingInnerTable && existingInnerTable.classList.contains('inner-table-1-row');
+
+                        if (isCurrentlyExpanded) {
+
+                            // Collapse
+
+                            existingInnerTable.remove();
+
+                            btn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#328AA4" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" class="feather feather-plus-circle">
+
+                            <circle cx="12" cy="12" r="10"></circle>
+
+                            <line x1="12" y1="8" x2="12" y2="16"></line>
+
+                            <line x1="8" y1="12" x2="16" y2="12"></line>
+
+                            </svg>`;
+
+                        } else {
+
+                            // Expand
+
+                            const phaseData = {
+
+                                ...data[0].phases[phaseIndex],
+
+                                sp_name: document.getElementById('sp_name').value // Get current SP name
+
+                            };
+
+                            renderInnerTable1(phaseData, parentRow, tableData);
+
+                            btn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#328AA4" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" class="feather feather-minus-circle">
+
+                            <circle cx="12" cy="12" r="10"></circle>
+
+                            <line x1="8" y1="12" x2="16" y2="12"></line>
+
+                            </svg>`;
+
+                        }
+
+                    });
+
+                    expandTd.appendChild(expandBtn);
+
+                    tr.appendChild(expandTd);
+
+        
+
+                    const cells = [
+
+                        phase.phase,
+
+                        phase.metrics.total,
+
+                        phase.metrics.coverage,
+
+                        formatPercentage(phase.metrics.coverage_percentage),
+
+                        phase.metrics.passed,
+
+                        formatPercentage(phase.metrics.passed_percentage),
+
+                        phase.metrics.failed,
+
+                        formatPercentage(phase.metrics.failed_percentage),
+
+                        phase.metrics.blocked,
+
+                        formatPercentage(phase.metrics.blocked_percentage)
+
+                    ];
+
+                    cells.forEach(cellData => {
+
+                        const td = document.createElement('td');
+
+                        td.textContent = cellData;
+
+                        tr.appendChild(td);
+
+                    });
+
+        
+
+                    // Add Unique CRs column
+
+                    const crTd = document.createElement('td');
+
+                    crTd.innerHTML = formatLongList(phase.unique_cr_list, phase.unique_cr_count);
+
+                    tr.appendChild(crTd);
+
+        
+
+                    // Add Unique JIRAs column
+
+                    const jiraTd = document.createElement('td');
+
+                    jiraTd.innerHTML = formatLongList(phase.unique_jira_list, phase.unique_jira_count);
+
+                    tr.appendChild(jiraTd);
+
+        
+
+                    tbody.appendChild(tr);
+
+                });
+
+            });
+
+            table.appendChild(tbody);
+
+        
+
+            // Clear existing table if any
+
+            targetElement.querySelector('table')?.remove();
+
+        
+
+            // Append table to card body
+
+            targetElement.appendChild(table);
+
+            adjustColumnWidths();
+
+        }
+
+        function renderCRVerificationInCumulativeTable(tableData, columnNames, targetElement) {
+
+            // Create card element
+
+            const cardElement = document.createElement('div');
+
+            cardElement.className = 'card mb-3';
+
+        
+
+            // Create card body
+
+            const cardBody = document.createElement('div');
+
+            cardBody.className = 'card-body';
+
+        
+
+            // Create button container
+
+            const buttonContainer = document.createElement('div');
+
+            buttonContainer.id = 'cumulativeTableFilters';
+
+            buttonContainer.className = 'mb-3';
+
+        
+
+            // Create button group
+
+            const buttonGroup = document.createElement('div');
+
+            buttonGroup.className = 'btn-group';
+
+            buttonGroup.setAttribute('role', 'group');
+
+            buttonGroup.setAttribute('aria-label', 'Phase filters');
+
+        
+
+            // Create phase filter buttons
+
+            const phases = ['all', 'ES', 'FC', 'CS'];
+
+            phases.forEach(phase => {
+
+                const button = document.createElement('button');
+
+                button.type = 'button';
+
+                button.className = `btn btn-outline-primary phase-filter ${phase === 'all' ? 'active' : ''}`;
+
+                button.setAttribute('data-phase', phase);
+
+                button.textContent = phase === 'all' ? 'All Phases' : phase;
+
+                buttonGroup.appendChild(button);
+
+            });
+
+        
+
+            // Create a container for entries dropdown and pagination
+
+            const paginationContainer = document.createElement('div');
+
+            paginationContainer.className = 'row align-items-center mt-3 mb-3';
+
+        
+
+            // Create column for entries per page dropdown
+
+            const entriesCol = document.createElement('div');
+
+            entriesCol.className = 'col-12 col-md-4 mb-2 mb-md-0';
+
+            const entriesWrapper = document.createElement('div');
+
+            entriesWrapper.className = 'd-flex align-items-center';
+
+            const entriesLabel = document.createElement('label');
+
+            entriesLabel.className = 'me-2 text-nowrap';
+
+            entriesLabel.textContent = 'Show entries:';
+
+            const entriesDropdown = document.createElement('select');
+
+            entriesDropdown.className = 'form-select form-select-sm w-auto';
+
+            [25, 50, 100].forEach(value => {
+
+                const option = document.createElement('option');
+
+                option.value = value;
+
+                option.textContent = value;
+
+                if (value === 25) option.selected = true;
+
+                entriesDropdown.appendChild(option);
+
+            });
+
+            entriesWrapper.appendChild(entriesLabel);
+
+            entriesWrapper.appendChild(entriesDropdown);
+
+            entriesCol.appendChild(entriesWrapper);
+
+        
+
+            // Create column for entries info
+
+            const infoCol = document.createElement('div');
+
+            infoCol.className = 'col-12 col-md-4 text-center mb-2 mb-md-0';
+
+            const entriesInfo = document.createElement('div');
+
+            entriesInfo.className = 'entries-info text-muted';
+
+            entriesInfo.style.fontSize = '0.9rem';
+
+            infoCol.appendChild(entriesInfo);
+
+        
+
+            // Create column for pagination buttons
+
+            const paginationCol = document.createElement('div');
+
+            paginationCol.className = 'col-12 col-md-4';
+
+            const paginationNav = document.createElement('nav');
+
+            paginationNav.setAttribute('aria-label', 'Table navigation');
+
+            const paginationList = document.createElement('ul');
+
+            paginationList.className = 'pagination pagination-sm justify-content-center justify-content-md-end mb-0';
+
+        
+
+            // Previous button
+
+            const prevListItem = document.createElement('li');
+
+            prevListItem.className = 'page-item';
+
+            const prevButton = document.createElement('button');
+
+            prevButton.className = 'page-link prev-page';
+
+            prevButton.innerHTML = '&laquo; Previous';
+
+            prevListItem.appendChild(prevButton);
+
+        
+
+            // Page numbers container
+
+            const pageNumbersItem = document.createElement('li');
+
+            pageNumbersItem.className = 'page-item';
+
+            const pageNumbers = document.createElement('div');
+
+            pageNumbers.className = 'page-numbers d-flex';
+
+            pageNumbersItem.appendChild(pageNumbers);
+
+        
+
+            // Next button
+
+            const nextListItem = document.createElement('li');
+
+            nextListItem.className = 'page-item';
+
+            const nextButton = document.createElement('button');
+
+            nextButton.className = 'page-link next-page';
+
+            nextButton.innerHTML = 'Next &raquo;';
+
+            nextListItem.appendChild(nextButton);
+
+        
+
+            paginationList.appendChild(prevListItem);
+
+            paginationList.appendChild(pageNumbersItem);
+
+            paginationList.appendChild(nextListItem);
+
+            paginationNav.appendChild(paginationList);
+
+            paginationCol.appendChild(paginationNav);
+
+        
+
+            // Append all columns to the container
+
+            paginationContainer.appendChild(entriesCol);
+
+            paginationContainer.appendChild(infoCol);
+
+            paginationContainer.appendChild(paginationCol);
+
+        
+
+            // Add styles
+
+            const paginationStyles = document.createElement('style');
+
+            paginationStyles.textContent = `
+
+            .page-link {
+
+                padding: 0.375rem 0.75rem;
+
+                color: #328AA4;
+
+                background-color: #fff;
+
+                border: 1px solid #dee2e6;
+
+                transition: color 0.15s ease-in-out, background-color 0.15s ease-in-out, border-color 0.15s ease-in-out;
+
+            }
+
+            .page-link:hover {
+
+                color: #fff;
+
+                background-color: #328AA4;
+
+                border-color: #328AA4;
+
+            }
+
+            .page-item.active .page-link {
+
+                background-color: #328AA4;
+
+                border-color: #328AA4;
+
+                color: #fff;
+
+            }
+
+            .page-item.disabled .page-link {
+
+                color: #6c757d;
+
+                pointer-events: none;
+
+                background-color: #fff;
+
+                border-color: #dee2e6;
+
+            }
+
+            .page-numbers .page-link {
+
+                margin: 0 2px;
+
+            }
+
+            @media (max-width: 768px) {
+
+                .entries-info {
+
+                    margin: 10px 0;
+
+                }
+
+                .pagination {
+
+                    flex-wrap: wrap;
+
+                    justify-content: center;
+
+                }
+
+            }
+
+            `;
+
+            document.head.appendChild(paginationStyles);
+
+        
+
+            // Replace the existing pagination controls with the new container
+
+            buttonContainer.appendChild(buttonGroup);
+
+            buttonContainer.appendChild(paginationContainer);
+
+        
+
+            // Create content container for tables
+
+            const contentContainer = document.createElement('div');
+
+            contentContainer.id = 'reportContentContainer';
+
+        
+
+            // Append button container and content container to card body
+
+            cardBody.appendChild(buttonContainer);
+
+            cardBody.appendChild(contentContainer);
+
+        
+
+            // Append card body to card element
+
+            cardElement.appendChild(cardBody);
+
+        
+
+            // Append card element to target element
+
+            targetElement.appendChild(cardElement);
+
+        
+
+            // Add event listeners for phase filter buttons
+
+            buttonGroup.addEventListener('click', (e) => {
+
+                if (e.target.classList.contains('phase-filter')) {
+
+                    // Remove active class from all buttons
+
+                    buttonGroup.querySelectorAll('.phase-filter').forEach(btn => btn.classList.remove('active'));
+
+                    // Add active class to the clicked button
+
+                    e.target.classList.add('active');
+
+                    // Get the selected phase
+
+                    const selectedPhase = e.target.getAttribute('data-phase');
+
+                    // Render the table based on the selected phase
+
+                    renderFilteredCRVerificationTable(tableData, columnNames, contentContainer, selectedPhase, parseInt(entriesDropdown.value), 1);
+
+                }
+
+            });
+
+        
+
+            // Add event listener for entries per page dropdown
+
+            entriesDropdown.addEventListener('change', (e) => {
+
+                const selectedPhase = buttonGroup.querySelector('.active').getAttribute('data-phase');
+
+                const entriesPerPage = parseInt(e.target.value);
+
+                renderFilteredCRVerificationTable(tableData, columnNames, contentContainer, selectedPhase, entriesPerPage, 1);
+
+            });
+
+        
+
+            // Add event listeners for pagination buttons
+
+            prevButton.addEventListener('click', () => {
+
+                console.log('Previous button clicked');
+
+                const selectedPhase = buttonGroup.querySelector('.active').getAttribute('data-phase');
+
+                const entriesPerPage = parseInt(entriesDropdown.value);
+
+                const currentPage = parseInt(pageNumbers.querySelector('.page-number.active').textContent);
+
+                const selectedTeam = document.querySelector('input[name="team-filter"]:checked').value;
+
+                const filteredData = getFilteredData(tableData, selectedPhase, selectedTeam);
+
+                console.log(`Current Page: ${currentPage}, Total Pages: ${Math.ceil(filteredData.length / entriesPerPage)}`);
+
+                if (currentPage > 1) {
+
+                    renderFilteredCRVerificationTable(tableData, columnNames, contentContainer, selectedPhase, entriesPerPage, currentPage - 1);
+
+                }
+
+            });
+
+            nextButton.addEventListener('click', () => {
+
+                console.log('Next button clicked');
+
+                const selectedPhase = buttonGroup.querySelector('.active').getAttribute('data-phase');
+
+                const entriesPerPage = parseInt(entriesDropdown.value);
+
+                const currentPage = parseInt(pageNumbers.querySelector('.page-number.active').textContent);
+
+                const selectedTeam = document.querySelector('input[name="team-filter"]:checked').value;
+
+                const filteredData = getFilteredData(tableData, selectedPhase, selectedTeam);
+
+                const totalPages = Math.ceil(filteredData.length / entriesPerPage);
+
+                console.log(`Current Page: ${currentPage}, Total Pages: ${totalPages}`);
+
+                if (currentPage < totalPages) {
+
+                    renderFilteredCRVerificationTable(tableData, columnNames, contentContainer, selectedPhase, entriesPerPage, currentPage + 1);
+
+                }
+
+            });
+
+        
+
+            // Initial render of CR Verification table with 'all' phases
+
+            renderFilteredCRVerificationTable(tableData, columnNames, contentContainer, 'all', 25, 1);
+
+        }
+
+        
+
+        function renderFilteredCRVerificationTable(tableData, columnNames, targetElement, selectedPhase, entriesPerPage, currentPage) {
+
+            // Clear existing table if any
+
+            targetElement.querySelector('table')?.remove();
+
+        
+
+            // Create table element
+
+            const table = document.createElement('table');
+
+            table.className = 'coverage-table';
+
+        
+
+            // Create header
+
+            const thead = document.createElement('thead');
+
+            const headerRow = document.createElement('tr');
+
+            columnNames.forEach(header => {
+
+                const th = document.createElement('th');
+
+                th.textContent = header;
+
+                headerRow.appendChild(th);
+
+            });
+
+            thead.appendChild(headerRow);
+
+            table.appendChild(thead);
+
+        
+
+            // Get the selected team from the team filter
+
+            const selectedTeam = document.querySelector('input[name="team-filter"]:checked').value;
+
+        
+
+            // Create table body
+
+            const tbody = document.createElement('tbody');
+
+        
+
+            // Filter data based on the selected team and phase
+
+            const filteredData = getFilteredData(tableData, selectedPhase, selectedTeam);
+
+        
+
+            // Calculate pagination details
+
+            const totalPages = Math.ceil(filteredData.length / entriesPerPage);
+
+            const startIndex = (currentPage - 1) * entriesPerPage;
+
+            const endIndex = startIndex + entriesPerPage;
+
+            const paginatedData = filteredData.slice(startIndex, endIndex);
+
+        
+
+            // Render paginated data
+
+            paginatedData.forEach(rowData => {
+
+                const tr = document.createElement('tr');
+
+                columnNames.forEach(columnName => {
+
+                    const td = document.createElement('td');
+
+                    td.textContent = rowData[columnName] !== null ? rowData[columnName] : '';
+
+                    tr.appendChild(td);
+
+                });
+
+                tbody.appendChild(tr);
+
+            });
+
+        
+
+            table.appendChild(tbody);
+
+        
+
+            // Append table to card body
+
+            targetElement.appendChild(table);
+
+        
+
+            // Adjust column widths
+
+            adjustColumnWidths();
+
+        
+
+            // Update pagination controls
+
+            const entriesInfo = document.querySelector('.entries-info');
+
+            entriesInfo.textContent = `Showing ${startIndex + 1} to ${Math.min(endIndex, filteredData.length)} of ${filteredData.length} entries`;
+
+        
+
+            const pageNumbers = document.querySelector('.page-numbers');
+
+            pageNumbers.textContent = '';
+
+        
+
+            const prevButton = document.querySelector('.prev-page');
+
+            const nextButton = document.querySelector('.next-page');
+
+        
+
+            prevButton.disabled = currentPage === 1;
+
+            nextButton.disabled = currentPage === totalPages;
+
+        
+
+            if (totalPages > 1) {
+
+                const startPage = Math.max(1, currentPage - 1);
+
+                const endPage = Math.min(totalPages, currentPage + 1);
+
+        
+
+                for (let i = startPage; i <= endPage; i++) {
+
+                    const pageButton = document.createElement('button');
+
+                    pageButton.className = `btn btn-outline-primary page-number ${i === currentPage ? 'active' : ''}`;
+
+                    pageButton.textContent = i;
+
+                    pageButton.addEventListener('click', () => {
+
+                        renderFilteredCRVerificationTable(tableData, columnNames, targetElement, selectedPhase, entriesPerPage, i);
+
+                    });
+
+                    pageNumbers.appendChild(pageButton);
+
+                }
+
+            }
+
+        }
+
+        
+
+        function getFilteredData(tableData, selectedPhase, selectedTeam) {
+
+            const filteredData = [];
+
+            if (tableData[selectedTeam]) {
+
+                for (const phase in tableData[selectedTeam]) {
+
+                    if (selectedPhase === 'all' || phase === selectedPhase) {
+
+                        filteredData.push(...tableData[selectedTeam][phase]);
+
+                    }
+
+                }
+
+            }
+
+            return filteredData;
+
+        }
+
+        
+
+        function renderCumulativeTable(tableData, data, targetElementId) {
+
+            console.log("renderCumulativeTable");
+
+            const targetElement = document.getElementById(targetElementId);
+
+            targetElement.innerHTML = ''; // Clear everything first
+
+        
+
+            // Create card element
+
+            const cardElement = document.createElement('div');
+
+            cardElement.className = 'card mb-3';
+
+        
+
+            // Create card body
+
+            const cardBody = document.createElement('div');
+
+            cardBody.className = 'card-body';
+
+        
+
+            // Create button container
+
+            const buttonContainer = document.createElement('div');
+
+            buttonContainer.id = 'cumulativeTableFilters';
+
+            buttonContainer.className = 'mb-3';
+
+        
+
+            // Create button group
+
+            const buttonGroup = document.createElement('div');
+
+            buttonGroup.className = 'btn-group';
+
+            buttonGroup.setAttribute('role', 'group');
+
+            buttonGroup.setAttribute('aria-label', 'Report filters');
+
+        
+
+            // Create Complete Report button
+
+            const completeReportInput = document.createElement('input');
+
+            completeReportInput.type = 'radio';
+
+            completeReportInput.className = 'btn-check team-filter';
+
+            completeReportInput.name = 'report-filter';
+
+            completeReportInput.id = 'complete-report';
+
+            completeReportInput.value = 'complete-report';
+
+            completeReportInput.checked = true;
+
+            const completeReportLabel = document.createElement('label');
+
+            completeReportLabel.className = 'btn btn-outline-primary';
+
+            completeReportLabel.setAttribute('for', 'complete-report');
+
+            completeReportLabel.textContent = 'Complete Report';
+
+        
+
+            // Create CR Verification button
+
+            const crVerificationInput = document.createElement('input');
+
+            crVerificationInput.type = 'radio';
+
+            crVerificationInput.className = 'btn-check team-filter';
+
+            crVerificationInput.name = 'report-filter';
+
+            crVerificationInput.id = 'cr-verification';
+
+            crVerificationInput.value = 'cr-verification';
+
+            const crVerificationLabel = document.createElement('label');
+
+            crVerificationLabel.className = 'btn btn-outline-primary';
+
+            crVerificationLabel.setAttribute('for', 'cr-verification');
+
+            crVerificationLabel.textContent = 'CR Verification';
+
+        
+
+            // Append buttons to button group
+
+            buttonGroup.appendChild(completeReportInput);
+
+            buttonGroup.appendChild(completeReportLabel);
+
+            buttonGroup.appendChild(crVerificationInput);
+
+            buttonGroup.appendChild(crVerificationLabel);
+
+        
+
+            // Append button group to button container
+
+            buttonContainer.appendChild(buttonGroup);
+
+        
+
+            // Create content container for tables
+
+            const contentContainer = document.createElement('div');
+
+            contentContainer.id = 'reportContentContainer';
+
+        
+
+            // Append button container and content container to card body
+
+            cardBody.appendChild(buttonContainer);
+
+            cardBody.appendChild(contentContainer);
+
+        
+
+            // Append card body to card element
+
+            cardElement.appendChild(cardBody);
+
+        
+
+            // Append card element to target element
+
+            targetElement.appendChild(cardElement);
+
+        
+
+            // Add event listeners for report filter buttons
+
+            completeReportInput.addEventListener('change', () => {
+
+                if (completeReportInput.checked) {
+
+                    console.log('Complete Report clicked');
+
+                    contentContainer.innerHTML = ''; // Clear the content container
+
+                    renderCompleteReportInCumulativeTable(tableData, data, contentContainer);
+
+                }
+
+            });
+
+        
+
+            crVerificationInput.addEventListener('change', async () => {
+
+                if (crVerificationInput.checked) {
+
+                    console.log('CR Verification clicked');
+
+                    const spSelect = document.getElementById('sp_name');
+
+                    const selectedSp = spSelect.value;
+
+                    if (!selectedSp) {
+
+                        addAlert('danger', 'Please select an SP first')
+
+                        // alert('Please select an SP first');
+
+                        return;
+
+                    }
+
+                    contentContainer.innerHTML = ''; // Clear the content container
+
+                    if (!(crVerificationData && crVerificationColumnNames)) {
+
+                        const params = new URLSearchParams();
+
+                        params.append('sp_name', selectedSp);
+
+                        try {
+
+                            const response = await fetch(`{% url 'cst_reporting_views:get_cr_verification_data' %}?${params.toString()}`);
+
+                            if (!response.ok) throw new Error('Network response was not ok');
+
+                            const responseData = await response.json();
+
+                            crVerificationData = responseData["data"];
+
+                            crVerificationColumnNames = responseData["column_names"];
+
+                        } catch (error) {
+
+                            console.error('Error fetching data:', error);
+
+                            addAlert('danger', `Error fetching data. Please try again.\n ${error}`)
+
+                            // alert('Error fetching data. Please try again.');
+
+                            return;
+
+                        }
+
+                    } 
+
+                    console.log("Fetched from initial async fetch")
+
+                    renderCRVerificationInCumulativeTable(crVerificationData, crVerificationColumnNames, contentContainer);
+
+                }
+
+            });
+
+        
+
+            // Add event listeners for "more" links
+
+            targetElement.addEventListener('click', (e) => {
+
+                if (e.target.classList.contains('show-more-list')) {
+
+                    e.preventDefault();
+
+                    const title = e.target.getAttribute('data-title');
+
+                    const list = JSON.parse(decodeURIComponent(e.target.getAttribute('data-list')));
+
+                    createListModal(title, list);
+
+                }
+
+            });
+
+        
+
+            // Initial render of Complete Report
+
+            renderCompleteReportInCumulativeTable(tableData, data, contentContainer);
+
+        }
+
     });
 
-    if (!isValid) {
-        // Special handling for the filter_sp_name field
-        const filterSpSelect = document.querySelector('select[name="filter_sp_name"]');
-        if (filterSpSelect && filterSpSelect.classList.contains('is-invalid')) {
-            // Use the stored OptimizedSelect instance
-            if (filterSpSelect.optimizedSelect) {
-                filterSpSelect.optimizedSelect.focus();
-            }
-            return;
-        }
+    
 
-        // Handle other invalid inputs
-        if (firstInvalidInput) {
-            if (firstInvalidInput.tagName === 'SELECT') {
-                const optimizedInstance = firstInvalidInput.optimizedSelect;
-                if (optimizedInstance) {
-                    optimizedInstance.focus();
-                }
-            } else {
-                firstInvalidInput.focus();
-            }
-        }
-        return;
-    }
+</script>
 
-    // Rest of your form submission logic...
-}
+{% endblock %}
 
-// Update the validateInput function for SELECT elements
-function validateInput(input) {
-    if (input.tagName === 'SELECT') {
-        const validationMessage = document.getElementById(`${input.id}-validation`) || 
-            createValidationMessageForDropdown(input);
-            
-        if (!input.value) {
-            input.classList.add('is-invalid');
-            input.classList.remove('is-valid');
-            validationMessage.textContent = 'Please select an option';
-            validationMessage.style.display = 'block';
-            
-            // Update the OptimizedSelect button styling
-            const customButton = input.nextElementSibling?.querySelector('.optimized-select-button');
-            if (customButton) {
-                customButton.classList.add('is-invalid');
-                customButton.classList.remove('is-valid');
-            }
-            return false;
-        }
-        
-        input.classList.remove('is-invalid');
-        input.classList.add('is-valid');
-        validationMessage.style.display = 'none';
-        
-        // Update the OptimizedSelect button styling
-        const customButton = input.nextElementSibling?.querySelector('.optimized-select-button');
-        if (customButton) {
-            customButton.classList.remove('is-invalid');
-            customButton.classList.add('is-valid');
-        }
-        return true;
-    }
 
-    // Rest of your validation logic for other input types...
-}
+
+
+
+in this when rendering CR Verification tab we are rendering All Phases, ES, FC, CS buttons and the pagination buttons and the content right. Below those Phases buttons we need to render another list of buttons. i will give a list of buttons. Default is Alll. And what happens when clicked those buttons is, the CRs will be filtered based on the Status coloumn. Only rows having the selected will be rendered. And also make these buttons as radio buttons similar to the phases buttons but the difference will be that for these status options buttons we can select multiple at a time. so take as list what are selected. and also when all is selected then that is other buttons need not selected. 
+
+
+
+the status options are
+
+All, Analysis, Closed, Fix, NotApplicable, Obsolete, Open, Ready, Reopen, Untested, Withdrawn, Built, Cannot Duplicate, NeedsRelease, Tested
