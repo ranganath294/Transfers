@@ -1,3 +1,8 @@
+Stacking Phase Filters and Status Buttons Vertically
+
+
+
+K
 function renderCRVerificationInCumulativeTable(tableData, columnNames, targetElement) {
     // Create card element
     const cardElement = document.createElement('div');
@@ -12,11 +17,7 @@ function renderCRVerificationInCumulativeTable(tableData, columnNames, targetEle
     buttonContainer.id = 'cumulativeTableFilters';
     buttonContainer.className = 'mb-3';
 
-    // Create container for phase filters
-    const phaseFilterContainer = document.createElement('div');
-    phaseFilterContainer.className = 'mb-3'; // Add margin bottom for spacing
-
-    // Create button group for phase filters
+    // Create button group
     const buttonGroup = document.createElement('div');
     buttonGroup.className = 'btn-group';
     buttonGroup.setAttribute('role', 'group');
@@ -27,19 +28,15 @@ function renderCRVerificationInCumulativeTable(tableData, columnNames, targetEle
     phases.forEach(phase => {
         const button = document.createElement('button');
         button.type = 'button';
-        button.className = `btn btn-outline-primary phase-filter ${phase === 'all' ? 'active' : ''}`;
+        button.className = btn btn-outline-primary phase-filter ${phase === 'all' ? 'active' : ''};
         button.setAttribute('data-phase', phase);
         button.textContent = phase === 'all' ? 'All Phases' : phase;
         buttonGroup.appendChild(button);
     });
 
-    // Create container for status filters
-    const statusFilterContainer = document.createElement('div');
-    statusFilterContainer.className = 'mb-3'; // Add margin bottom for spacing
-
     // Create button group for status filters
     const statusButtonGroup = document.createElement('div');
-    statusButtonGroup.className = 'btn-group';
+    statusButtonGroup.className = 'btn-group mt-3';
     statusButtonGroup.setAttribute('role', 'group');
     statusButtonGroup.setAttribute('aria-label', 'Status filters');
 
@@ -48,58 +45,238 @@ function renderCRVerificationInCumulativeTable(tableData, columnNames, targetEle
     statuses.forEach(status => {
         const button = document.createElement('button');
         button.type = 'button';
-        button.className = `btn btn-outline-primary status-filter ${status === 'All' ? 'active' : ''}`;
+        button.className = btn btn-outline-primary status-filter ${status === 'All' ? 'active' : ''};
         button.setAttribute('data-status', status);
         button.textContent = status;
         statusButtonGroup.appendChild(button);
     });
 
-    // Rest of the code remains the same...
-    // [Previous pagination container and other elements code]
+    // Create a container for entries dropdown and pagination
+    const paginationContainer = document.createElement('div');
+    paginationContainer.className = 'row align-items-center mt-3 mb-3';
 
-    // Update the structure to stack filters vertically
-    phaseFilterContainer.appendChild(buttonGroup);
-    statusFilterContainer.appendChild(statusButtonGroup);
-    
-    // Append filters and pagination in the desired order
-    buttonContainer.appendChild(phaseFilterContainer);
-    buttonContainer.appendChild(statusFilterContainer);
+    // Create column for entries per page dropdown
+    const entriesCol = document.createElement('div');
+    entriesCol.className = 'col-12 col-md-4 mb-2 mb-md-0';
+    const entriesWrapper = document.createElement('div');
+    entriesWrapper.className = 'd-flex align-items-center';
+    const entriesLabel = document.createElement('label');
+    entriesLabel.className = 'me-2 text-nowrap';
+    entriesLabel.textContent = 'Show entries:';
+    const entriesDropdown = document.createElement('select');
+    entriesDropdown.className = 'form-select form-select-sm w-auto';
+    [25, 50, 100].forEach(value => {
+        const option = document.createElement('option');
+        option.value = value;
+        option.textContent = value;
+        if (value === 25) option.selected = true;
+        entriesDropdown.appendChild(option);
+    });
+    entriesWrapper.appendChild(entriesLabel);
+    entriesWrapper.appendChild(entriesDropdown);
+    entriesCol.appendChild(entriesWrapper);
+
+    // Create column for entries info
+    const infoCol = document.createElement('div');
+    infoCol.className = 'col-12 col-md-4 text-center mb-2 mb-md-0';
+    const entriesInfo = document.createElement('div');
+    entriesInfo.className = 'entries-info text-muted';
+    entriesInfo.style.fontSize = '0.9rem';
+    infoCol.appendChild(entriesInfo);
+
+    // Create column for pagination buttons
+    const paginationCol = document.createElement('div');
+    paginationCol.className = 'col-12 col-md-4';
+    const paginationNav = document.createElement('nav');
+    paginationNav.setAttribute('aria-label', 'Table navigation');
+    const paginationList = document.createElement('ul');
+    paginationList.className = 'pagination pagination-sm justify-content-center justify-content-md-end mb-0';
+
+    // Previous button
+    const prevListItem = document.createElement('li');
+    prevListItem.className = 'page-item';
+    const prevButton = document.createElement('button');
+    prevButton.className = 'page-link prev-page';
+    prevButton.innerHTML = '&laquo; Previous';
+    prevListItem.appendChild(prevButton);
+
+    // Page numbers container
+    const pageNumbersItem = document.createElement('li');
+    pageNumbersItem.className = 'page-item';
+    const pageNumbers = document.createElement('div');
+    pageNumbers.className = 'page-numbers d-flex';
+    pageNumbersItem.appendChild(pageNumbers);
+
+    // Next button
+    const nextListItem = document.createElement('li');
+    nextListItem.className = 'page-item';
+    const nextButton = document.createElement('button');
+    nextButton.className = 'page-link next-page';
+    nextButton.innerHTML = 'Next &raquo;';
+    nextListItem.appendChild(nextButton);
+
+    paginationList.appendChild(prevListItem);
+    paginationList.appendChild(pageNumbersItem);
+    paginationList.appendChild(nextListItem);
+    paginationNav.appendChild(paginationList);
+    paginationCol.appendChild(paginationNav);
+
+    // Append all columns to the container
+    paginationContainer.appendChild(entriesCol);
+    paginationContainer.appendChild(infoCol);
+    paginationContainer.appendChild(paginationCol);
+
+    // Add styles
+    const paginationStyles = document.createElement('style');
+    paginationStyles.textContent = 
+    .page-link {
+        padding: 0.375rem 0.75rem;
+        color: #328AA4;
+        background-color: #fff;
+        border: 1px solid #dee2e6;
+        transition: color 0.15s ease-in-out, background-color 0.15s ease-in-out, border-color 0.15s ease-in-out;
+    }
+    .page-link:hover {
+        color: #fff;
+        background-color: #328AA4;
+        border-color: #328AA4;
+    }
+    .page-item.active .page-link {
+        background-color: #328AA4;
+        border-color: #328AA4;
+        color: #fff;
+    }
+    .page-item.disabled .page-link {
+        color: #6c757d;
+        pointer-events: none;
+        background-color: #fff;
+        border-color: #dee2e6;
+    }
+    .page-numbers .page-link {
+        margin: 0 2px;
+    }
+    @media (max-width: 768px) {
+        .entries-info {
+            margin: 10px 0;
+        }
+        .pagination {
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+    }
+    ;
+    document.head.appendChild(paginationStyles);
+
+    // Replace the existing pagination controls with the new container
+    buttonContainer.appendChild(buttonGroup);
+    buttonContainer.appendChild(statusButtonGroup);
     buttonContainer.appendChild(paginationContainer);
 
-    // Add responsive styles
-    const filterStyles = document.createElement('style');
-    filterStyles.textContent = `
-    #cumulativeTableFilters .btn-group {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 4px;
-        justify-content: center;
-        width: 100%;
-    }
-    
-    #cumulativeTableFilters .btn {
-        margin: 0;
-        flex: 0 1 auto;
-        white-space: nowrap;
-    }
-    
-    @media (max-width: 768px) {
-        #cumulativeTableFilters .btn-group {
-            flex-direction: row;
-            width: 100%;
-            margin-bottom: 10px;
-        }
-        
-        #cumulativeTableFilters .btn {
-            font-size: 0.875rem;
-            padding: 0.375rem 0.75rem;
-        }
-    }
-    `;
-    document.head.appendChild(filterStyles);
+    // Create content container for tables
+    const contentContainer = document.createElement('div');
+    contentContainer.id = 'reportContentContainer';
 
-    // Previous event listeners and rendering code remains the same...
+    // Append button container and content container to card body
+    cardBody.appendChild(buttonContainer);
+    cardBody.appendChild(contentContainer);
 
-    // Initial render
+    // Append card body to card element
+    cardElement.appendChild(cardBody);
+
+    // Append card element to target element
+    targetElement.appendChild(cardElement);
+
+    // Add event listeners for phase filter buttons
+    buttonGroup.addEventListener('click', (e) => {
+        if (e.target.classList.contains('phase-filter')) {
+            // Remove active class from all buttons
+            buttonGroup.querySelectorAll('.phase-filter').forEach(btn => btn.classList.remove('active'));
+            // Add active class to the clicked button
+            e.target.classList.add('active');
+            // Get the selected phase
+            const selectedPhase = e.target.getAttribute('data-phase');
+            // Get the selected status
+            const selectedStatus = statusButtonGroup.querySelector('.active').getAttribute('data-status');
+            // Render the table based on the selected phase
+            renderFilteredCRVerificationTable(tableData, columnNames, contentContainer, selectedPhase, parseInt(entriesDropdown.value), 1, selectedStatus);
+        }
+    });
+
+    // Add event listeners for status filter buttons
+    statusButtonGroup.addEventListener('click', (e) => {
+        if (e.target.classList.contains('status-filter')) {
+            // Remove active class from all buttons
+            statusButtonGroup.querySelectorAll('.status-filter').forEach(btn => btn.classList.remove('active'));
+            // Add active class to the clicked button
+            e.target.classList.add('active');
+            // Get the selected phase
+            const selectedPhase = buttonGroup.querySelector('.active').getAttribute('data-phase');
+            // Get the selected status
+            const selectedStatus = e.target.getAttribute('data-status');
+            // Render the table based on the selected status
+            renderFilteredCRVerificationTable(tableData, columnNames, contentContainer, selectedPhase, parseInt(entriesDropdown.value), 1, selectedStatus);
+        }
+    });
+
+    // Add event listener for entries per page dropdown
+    entriesDropdown.addEventListener('change', (e) => {
+        const selectedPhase = buttonGroup.querySelector('.active').getAttribute('data-phase');
+        const selectedStatus = statusButtonGroup.querySelector('.active').getAttribute('data-status');
+        const entriesPerPage = parseInt(e.target.value);
+        renderFilteredCRVerificationTable(tableData, columnNames, contentContainer, selectedPhase, entriesPerPage, 1, selectedStatus);
+    });
+
+    // Add event listeners for pagination buttons
+    prevButton.addEventListener('click', () => {
+        console.log('Previous button clicked');
+        const selectedPhase = buttonGroup.querySelector('.active').getAttribute('data-phase');
+        const selectedStatus = statusButtonGroup.querySelector('.active').getAttribute('data-status');
+        const entriesPerPage = parseInt(entriesDropdown.value);
+        const currentPage = parseInt(pageNumbers.querySelector('.page-number.active').textContent);
+        const selectedTeam = document.querySelector('input[name="team-filter"]:checked').value;
+        const filteredData = getFilteredData(tableData, selectedPhase, selectedTeam, selectedStatus);
+        console.log(Current Page: ${currentPage}, Total Pages: ${Math.ceil(filteredData.length / entriesPerPage)});
+        if (currentPage > 1) {
+            renderFilteredCRVerificationTable(tableData, columnNames, contentContainer, selectedPhase, entriesPerPage, currentPage - 1, selectedStatus);
+        }
+    });
+
+    nextButton.addEventListener('click', () => {
+        console.log('Next button clicked');
+        const selectedPhase = buttonGroup.querySelector('.active').getAttribute('data-phase');
+        const selectedStatus = statusButtonGroup.querySelector('.active').getAttribute('data-status');
+        const entriesPerPage = parseInt(entriesDropdown.value);
+        const currentPage = parseInt(pageNumbers.querySelector('.page-number.active').textContent);
+        const selectedTeam = document.querySelector('input[name="team-filter"]:checked').value;
+        const filteredData = getFilteredData(tableData, selectedPhase, selectedTeam, selectedStatus);
+        const totalPages = Math.ceil(filteredData.length / entriesPerPage);
+        console.log(Current Page: ${currentPage}, Total Pages: ${totalPages});
+        if (currentPage < totalPages) {
+            renderFilteredCRVerificationTable(tableData, columnNames, contentContainer, selectedPhase, entriesPerPage, currentPage + 1, selectedStatus);
+        }
+    });
+
+    // Initial render of CR Verification table with 'all' phases
     renderFilteredCRVerificationTable(tableData, columnNames, contentContainer, 'all', 25, 1, 'All');
 }
+when we are rendering this, we are rendering the phase filter buttons and the status filter buttons right. i want to have then one below other that is in the first row there will be phase filters just like they are now in same sizes etc..below them in next row there will be the status filter buttons and below this stack there will the pagination conmtrols
+
+
+I'll help you modify the code to stack the phase filters and status filters vertically while maintaining their styles. The main change will be to adjust the button container layout and add appropriate spacing.
+
+
+Updated CR Verification Table Rendering
+Click to open code
+The main changes I've made include:
+
+Created separate containers for phase filters and status filters with mb-3 class for spacing
+Removed the mt-3 class from the status button group since we're controlling spacing via containers
+Added responsive styles to handle button wrapping and sizing
+Updated the button container structure to stack filters vertically
+Improved the layout with flexbox for better responsive behavior
+The filters will now appear:
+
+Phase filters on top row
+Status filters on second row
+Pagination controls below both filter rows
+The buttons will maintain their original styling but will be properly spaced vertically. On mobile devices, the buttons will wrap appropriately while maintaining their relative sizes and spacing.
