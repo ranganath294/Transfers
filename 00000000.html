@@ -12,19 +12,9 @@ function renderCRVerificationInCumulativeTable(tableData, columnNames, targetEle
     buttonContainer.id = 'cumulativeTableFilters';
     buttonContainer.className = 'mb-3 d-flex flex-column gap-3'; // Changed to flex-column with gap
 
-    // Create phase filter section
-    const phaseSection = document.createElement('div');
-    phaseSection.className = 'filter-section';
-
-    // Add label for phase filters
-    const phaseLabel = document.createElement('div');
-    phaseLabel.className = 'filter-label mb-2';
-    phaseLabel.textContent = 'Phase Filters:';
-    phaseSection.appendChild(phaseLabel);
-
     // Create button group for phases
     const buttonGroup = document.createElement('div');
-    buttonGroup.className = 'btn-group';
+    buttonGroup.className = 'btn-group mb-3'; // Added margin-bottom
     buttonGroup.setAttribute('role', 'group');
     buttonGroup.setAttribute('aria-label', 'Phase filters');
 
@@ -38,21 +28,10 @@ function renderCRVerificationInCumulativeTable(tableData, columnNames, targetEle
         button.textContent = phase === 'all' ? 'All Phases' : phase;
         buttonGroup.appendChild(button);
     });
-    phaseSection.appendChild(buttonGroup);
-
-    // Create status filter section
-    const statusSection = document.createElement('div');
-    statusSection.className = 'filter-section';
-
-    // Add label for status filters
-    const statusLabel = document.createElement('div');
-    statusLabel.className = 'filter-label mb-2';
-    statusLabel.textContent = 'Status Filters:';
-    statusSection.appendChild(statusLabel);
 
     // Create button group for status filters
     const statusButtonGroup = document.createElement('div');
-    statusButtonGroup.className = 'btn-group flex-wrap';
+    statusButtonGroup.className = 'btn-group mb-3'; // Added margin-bottom
     statusButtonGroup.setAttribute('role', 'group');
     statusButtonGroup.setAttribute('aria-label', 'Status filters');
 
@@ -66,20 +45,16 @@ function renderCRVerificationInCumulativeTable(tableData, columnNames, targetEle
         button.textContent = status;
         statusButtonGroup.appendChild(button);
     });
-    statusSection.appendChild(statusButtonGroup);
 
-    // Create pagination section
-    const paginationSection = document.createElement('div');
-    paginationSection.className = 'pagination-section';
+    // Create a container for entries dropdown and pagination
+    const paginationContainer = document.createElement('div');
+    paginationContainer.className = 'd-flex flex-column gap-2';
 
-    // Create entries dropdown and info section
-    const entriesSection = document.createElement('div');
-    entriesSection.className = 'd-flex align-items-center gap-3 mb-3';
-
+    // Create entries wrapper
     const entriesWrapper = document.createElement('div');
     entriesWrapper.className = 'd-flex align-items-center';
     const entriesLabel = document.createElement('label');
-    entriesLabel.className = 'me-2 text-nowrap';
+    entriesLabel.className = 'me-2';
     entriesLabel.textContent = 'Show entries:';
     const entriesDropdown = document.createElement('select');
     entriesDropdown.className = 'form-select form-select-sm w-auto';
@@ -95,10 +70,6 @@ function renderCRVerificationInCumulativeTable(tableData, columnNames, targetEle
 
     const entriesInfo = document.createElement('div');
     entriesInfo.className = 'entries-info text-muted';
-    entriesInfo.style.fontSize = '0.9rem';
-
-    entriesSection.appendChild(entriesWrapper);
-    entriesSection.appendChild(entriesInfo);
 
     // Create pagination navigation
     const paginationNav = document.createElement('nav');
@@ -106,7 +77,7 @@ function renderCRVerificationInCumulativeTable(tableData, columnNames, targetEle
     const paginationList = document.createElement('ul');
     paginationList.className = 'pagination pagination-sm justify-content-start mb-0';
 
-    // Add pagination buttons (previous, page numbers, next)
+    // Previous button
     const prevListItem = document.createElement('li');
     prevListItem.className = 'page-item';
     const prevButton = document.createElement('button');
@@ -114,12 +85,14 @@ function renderCRVerificationInCumulativeTable(tableData, columnNames, targetEle
     prevButton.innerHTML = '&laquo; Previous';
     prevListItem.appendChild(prevButton);
 
+    // Page numbers container
     const pageNumbersItem = document.createElement('li');
     pageNumbersItem.className = 'page-item';
     const pageNumbers = document.createElement('div');
     pageNumbers.className = 'page-numbers d-flex';
     pageNumbersItem.appendChild(pageNumbers);
 
+    // Next button
     const nextListItem = document.createElement('li');
     nextListItem.className = 'page-item';
     const nextButton = document.createElement('button');
@@ -132,48 +105,15 @@ function renderCRVerificationInCumulativeTable(tableData, columnNames, targetEle
     paginationList.appendChild(nextListItem);
     paginationNav.appendChild(paginationList);
 
-    // Append all sections to their respective containers
-    paginationSection.appendChild(entriesSection);
-    paginationSection.appendChild(paginationNav);
+    // Append elements in order
+    paginationContainer.appendChild(entriesWrapper);
+    paginationContainer.appendChild(entriesInfo);
+    paginationContainer.appendChild(paginationNav);
 
-    // Add custom styles
-    const customStyles = document.createElement('style');
-    customStyles.textContent = `
-        .filter-section {
-            padding: 10px 0;
-            border-bottom: 1px solid #dee2e6;
-        }
-        .filter-label {
-            font-weight: 500;
-            color: #6c757d;
-        }
-        .btn-group {
-            flex-wrap: wrap;
-        }
-        .btn-group .btn {
-            margin: 2px;
-        }
-        .pagination-section {
-            padding-top: 10px;
-        }
-        .page-numbers .page-link {
-            margin: 0 2px;
-        }
-        @media (max-width: 768px) {
-            .entries-info {
-                margin: 10px 0;
-            }
-            .pagination {
-                flex-wrap: wrap;
-            }
-        }
-    `;
-    document.head.appendChild(customStyles);
-
-    // Append all sections to the button container
-    buttonContainer.appendChild(phaseSection);
-    buttonContainer.appendChild(statusSection);
-    buttonContainer.appendChild(paginationSection);
+    // Append all elements to button container
+    buttonContainer.appendChild(buttonGroup);
+    buttonContainer.appendChild(statusButtonGroup);
+    buttonContainer.appendChild(paginationContainer);
 
     // Create content container for tables
     const contentContainer = document.createElement('div');
@@ -189,8 +129,56 @@ function renderCRVerificationInCumulativeTable(tableData, columnNames, targetEle
     // Append card element to target element
     targetElement.appendChild(cardElement);
 
-    // Event listeners remain the same as in your original code
-    // ... (keep all the existing event listeners)
+    // Keep all the existing event listeners
+    buttonGroup.addEventListener('click', (e) => {
+        if (e.target.classList.contains('phase-filter')) {
+            buttonGroup.querySelectorAll('.phase-filter').forEach(btn => btn.classList.remove('active'));
+            e.target.classList.add('active');
+            const selectedPhase = e.target.getAttribute('data-phase');
+            const selectedStatus = statusButtonGroup.querySelector('.active').getAttribute('data-status');
+            renderFilteredCRVerificationTable(tableData, columnNames, contentContainer, selectedPhase, parseInt(entriesDropdown.value), 1, selectedStatus);
+        }
+    });
+
+    statusButtonGroup.addEventListener('click', (e) => {
+        if (e.target.classList.contains('status-filter')) {
+            statusButtonGroup.querySelectorAll('.status-filter').forEach(btn => btn.classList.remove('active'));
+            e.target.classList.add('active');
+            const selectedPhase = buttonGroup.querySelector('.active').getAttribute('data-phase');
+            const selectedStatus = e.target.getAttribute('data-status');
+            renderFilteredCRVerificationTable(tableData, columnNames, contentContainer, selectedPhase, parseInt(entriesDropdown.value), 1, selectedStatus);
+        }
+    });
+
+    entriesDropdown.addEventListener('change', (e) => {
+        const selectedPhase = buttonGroup.querySelector('.active').getAttribute('data-phase');
+        const selectedStatus = statusButtonGroup.querySelector('.active').getAttribute('data-status');
+        const entriesPerPage = parseInt(e.target.value);
+        renderFilteredCRVerificationTable(tableData, columnNames, contentContainer, selectedPhase, entriesPerPage, 1, selectedStatus);
+    });
+
+    prevButton.addEventListener('click', () => {
+        const selectedPhase = buttonGroup.querySelector('.active').getAttribute('data-phase');
+        const selectedStatus = statusButtonGroup.querySelector('.active').getAttribute('data-status');
+        const entriesPerPage = parseInt(entriesDropdown.value);
+        const currentPage = parseInt(pageNumbers.querySelector('.page-number.active').textContent);
+        if (currentPage > 1) {
+            renderFilteredCRVerificationTable(tableData, columnNames, contentContainer, selectedPhase, entriesPerPage, currentPage - 1, selectedStatus);
+        }
+    });
+
+    nextButton.addEventListener('click', () => {
+        const selectedPhase = buttonGroup.querySelector('.active').getAttribute('data-phase');
+        const selectedStatus = statusButtonGroup.querySelector('.active').getAttribute('data-status');
+        const entriesPerPage = parseInt(entriesDropdown.value);
+        const currentPage = parseInt(pageNumbers.querySelector('.page-number.active').textContent);
+        const selectedTeam = document.querySelector('input[name="team-filter"]:checked').value;
+        const filteredData = getFilteredData(tableData, selectedPhase, selectedTeam, selectedStatus);
+        const totalPages = Math.ceil(filteredData.length / entriesPerPage);
+        if (currentPage < totalPages) {
+            renderFilteredCRVerificationTable(tableData, columnNames, contentContainer, selectedPhase, entriesPerPage, currentPage + 1, selectedStatus);
+        }
+    });
 
     // Initial render
     renderFilteredCRVerificationTable(tableData, columnNames, contentContainer, 'all', 25, 1, 'All');
