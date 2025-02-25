@@ -2,9 +2,8 @@ import openpyxl
 from openpyxl.styles import Font, Alignment, PatternFill, Border, Side
 from openpyxl.utils import get_column_letter
 
-# Function to format percentage
+# Function to format percentage values
 def format_percentage(value):
-    # return f"{value:.2f}%"
     return round(value, 2)
 
 # Function to calculate row spans
@@ -15,132 +14,74 @@ def calculate_team_rowspan(team):
     return sum(calculate_phase_rowspan(phase) for phase in team['phases'])
 
 def calculate_phase_rowspan(phase):
-    return len(phase.get('coverage_types', [{}]))
+    return max(1, len(phase.get('coverage_types', [{}])))  # At least 1 row per phase
+
+# Function to set cell formatting
+def set_cell(ws, row, col, value, merge_range=None, bold=False, bg_color=None):
+    cell = ws.cell(row=row, column=col, value=value)
+    cell.alignment = Alignment(horizontal='center', vertical='center')
+    cell.font = Font(bold=bold)
+    cell.border = Border(
+        left=Side(style='thin'), right=Side(style='thin'), 
+        top=Side(style='thin'), bottom=Side(style='thin')
+    )
+    if bg_color:
+        cell.fill = PatternFill(start_color=bg_color, end_color=bg_color, fill_type="solid")
+
+    if merge_range:
+        ws.merge_cells(start_row=merge_range[0], start_column=col, end_row=merge_range[1], end_column=col)
 
 # Function to write data to the worksheet
 def write_data_to_worksheet(ws, data):
-    row = 2
+    row = 2  # Start from the second row (headers are in row 1)
+
     for sp in data:
         sp_rowspan = calculate_sp_rowspan(sp)
-        sp_start_row = row  # Track the starting row for SP
+        sp_start_row = row  # Track SP start row
+
         for team in sp['teams']:
             team_rowspan = calculate_team_rowspan(team)
-            team_start_row = row  # Track the starting row for Team
+            team_start_row = row  # Track Team start row
+
             for phase in team['phases']:
                 phase_rowspan = calculate_phase_rowspan(phase)
+
                 for i, coverage_type in enumerate(phase.get('coverage_types', [{}])):
-                    # SP Name
+                    # Merge and write SP Name (only once per SP)
+                    if row == sp_start_row:
+                        set_cell(ws, row, 1, sp['sp_name'], merge_range=(sp_start_row, sp_start_row + sp_rowspan - 1))
+
+                    # Merge and write Team Name (only once per Team)
+                    if row == team_start_row:
+                        set_cell(ws, row, 2, team['team_name'], merge_range=(team_start_row, team_start_row + team_rowspan - 1))
+
+                    # Merge and write Date (only once per Phase)
                     if i == 0:
-                        ws.cell(row=row, column=1, value=sp['sp_name']).border = Border(
-                            left=Side(style='thin'), 
-                            right=Side(style='thin'), 
-                            top=Side(style='thin'), 
-                            bottom=Side(style='thin')
-                        )
-                        ws.merge_cells(start_row=sp_start_row, start_column=1, end_row=sp_start_row + sp_rowspan - 1, end_column=1)
-                    
-                    # Team Name
+                        set_cell(ws, row, 3, phase['date'], merge_range=(row, row + phase_rowspan - 1))
+
+                    # Merge and write Phase (only once per Phase)
                     if i == 0:
-                        ws.cell(row=row, column=2, value=team['team_name']).border = Border(
-                            left=Side(style='thin'), 
-                            right=Side(style='thin'), 
-                            top=Side(style='thin'), 
-                            bottom=Side(style='thin')
-                        )
-                        ws.merge_cells(start_row=team_start_row, start_column=2, end_row=team_start_row + team_rowspan - 1, end_column=2)
-                    
-                    # Date
-                    if i == 0:
-                        ws.cell(row=row, column=3, value=phase['date']).border = Border(
-                            left=Side(style='thin'), 
-                            right=Side(style='thin'), 
-                            top=Side(style='thin'), 
-                            bottom=Side(style='thin')
-                        )
-                        ws.merge_cells(start_row=row, start_column=3, end_row=row + phase_rowspan - 1, end_column=3)
-                    
-                    # Phase
-                    if i == 0:
-                        ws.cell(row=row, column=4, value=phase['phase']).border = Border(
-                            left=Side(style='thin'), 
-                            right=Side(style='thin'), 
-                            top=Side(style='thin'), 
-                            bottom=Side(style='thin')
-                        )
-                        ws.merge_cells(start_row=row, start_column=4, end_row=row + phase_rowspan - 1, end_column=4)
-                    
+                        set_cell(ws, row, 4, phase['phase'], merge_range=(row, row + phase_rowspan - 1))
+
                     # Coverage Type
-                    ws.cell(row=row, column=5, value=coverage_type.get('coverage_type', '')).border = Border(
-                        left=Side(style='thin'), 
-                        right=Side(style='thin'), 
-                        top=Side(style='thin'), 
-                        bottom=Side(style='thin')
-                    )
-                    
+                    set_cell(ws, row, 5, coverage_type.get('coverage_type', ''))
+
                     # Metrics
                     metrics = coverage_type.get('metrics', {})
-                    ws.cell(row=row, column=6, value=metrics.get('total', 0)).border = Border(
-                        left=Side(style='thin'), 
-                        right=Side(style='thin'), 
-                        top=Side(style='thin'), 
-                        bottom=Side(style='thin')
-                    )
-                    ws.cell(row=row, column=7, value=metrics.get('coverage', 0)).border = Border(
-                        left=Side(style='thin'), 
-                        right=Side(style='thin'), 
-                        top=Side(style='thin'), 
-                        bottom=Side(style='thin')
-                    )
-                    ws.cell(row=row, column=8, value=format_percentage(metrics.get('coverage_percentage', 0))).border = Border(
-                        left=Side(style='thin'), 
-                        right=Side(style='thin'), 
-                        top=Side(style='thin'), 
-                        bottom=Side(style='thin')
-                    )
-                    ws.cell(row=row, column=9, value=metrics.get('passed', 0)).border = Border(
-                        left=Side(style='thin'), 
-                        right=Side(style='thin'), 
-                        top=Side(style='thin'), 
-                        bottom=Side(style='thin')
-                    )
-                    ws.cell(row=row, column=10, value=format_percentage(metrics.get('passed_percentage', 0))).border = Border(
-                        left=Side(style='thin'), 
-                        right=Side(style='thin'), 
-                        top=Side(style='thin'), 
-                        bottom=Side(style='thin')
-                    )
-                    ws.cell(row=row, column=11, value=metrics.get('failed', 0)).border = Border(
-                        left=Side(style='thin'), 
-                        right=Side(style='thin'), 
-                        top=Side(style='thin'), 
-                        bottom=Side(style='thin')
-                    )
-                    ws.cell(row=row, column=12, value=format_percentage(metrics.get('failed_percentage', 0))).border = Border(
-                        left=Side(style='thin'), 
-                        right=Side(style='thin'), 
-                        top=Side(style='thin'), 
-                        bottom=Side(style='thin')
-                    )
-                    ws.cell(row=row, column=13, value=metrics.get('blocked', 0)).border = Border(
-                        left=Side(style='thin'), 
-                        right=Side(style='thin'), 
-                        top=Side(style='thin'), 
-                        bottom=Side(style='thin')
-                    )
-                    ws.cell(row=row, column=14, value=format_percentage(metrics.get('blocked_percentage', 0))).border = Border(
-                        left=Side(style='thin'), 
-                        right=Side(style='thin'), 
-                        top=Side(style='thin'), 
-                        bottom=Side(style='thin')
-                    )
+                    set_cell(ws, row, 6, metrics.get('total', 0))
+                    set_cell(ws, row, 7, metrics.get('coverage', 0))
+                    set_cell(ws, row, 8, format_percentage(metrics.get('coverage_percentage', 0)))
+                    set_cell(ws, row, 9, metrics.get('passed', 0))
+                    set_cell(ws, row, 10, format_percentage(metrics.get('passed_percentage', 0)))
+                    set_cell(ws, row, 11, metrics.get('failed', 0))
+                    set_cell(ws, row, 12, format_percentage(metrics.get('failed_percentage', 0)))
+                    set_cell(ws, row, 13, metrics.get('blocked', 0))
+                    set_cell(ws, row, 14, format_percentage(metrics.get('blocked_percentage', 0)))
+
                     # Unique Issues Issued
-                    ws.cell(row=row, column=15, value=coverage_type.get('unique_issue_count', 0)).border = Border(
-                        left=Side(style='thin'), 
-                        right=Side(style='thin'), 
-                        top=Side(style='thin'), 
-                        bottom=Side(style='thin')
-                    )
-                    row += 1
+                    set_cell(ws, row, 15, coverage_type.get('unique_issue_count', 0))
+
+                    row += 1  # Move to the next row
 
 # Create a new workbook and select the active worksheet
 wb = openpyxl.Workbook()
@@ -156,16 +97,36 @@ headers = [
 
 # Write headers to the worksheet
 for col_num, header in enumerate(headers, 1):
-    cell = ws.cell(row=1, column=col_num, value=header)
-    cell.font = Font(bold=True)
-    cell.alignment = Alignment(horizontal='center')
-    cell.fill = PatternFill(start_color="328AA4", end_color="328AA4", fill_type="solid")
-    cell.border = Border(
-        left=Side(style='thin'), 
-        right=Side(style='thin'), 
-        top=Side(style='thin'), 
-        bottom=Side(style='thin')
-    )
+    set_cell(ws, 1, col_num, header, bold=True, bg_color="328AA4")
+
+# Example Data
+data = [
+    {
+        "sp_name": "SP1",
+        "teams": [
+            {
+                "team_name": "Team A",
+                "phases": [
+                    {
+                        "date": "2024-02-25",
+                        "phase": "Phase 1",
+                        "coverage_types": [
+                            {"coverage_type": "Functional", "metrics": {"total": 10, "coverage": 8, "coverage_percentage": 80.0, "passed": 7, "passed_percentage": 70.0, "failed": 2, "failed_percentage": 20.0, "blocked": 1, "blocked_percentage": 10.0, "unique_issue_count": 2}},
+                            {"coverage_type": "Security", "metrics": {"total": 5, "coverage": 4, "coverage_percentage": 80.0, "passed": 3, "passed_percentage": 60.0, "failed": 1, "failed_percentage": 20.0, "blocked": 1, "blocked_percentage": 20.0, "unique_issue_count": 1}}
+                        ]
+                    },
+                    {
+                        "date": "2024-02-26",
+                        "phase": "Phase 2",
+                        "coverage_types": [
+                            {"coverage_type": "Performance", "metrics": {"total": 8, "coverage": 6, "coverage_percentage": 75.0, "passed": 5, "passed_percentage": 62.5, "failed": 2, "failed_percentage": 25.0, "blocked": 1, "blocked_percentage": 12.5, "unique_issue_count": 3}}
+                        ]
+                    }
+                ]
+            }
+        ]
+    }
+]
 
 # Write data to the worksheet
 write_data_to_worksheet(ws, data)
@@ -173,15 +134,14 @@ write_data_to_worksheet(ws, data)
 # Adjust column widths
 for col in ws.columns:
     max_length = 0
-    column = col[0].column_letter
+    column = col[0].column_letter  # Get column letter
     for cell in col:
         try:
-            if len(str(cell.value)) > max_length:
-                max_length = len(cell.value)
+            if cell.value:
+                max_length = max(max_length, len(str(cell.value)))
         except:
             pass
-    adjusted_width = (max_length + 2) * 1.2
-    ws.column_dimensions[column].width = adjusted_width
+    ws.column_dimensions[column].width = (max_length + 2) * 1.2  # Adjust width
 
 # Save the workbook
 wb.save(r"C:\Dropbox\To Laptop\New folder\00000_coverage_report.xlsx")
