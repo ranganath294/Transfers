@@ -1,766 +1,455 @@
-function renderCompleteReportInCumulativeTable(coverageSummaryData, data, targetElement) {
-    targetElement.innerHTML = ''; // Clear existing content
-    // Create table element
-    const table = document.createElement('table');
-    table.className = 'coverage-table';
+// Add these functions to your existing JavaScript code
 
-    // Create header
-    const thead = document.createElement('thead');
-    const headerRow = document.createElement('tr');
-    const headers = [
-        '', // New column for expand/collapse icon
-        'Phase', 
-        'Total TCs',
-        'Coverage', 'Coverage %',
-        'Passed', 'Pass %',
-        'Failed', 'Fail %',
-        'Blocked', 'Block %',
-        'Unique CRs',
-        'Unique JIRAs'
-    ];
-    headers.forEach(header => {
-        const th = document.createElement('th');
-        th.textContent = header;
-        headerRow.appendChild(th);
-    });
-    thead.appendChild(headerRow);
-    table.appendChild(thead);
+// Define the columns that should be sortable
+const sortableColumns = [
+  'CR ID', 'JIRA ID', 'WC', 'Priority', 'Severity', 'Age', 'Days Since Update'
+  // Add any other numeric columns you want to make sortable
+];
 
-    // Create table body
-    const tbody = document.createElement('tbody');
-    data.forEach((sp, spIndex) => {
-        sp.phases.forEach((phase, phaseIndex) => {
-            // Main row
-            const tr = document.createElement('tr');
-            tr.dataset.spIndex = spIndex;
-            tr.dataset.phaseIndex = phaseIndex;
+// Current sorting state
+let currentSortColumn = null;
+let currentSortDirection = 'asc'; // 'asc' or 'desc'
 
-            // Expand/Collapse column
-            const expandTd = document.createElement('td');
-            const expandBtn = createExpandButton();
-            // Modify expand button event listener
-            expandBtn.addEventListener('click', (event) => {
-                const btn = event.currentTarget;
-                const parentRow = btn.closest('tr');
-                const spIndex = parentRow.dataset.spIndex;
-                const phaseIndex = parentRow.dataset.phaseIndex;
-                // Check if inner table is already expanded
-                const existingInnerTable = parentRow.nextElementSibling;
-                const isCurrentlyExpanded = existingInnerTable && existingInnerTable.classList.contains('inner-table-1-row');
-                if (isCurrentlyExpanded) {
-                    // Collapse
-                    existingInnerTable.remove();
-                    btn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#328AA4" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" class="feather feather-plus-circle">
-                    <circle cx="12" cy="12" r="10"></circle>
-                    <line x1="12" y1="8" x2="12" y2="16"></line>
-                    <line x1="8" y1="12" x2="16" y2="12"></line>
-                    </svg>`;
-                } else {
-                    // Expand
-                    const phaseData = {
-                        ...data[0].phases[phaseIndex],
-                        sp_name: document.getElementById('sp_name').value // Get current SP name
-                    };
-                    renderInnerTable1(phaseData, parentRow, coverageSummaryData);
-                    btn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#328AA4" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" class="feather feather-minus-circle">
-                    <circle cx="12" cy="12" r="10"></circle>
-                    <line x1="8" y1="12" x2="16" y2="12"></line>
-                    </svg>`;
-                }
-            });
-            expandTd.appendChild(expandBtn);
-            tr.appendChild(expandTd);
-
-            const cells = [
-                phase.phase,
-                phase.metrics.total,
-                phase.metrics.coverage,
-                formatPercentage(phase.metrics.coverage_percentage),
-                phase.metrics.passed,
-                formatPercentage(phase.metrics.passed_percentage),
-                phase.metrics.failed,
-                formatPercentage(phase.metrics.failed_percentage),
-                phase.metrics.blocked,
-                formatPercentage(phase.metrics.blocked_percentage)
-            ];
-            cells.forEach(cellData => {
-                const td = document.createElement('td');
-                td.textContent = cellData;
-                tr.appendChild(td);
-            });
-
-            // Add Unique CRs column
-            const crTd = document.createElement('td');
-            crTd.innerHTML = formatLongList(phase.unique_cr_list, phase.unique_cr_count);
-            tr.appendChild(crTd);
-
-            // Add Unique JIRAs column
-            const jiraTd = document.createElement('td');
-            jiraTd.innerHTML = formatLongList(phase.unique_jira_list, phase.unique_jira_count);
-            tr.appendChild(jiraTd);
-
-            tbody.appendChild(tr);
-        });
-    });
-    table.appendChild(tbody);
-
-    // Clear existing table if any
-    targetElement.querySelector('table')?.remove();
-
-    // Append table to card body
-    targetElement.appendChild(table);
-    adjustColumnWidths();
-}
-
-function renderCRVerificationInCumulativeTable(data, columnNames, targetElement) {
-    // Create card element
-    const cardElement = document.createElement('div');
-    cardElement.className = 'card mb-3';
-    
-    // Create card body
-    const cardBody = document.createElement('div');
-    cardBody.className = 'card-body';
-    
-    // Create button container
-    const buttonContainer = document.createElement('div');
-    buttonContainer.id = 'cumulativeTableFilters';
-    buttonContainer.className = 'mb-3';
-    
-    // Create container for phase filters
-    const phaseFilterContainer = document.createElement('div');
-    phaseFilterContainer.className = 'mb-3'; // Add margin bottom for spacing
-    
-    // Create button group for phase filters
-    const buttonGroup = document.createElement('div');
-    buttonGroup.className = 'btn-group';
-    buttonGroup.setAttribute('role', 'group');
-    buttonGroup.setAttribute('aria-label', 'Phase filters');
-    
-    // Create phase filter buttons
-    const phases = ['all', 'ES', 'FC', 'CS'];
-    phases.forEach(phase => {
-        const button = document.createElement('button');
-        button.type = 'button';
-        button.className = `btn btn-outline-primary phase-filter ${phase === 'all' ? 'active' : ''}`;
-        button.setAttribute('data-phase', phase);
-        button.textContent = phase === 'all' ? 'All Phases' : phase;
-        buttonGroup.appendChild(button);
-    });
-    
-    // Create container for status filters
-    const statusFilterContainer = document.createElement('div');
-    statusFilterContainer.className = 'mb-3'; // Add margin bottom for spacing
-    
-    // Create button group for status filters
-    const statusButtonGroup = document.createElement('div');
-    statusButtonGroup.className = 'btn-group';
-    statusButtonGroup.setAttribute('role', 'group');
-    statusButtonGroup.setAttribute('aria-label', 'Status filters');
-    
-    // Create status filter buttons
-    // Determine the statuses array based on the selected view button
-    let statuses;
-    if (document.getElementById('cr-verification').checked) {
-        statuses = ['All', 'Analysis', 'Fix', 'NotApplicable', 'Obsolete', 'Open', 'Ready', 'Reopen', 'Untested', 'Withdrawn', 'Built', 'Duplicate', 'CannotDuplicate', 'NeedsRelease', 'Tested', 'Postponed', 'null'];
-    } else if (document.getElementById('scrum-sheet').checked) {
-        statuses = ["All", "Debug", "Retest"];
-    } else {
-        statuses = ['All', 'Analysis', 'Fix', 'NotApplicable', 'Obsolete', 'Open', 'Ready', 'Reopen', 'Untested', 'Withdrawn', 'Built', 'Duplicate', 'CannotDuplicate', 'NeedsRelease', 'Tested', 'Postponed', 'null'];
-    } 
-    statuses.forEach(status => {
-        const button = document.createElement('button');
-        button.type = 'button';
-        button.className = `btn btn-outline-primary status-filter ${status === 'All' ? 'active' : ''}`;
-        button.setAttribute('data-status', status);
-        button.textContent = status;
-        // button.style.marginRight = '5px'; // Add some margin for spacing
-        statusButtonGroup.appendChild(button);
-    });
-    
-    // Create a container for entries dropdown and pagination
-    const paginationContainer = document.createElement('div');
-    paginationContainer.className = 'row align-items-center mt-3 mb-3';
-    
-    // Create column for entries per page dropdown
-    const entriesCol = document.createElement('div');
-    entriesCol.className = 'col-12 col-md-4 mb-2 mb-md-0';
-    const entriesWrapper = document.createElement('div');
-    entriesWrapper.className = 'd-flex align-items-center';
-    const entriesLabel = document.createElement('label');
-    entriesLabel.className = 'me-2 text-nowrap';
-    entriesLabel.textContent = 'Show entries:';
-    const entriesDropdown = document.createElement('select');
-    entriesDropdown.className = 'form-select form-select-sm w-auto';
-    [25, 50, 100].forEach(value => {
-        const option = document.createElement('option');
-        option.value = value;
-        option.textContent = value;
-        if (value === 25) option.selected = true;
-        entriesDropdown.appendChild(option);
-    });
-    entriesWrapper.appendChild(entriesLabel);
-    entriesWrapper.appendChild(entriesDropdown);
-    entriesCol.appendChild(entriesWrapper);
-    
-    // Create column for entries info
-    const infoCol = document.createElement('div');
-    infoCol.className = 'col-12 col-md-4 text-center mb-2 mb-md-0';
-    const entriesInfo = document.createElement('div');
-    entriesInfo.className = 'entries-info text-muted';
-    entriesInfo.style.fontSize = '0.9rem';
-    infoCol.appendChild(entriesInfo);
-    
-    // Create column for pagination buttons
-    const paginationCol = document.createElement('div');
-    paginationCol.className = 'col-12 col-md-4';
-    const paginationNav = document.createElement('nav');
-    paginationNav.setAttribute('aria-label', 'Table navigation');
-    const paginationList = document.createElement('ul');
-    paginationList.className = 'pagination pagination-sm justify-content-center justify-content-md-end mb-0';
-    
-    // Previous button
-    const prevListItem = document.createElement('li');
-    prevListItem.className = 'page-item prev-item'; // Added class for styling
-    const prevButton = document.createElement('button');
-    prevButton.className = 'page-link prev-page';
-    prevButton.innerHTML = '&laquo; Previous';
-    prevListItem.appendChild(prevButton);
-    
-    // Page numbers container
-    const pageNumbersItem = document.createElement('li');
-    pageNumbersItem.className = 'page-item page-numbers-item'; // Added class for styling
-    const pageNumbers = document.createElement('div');
-    pageNumbers.className = 'page-numbers d-flex';
-    pageNumbersItem.appendChild(pageNumbers);
-    
-    // Next button
-    const nextListItem = document.createElement('li');
-    nextListItem.className = 'page-item next-item'; // Added class for styling
-    const nextButton = document.createElement('button');
-    nextButton.className = 'page-link next-page';
-    nextButton.innerHTML = 'Next &raquo;';
-    nextListItem.appendChild(nextButton);
-    
-    // Update pagination styles
-    const paginationStyles = document.createElement('style');
-    paginationStyles.textContent = `
-    .pagination {
-        gap: 8px; /* Add space between all pagination items */
-        display: flex;
-        align-items: center;
-    }
-    .page-numbers {
-        gap: 4px; /* Space between page number buttons */
-        margin: 0 8px; /* Add margin on both sides of page numbers */
-    }
-    .page-link {
-        padding: 0.375rem 0.75rem;
-        color: #328AA4;
-        background-color: #fff;
-        border: 1px solid #dee2e6;
-        transition: color 0.15s ease-in-out, background-color 0.15s ease-in-out, border-color 0.15s ease-in-out;
-        border-radius: 4px; /* Add rounded corners to all buttons */
-    }
-    .page-link:hover {
-        color: #fff;
-        background-color: #328AA4;
-        border-color: #328AA4;
-    }
-    .page-item.active .page-link {
-        background-color: #328AA4;
-        border-color: #328AA4;
-        color: #fff;
-    }
-    .page-item.disabled .page-link {
-        color: #6c757d;
-        pointer-events: none;
-        background-color: #fff;
-        border-color: #dee2e6;
-    }
-    /* Ensure consistent spacing in mobile view */
-    @media (max-width: 768px) {
-        .pagination {
-            flex-wrap: nowrap; /* Prevent wrapping on mobile */
-            justify-content: center;
-            gap: 8px;
-        }
-        .page-numbers {
-            margin: 0 8px;
-            gap: 4px;
-        }
-        .page-link {
-            padding: 0.25rem 0.5rem; /* Slightly smaller padding on mobile */
-        }
-    }
-    `;
-    document.head.appendChild(paginationStyles);
-    
-    // Add responsive styles for filters
-    const filterStyles = document.createElement('style');
-    filterStyles.textContent = `
-    #cumulativeTableFilters .btn-group {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 4px;
-        width: 100%;
-    }
-    #cumulativeTableFilters .btn {
-        margin: 0;
-        flex: 0 1 auto;
-        white-space: nowrap;
-    }
-    @media (max-width: 768px) {
-        #cumulativeTableFilters .btn-group {
-            flex-direction: row;
-            width: 100%;
-            margin-bottom: 10px;
-        }
-        #cumulativeTableFilters .btn {
-            font-size: 0.875rem;
-            padding: 0.375rem 0.75rem;
-        }
-    }
-    `;
-    document.head.appendChild(filterStyles);
-    
-    // Update the structure to stack filters vertically
-    phaseFilterContainer.appendChild(buttonGroup);
-    statusFilterContainer.appendChild(statusButtonGroup);
-    
-    // Append filters and pagination in the desired order
-    buttonContainer.appendChild(phaseFilterContainer);
-    buttonContainer.appendChild(statusFilterContainer);
-    buttonContainer.appendChild(paginationContainer);
-    
-    // Create content container for tables
-    const contentContainer = document.createElement('div');
-    contentContainer.id = 'reportContentContainer';
-    
-    // Append button container and content container to card body
-    cardBody.appendChild(buttonContainer);
-    cardBody.appendChild(contentContainer);
-    
-    // Append card body to card element
-    cardElement.appendChild(cardBody);
-    
-    // Append card element to target element
-    targetElement.appendChild(cardElement);
-    
-    // Add event listeners for phase filter buttons
-    buttonGroup.addEventListener('click', (e) => {
-        if (e.target.classList.contains('phase-filter')) {
-            // Remove active class from all buttons
-            buttonGroup.querySelectorAll('.phase-filter').forEach(btn => btn.classList.remove('active'));
-            // Add active class to the clicked button
-            e.target.classList.add('active');
-            // Get the selected phase
-            const selectedPhase = e.target.getAttribute('data-phase');
-            // Get the selected status
-            const selectedStatus = statusButtonGroup.querySelector('.active').getAttribute('data-status');
-            // Render the table based on the selected phase
-            renderFilteredCRVerificationTable(data, columnNames, contentContainer, selectedPhase, parseInt(entriesDropdown.value), 1, selectedStatus);
-        }
-    });
-    
-    // Add event listeners for status filter buttons
-    statusButtonGroup.addEventListener('click', (e) => {
-        if (e.target.classList.contains('status-filter')) {
-            const selectedStatusButtons = statusButtonGroup.querySelectorAll('.status-filter.active');
-            const allButton = statusButtonGroup.querySelector('.status-filter[data-status="All"]');
-
-            if (e.target.getAttribute('data-status') === 'All') {
-                // If "All" is clicked, uncheck all other buttons
-                selectedStatusButtons.forEach(btn => {
-                    if (btn !== e.target) {
-                        btn.classList.remove('active');
-                    }
-                });
-            } else {
-                // If any other button is clicked, uncheck "All" button
-                allButton.classList.remove('active');
-            }
-
-            // Toggle the active class for the clicked button
-            e.target.classList.toggle('active');
-
-            // Get the selected phase
-            const selectedPhase = buttonGroup.querySelector('.active').getAttribute('data-phase');
-
-            // Get the selected statuses
-            const selectedStatuses = Array.from(statusButtonGroup.querySelectorAll('.status-filter.active'))
-                .map(btn => btn.getAttribute('data-status'));
-
-            // Render the table based on the selected phase and statuses
-            renderFilteredCRVerificationTable(data, columnNames, contentContainer, selectedPhase, parseInt(entriesDropdown.value), 1, selectedStatuses);
-        }
-    });
-    
-    // Add event listener for entries per page dropdown
-    entriesDropdown.addEventListener('change', (e) => {
-        const selectedPhase = buttonGroup.querySelector('.active').getAttribute('data-phase');
-        const selectedStatus = statusButtonGroup.querySelector('.active').getAttribute('data-status');
-        const entriesPerPage = parseInt(e.target.value);
-        renderFilteredCRVerificationTable(data, columnNames, contentContainer, selectedPhase, entriesPerPage, 1, selectedStatus);
-    });
-    
-    // Add event listeners for pagination buttons
-    prevButton.addEventListener('click', () => {
-        console.log('Previous button clicked');
-        const selectedPhase = buttonGroup.querySelector('.active').getAttribute('data-phase');
-        const selectedStatus = statusButtonGroup.querySelector('.active').getAttribute('data-status');
-        const entriesPerPage = parseInt(entriesDropdown.value);
-        const currentPage = parseInt(pageNumbers.querySelector('.page-number.active').textContent);
-        const selectedTeam = document.querySelector('input[name="team-filter"]:checked').value;
-        const filteredData = getFilteredData(data, selectedPhase, selectedTeam, selectedStatus);
-        console.log(`Current Page: ${currentPage}, Total Pages: ${Math.ceil(filteredData.length / entriesPerPage)}`);
-        if (currentPage > 1) {
-            renderFilteredCRVerificationTable(data, columnNames, contentContainer, selectedPhase, entriesPerPage, currentPage - 1, selectedStatus);
-        }
-    });
-    
-    nextButton.addEventListener('click', () => {
-        console.log('Next button clicked');
-        const selectedPhase = buttonGroup.querySelector('.active').getAttribute('data-phase');
-        const selectedStatus = statusButtonGroup.querySelector('.active').getAttribute('data-status');
-        const entriesPerPage = parseInt(entriesDropdown.value);
-        const currentPage = parseInt(pageNumbers.querySelector('.page-number.active').textContent);
-        const selectedTeam = document.querySelector('input[name="team-filter"]:checked').value;
-        const filteredData = getFilteredData(data, selectedPhase, selectedTeam, selectedStatus);
-        const totalPages = Math.ceil(filteredData.length / entriesPerPage);
-        console.log(`Current Page: ${currentPage}, Total Pages: ${totalPages}`);
-        if (currentPage < totalPages) {
-            renderFilteredCRVerificationTable(data, columnNames, contentContainer, selectedPhase, entriesPerPage, currentPage + 1, selectedStatus);
-        }
-    });
-    
-    // Append all columns to the container
-    paginationContainer.appendChild(entriesCol);
-    paginationContainer.appendChild(infoCol);
-    paginationContainer.appendChild(paginationCol);
-    
-    // Append pagination items to the list
-    paginationList.appendChild(prevListItem);
-    paginationList.appendChild(pageNumbersItem);
-    paginationList.appendChild(nextListItem);
-    paginationNav.appendChild(paginationList);
-    paginationCol.appendChild(paginationNav);
-    
-    // Initial render of CR Verification table with 'all' phases
-    renderFilteredCRVerificationTable(data, columnNames, contentContainer, 'all', 25, 1, 'All');
-}
-
+// Modify the renderFilteredCRVerificationTable function to add sorting functionality
 function renderFilteredCRVerificationTable(data, columnNames, targetElement, selectedPhase, entriesPerPage, currentPage, selectedStatuses) {
-    // Clear existing table if any
-    targetElement.querySelector('table')?.remove();
-    // Create table element
-    const table = document.createElement('table');
-    table.className = 'coverage-table';
-    // Create header
-    const thead = document.createElement('thead');
-    const headerRow = document.createElement('tr');
-    columnNames.forEach(header => {
-        const th = document.createElement('th');
-        th.textContent = header;
-        headerRow.appendChild(th);
-    });
-    thead.appendChild(headerRow);
-    table.appendChild(thead);
-    // Get the selected team from the team filter
-    const selectedTeam = document.querySelector('input[name="team-filter"]:checked').value;
-    // Create table body
-    const tbody = document.createElement('tbody');
-    // Filter data based on the selected team and phase
-    const filteredData = getFilteredData(data, selectedPhase, selectedTeam, selectedStatuses);
-    // Calculate pagination details
-    const totalPages = Math.ceil(filteredData.length / entriesPerPage);
-    const startIndex = (currentPage - 1) * entriesPerPage;
-    const endIndex = startIndex + entriesPerPage;
-    const paginatedData = filteredData.slice(startIndex, endIndex);
-    maxWidthLimitingColumns = ['Title', 'Notes'];
-    // Render paginated data
-    paginatedData.forEach(rowData => {
-        const tr = document.createElement('tr');
-        columnNames.forEach((columnName, index) => {
-            const td = document.createElement('td');
-            if (columnName === 'Notes') {
-                const notesText = rowData[columnName] !== null ? rowData[columnName] : '';
-                if (notesText.length > 200) {
-                    const shortenedText = notesText.substring(0, 200) + '...';
-                    const showMoreLink = document.createElement('a');
-                    showMoreLink.href = '#';
-                    showMoreLink.textContent = 'Show More';
-                    showMoreLink.className = 'show-more-notes';
-                    showMoreLink.style.cursor = 'pointer';
-                    showMoreLink.addEventListener('click', (e) => {
-                        e.preventDefault();
-                        if (td.textContent.includes('Show Less')) {
-                            td.textContent = shortenedText;
-                            td.appendChild(showMoreLink);
-                        } else {
-                            td.textContent = notesText;
-                            const showLessLink = document.createElement('a');
-                            showLessLink.href = '#';
-                            showLessLink.textContent = 'Show Less';
-                            showLessLink.className = 'show-less-notes';
-                            showLessLink.style.cursor = 'pointer';
-                            showLessLink.addEventListener('click', (e) => {
-                                e.preventDefault();
-                                td.textContent = shortenedText;
-                                td.appendChild(showMoreLink);
-                            });
-                            td.appendChild(showLessLink);
-                        }
-                    });
-                    td.textContent = shortenedText;
-                    td.appendChild(showMoreLink);
-                } else {
-                    td.textContent = notesText;
-                }
-            } else {
-                td.textContent = rowData[columnName] !== null ? rowData[columnName] : '';
-            }
-            // Apply max-width-column class to specific columns
-            if (maxWidthLimitingColumns.includes(columnName)) { 
-                td.classList.add('max-width-column');
-            }
-            tr.appendChild(td);
-        });
-        tbody.appendChild(tr);
-    });
-    table.appendChild(tbody);
-    // Append table to card body
-    targetElement.appendChild(table);
-    // Adjust column widths
-    adjustColumnWidths();
-    // Update pagination controls
-    const entriesInfo = document.querySelector('.entries-info');
-    entriesInfo.textContent = `Showing ${startIndex + 1} to ${Math.min(endIndex, filteredData.length)} of ${filteredData.length} entries`;
-    const pageNumbers = document.querySelector('.page-numbers');
-    pageNumbers.textContent = '';
-    const prevButton = document.querySelector('.prev-page');
-    const nextButton = document.querySelector('.next-page');
-    prevButton.disabled = currentPage === 1;
-    nextButton.disabled = currentPage === totalPages;
-    if (totalPages > 1) {
-        const startPage = Math.max(1, currentPage - 1);
-        const endPage = Math.min(totalPages, currentPage + 1);
-        for (let i = startPage; i <= endPage; i++) {
-            const pageButton = document.createElement('button');
-            pageButton.className = `btn btn-outline-primary page-number ${i === currentPage ? 'active' : ''}`;
-            pageButton.textContent = i;
-            pageButton.addEventListener('click', () => {
-                renderFilteredCRVerificationTable(data, columnNames, targetElement, selectedPhase, entriesPerPage, i, selectedStatuses);
-            });
-            pageNumbers.appendChild(pageButton);
-        }
-    }
-}
-
-// Modify the getFilteredData function to handle multiple statuses
-function getFilteredData(data, selectedPhase, selectedTeam, selectedStatuses) {
-    const filteredData = [];
-    const reportType = document.querySelector('input[name="report-filter"]:checked').value;
+  // Clear existing table if any
+  targetElement.querySelector('table')?.remove();
+  
+  // Create table element
+  const table = document.createElement('table');
+  table.className = 'coverage-table';
+  
+  // Create header
+  const thead = document.createElement('thead');
+  const headerRow = document.createElement('tr');
+  
+  // Add headers with sort functionality for sortable columns
+  columnNames.forEach(header => {
+    const th = document.createElement('th');
     
-    if (data[selectedTeam]) {
-        for (const phase in data[selectedTeam]) {
-            if (selectedPhase === 'all' || phase === selectedPhase) {
-                const phaseData = data[selectedTeam][phase];
-                if (selectedStatuses.includes('All')) {
-                    filteredData.push(...phaseData);
-                } else {
-                    if (reportType === 'scrum-sheet') {
-                        // Handle Scrum Sheet specific statuses
-                        const statusFilterListForScrumSheet = ['Built', 'Withdrawn', 'CannotDuplicate', 'Postponed', 'NotApplicable', 'Ready'];
-                        filteredData.push(...phaseData.filter(item => {
-                            if (selectedStatuses.includes('Debug') && selectedStatuses.includes('Retest')) {
-                                return (!statusFilterListForScrumSheet.includes(item.Status) || item.Status === null) || statusFilterListForScrumSheet.includes(item.Status);
-                            } else if (selectedStatuses.includes('Debug')) {
-                                return !statusFilterListForScrumSheet.includes(item.Status) || item.Status === null;
-                            } else if (selectedStatuses.includes('Retest')) {
-                                return statusFilterListForScrumSheet.includes(item.Status);
-                            }
-                            return false;
-                        }));
-                    } else {
-                        // Handle CR Verification specific statuses
-                        filteredData.push(...phaseData.filter(item => selectedStatuses.includes(item.Status || 'null')));
-                    }
-                }
-            }
+    // Check if this column is sortable
+    if (sortableColumns.includes(header)) {
+      // Create a container div for the header content and sort icon
+      const headerContainer = document.createElement('div');
+      headerContainer.className = 'sortable-header';
+      headerContainer.style.display = 'flex';
+      headerContainer.style.alignItems = 'center';
+      headerContainer.style.cursor = 'pointer';
+      
+      // Add the header text
+      const headerText = document.createElement('span');
+      headerText.textContent = header;
+      headerContainer.appendChild(headerText);
+      
+      // Add the sort icon container
+      const sortIcon = document.createElement('span');
+      sortIcon.className = 'sort-icon';
+      sortIcon.style.marginLeft = '5px';
+      sortIcon.style.display = 'inline-block';
+      sortIcon.style.width = '12px';
+      
+      // Set the initial sort icon based on current sort state
+      if (currentSortColumn === header) {
+        sortIcon.innerHTML = currentSortDirection === 'asc' 
+          ? '&#9650;' // Up arrow for ascending
+          : '&#9660;'; // Down arrow for descending
+      } else {
+        sortIcon.innerHTML = '&#8597;'; // Up/down arrow for unsorted
+      }
+      
+      headerContainer.appendChild(sortIcon);
+      
+      // Add click event to handle sorting
+      headerContainer.addEventListener('click', () => {
+        // Toggle sort direction if clicking the same column
+        if (currentSortColumn === header) {
+          currentSortDirection = currentSortDirection === 'asc' ? 'desc' : 'asc';
+        } else {
+          currentSortColumn = header;
+          currentSortDirection = 'asc';
         }
+        
+        // Re-render the table with the new sort
+        const selectedPhase = document.querySelector('.phase-filter.active').getAttribute('data-phase');
+        const selectedStatusButtons = document.querySelectorAll('.status-filter.active');
+        const selectedStatuses = Array.from(selectedStatusButtons).map(btn => btn.getAttribute('data-status'));
+        const entriesPerPage = parseInt(document.querySelector('.form-select').value);
+        
+        // Get the selected team from the team filter
+        const selectedTeam = document.querySelector('input[name="team-filter"]:checked').value;
+        
+        // Get filtered data
+        let filteredData = getFilteredData(data, selectedPhase, selectedTeam, selectedStatuses);
+        
+        // Sort the filtered data
+        filteredData = sortData(filteredData, header, currentSortDirection);
+        
+        // Re-render with sorted data
+        renderTableWithSortedData(filteredData, columnNames, targetElement, entriesPerPage, currentPage);
+      });
+      
+      th.appendChild(headerContainer);
+    } else {
+      // Regular non-sortable header
+      th.textContent = header;
     }
-    return filteredData;
-}        
-
-function renderCumulativeTable(coverageSummaryData, data, targetElementId) {
-    console.log("renderCumulativeTable");
-    const targetElement = document.getElementById(targetElementId);
-    targetElement.innerHTML = ''; // Clear everything first
-
-    // Create card element
-    const cardElement = document.createElement('div');
-    cardElement.className = 'card mb-3';
-
-    // Create card body
-    const cardBody = document.createElement('div');
-    cardBody.className = 'card-body';
-
-    // Create button container
-    const buttonContainer = document.createElement('div');
-    buttonContainer.id = 'cumulativeTableFilters';
-    buttonContainer.className = 'mb-3';
-
-    // Create button group
-    const buttonGroup = document.createElement('div');
-    buttonGroup.className = 'btn-group';
-    buttonGroup.setAttribute('role', 'group');
-    buttonGroup.setAttribute('aria-label', 'Report filters');
-
-    // Create Complete Report button
-    const completeReportInput = document.createElement('input');
-    completeReportInput.type = 'radio';
-    completeReportInput.className = 'btn-check team-filter';
-    completeReportInput.name = 'report-filter';
-    completeReportInput.id = 'complete-report';
-    completeReportInput.value = 'complete-report';
-    completeReportInput.checked = true;
-    const completeReportLabel = document.createElement('label');
-    completeReportLabel.className = 'btn btn-outline-primary report-filter-btn';
-    completeReportLabel.setAttribute('for', 'complete-report');
-    completeReportLabel.textContent = 'Complete Report';
-
-    // Create CR Verification button
-    const crVerificationInput = document.createElement('input');
-    crVerificationInput.type = 'radio';
-    crVerificationInput.className = 'btn-check team-filter';
-    crVerificationInput.name = 'report-filter';
-    crVerificationInput.id = 'cr-verification';
-    crVerificationInput.value = 'cr-verification';
-    const crVerificationLabel = document.createElement('label');
-    crVerificationLabel.className = 'btn btn-outline-primary report-filter-btn';
-    crVerificationLabel.setAttribute('for', 'cr-verification');
-    crVerificationLabel.textContent = 'CR Verification';
-
-    // Create Attached CRs button
-    const scrumSheetInput = document.createElement('input');
-    scrumSheetInput.type = 'radio';
-    scrumSheetInput.className = 'btn-check team-filter';
-    scrumSheetInput.name = 'report-filter';
-    scrumSheetInput.id = 'scrum-sheet';
-    scrumSheetInput.value = 'scrum-sheet';
-    const scrumSheetLabel = document.createElement('label');
-    scrumSheetLabel.className = 'btn btn-outline-primary report-filter-btn';
-    scrumSheetLabel.setAttribute('for', 'scrum-sheet');
-    scrumSheetLabel.textContent = 'Scrum Sheet';
-
-    // Append buttons to button group
-    buttonGroup.appendChild(completeReportInput);
-    buttonGroup.appendChild(completeReportLabel);
-    buttonGroup.appendChild(crVerificationInput);
-    buttonGroup.appendChild(crVerificationLabel);
-    buttonGroup.appendChild(scrumSheetInput);
-    buttonGroup.appendChild(scrumSheetLabel);
-
-    // Append button group to button container
-    buttonContainer.appendChild(buttonGroup);
-
-    // Create content container for tables
-    const contentContainer = document.createElement('div');
-    contentContainer.id = 'reportContentContainer';
-
-    // Append button container and content container to card body
-    cardBody.appendChild(buttonContainer);
-    cardBody.appendChild(contentContainer);
-
-    // Append card body to card element
-    cardElement.appendChild(cardBody);
-
-    // Append card element to target element
-    targetElement.appendChild(cardElement);
-
-    // Add event listeners for report filter buttons
-    completeReportInput.addEventListener('change', () => {
-        if (completeReportInput.checked) {
-            console.log('Complete Report clicked');
-            contentContainer.innerHTML = ''; // Clear the content container
-            renderCompleteReportInCumulativeTable(coverageSummaryData, data, contentContainer);
-        }
-    });
-
-    crVerificationInput.addEventListener('change', async () => {
-        if (crVerificationInput.checked) {
-            console.log('CR Verification clicked');
-            const spSelect = document.getElementById('sp_name');
-            const selectedSp = spSelect.value;
-            if (!selectedSp) {
-                addAlert('danger', 'Please select an SP first')
-                // alert('Please select an SP first');
-                return;
-            }
-            contentContainer.innerHTML = ''; // Clear the content container
-            if (!(crVerificationData && crVerificationColumnNames)) {
-                const params = new URLSearchParams();
-                params.append('sp_name', selectedSp);
-                try {
-                    const response = await fetch(`{% url 'cst_reporting_views:get_cr_verification_data' %}?${params.toString()}`);
-                    if (!response.ok) throw new Error('Network response was not ok');
-                    const responseData = await response.json();
-                    crVerificationData = responseData["data"];
-                    crVerificationColumnNames = responseData["column_names"];
-                } catch (error) {
-                    console.error('Error fetching data:', error);
-                    addAlert('danger', `Error fetching data. Please try again.\n ${error}`)
-                    // alert('Error fetching data. Please try again.');
-                    return;
-                }
-            } 
-            console.log("Fetched from initial async fetch")
-            renderCRVerificationInCumulativeTable(crVerificationData, crVerificationColumnNames, contentContainer);
-        }
-    });
-
-    scrumSheetInput.addEventListener('change', async () => {
-        if (scrumSheetInput.checked) {
-            console.log('Attached CRs clicked');
-            const spSelect = document.getElementById('sp_name');
-            const selectedSp = spSelect.value;
-            if (!selectedSp) {
-                addAlert('danger', 'Please select an SP first');
-                return;
-            }
-            contentContainer.innerHTML = ''; // Clear the content container
-            if (!(scrumSheetData && crVerificationData && crVerificationColumnNames)) 
-            {
-                const params = new URLSearchParams();
-                params.append('sp_name', selectedSp);
-                try {
-                    const response = await fetch(`{% url 'cst_reporting_views:get_cr_verification_data' %}?${params.toString()}`);
-                    if (!response.ok) throw new Error('Network response was not ok');
-                    const responseData = await response.json();
-                    crVerificationData = responseData["data"];
-                    crVerificationColumnNames = responseData["column_names"];
-                } catch (error) {
-                    console.error('Error fetching data:', error);
-                    addAlert('danger', `Error fetching data. Please try again.\n ${error}`)
-                    // alert('Error fetching data. Please try again.');
-                    return;
-                }
-                await createscrumSheetData();
-            }
-            renderCRVerificationInCumulativeTable(scrumSheetData, crVerificationColumnNames, contentContainer);
-        }
-    });
-
-    // Add event listeners for "more" links
-    targetElement.addEventListener('click', (e) => {
-        if (e.target.classList.contains('show-more-list')) {
+    
+    headerRow.appendChild(th);
+  });
+  
+  thead.appendChild(headerRow);
+  table.appendChild(thead);
+  
+  // Get the selected team from the team filter
+  const selectedTeam = document.querySelector('input[name="team-filter"]:checked').value;
+  
+  // Create table body
+  const tbody = document.createElement('tbody');
+  
+  // Filter data based on the selected team and phase
+  let filteredData = getFilteredData(data, selectedPhase, selectedTeam, selectedStatuses);
+  
+  // Apply current sort if set
+  if (currentSortColumn) {
+    filteredData = sortData(filteredData, currentSortColumn, currentSortDirection);
+  }
+  
+  // Calculate pagination details
+  const totalPages = Math.ceil(filteredData.length / entriesPerPage);
+  const startIndex = (currentPage - 1) * entriesPerPage;
+  const endIndex = startIndex + entriesPerPage;
+  const paginatedData = filteredData.slice(startIndex, endIndex);
+  
+  // Define columns that need width limitation
+  const maxWidthLimitingColumns = ['Title', 'Notes'];
+  
+  // Render paginated data
+  paginatedData.forEach(rowData => {
+    const tr = document.createElement('tr');
+    columnNames.forEach((columnName) => {
+      const td = document.createElement('td');
+      if (columnName === 'Notes') {
+        const notesText = rowData[columnName] !== null ? rowData[columnName] : '';
+        if (notesText.length > 200) {
+          const shortenedText = notesText.substring(0, 200) + '...';
+          const showMoreLink = document.createElement('a');
+          showMoreLink.href = '#';
+          showMoreLink.textContent = 'Show More';
+          showMoreLink.className = 'show-more-notes';
+          showMoreLink.style.cursor = 'pointer';
+          showMoreLink.addEventListener('click', (e) => {
             e.preventDefault();
-            const title = e.target.getAttribute('data-title');
-            const list = JSON.parse(decodeURIComponent(e.target.getAttribute('data-list')));
-            createListModal(title, list);
+            if (td.textContent.includes('Show Less')) {
+              td.textContent = shortenedText;
+              td.appendChild(showMoreLink);
+            } else {
+              td.textContent = notesText;
+              const showLessLink = document.createElement('a');
+              showLessLink.href = '#';
+              showLessLink.textContent = 'Show Less';
+              showLessLink.className = 'show-less-notes';
+              showLessLink.style.cursor = 'pointer';
+              showLessLink.addEventListener('click', (e) => {
+                e.preventDefault();
+                td.textContent = shortenedText;
+                td.appendChild(showMoreLink);
+              });
+              td.appendChild(showLessLink);
+            }
+          });
+          td.textContent = shortenedText;
+          td.appendChild(showMoreLink);
+        } else {
+          td.textContent = notesText;
         }
+      } else {
+        td.textContent = rowData[columnName] !== null ? rowData[columnName] : '';
+      }
+      
+      // Apply max-width-column class to specific columns
+      if (maxWidthLimitingColumns.includes(columnName)) { 
+        td.classList.add('max-width-column');
+      }
+      
+      tr.appendChild(td);
     });
-
-    // Initial render of Complete Report
-    renderCompleteReportInCumulativeTable(coverageSummaryData, data, contentContainer);
+    tbody.appendChild(tr);
+  });
+  
+  table.appendChild(tbody);
+  
+  // Append table to card body
+  targetElement.appendChild(table);
+  
+  // Adjust column widths
+  adjustColumnWidths();
+  
+  // Update pagination controls
+  updatePaginationControls(filteredData, entriesPerPage, currentPage, targetElement);
 }
+
+// Function to render the table with sorted data
+function renderTableWithSortedData(sortedData, columnNames, targetElement, entriesPerPage, currentPage) {
+  // Clear existing table if any
+  targetElement.querySelector('table')?.remove();
+  
+  // Create table element
+  const table = document.createElement('table');
+  table.className = 'coverage-table';
+  
+  // Create header
+  const thead = document.createElement('thead');
+  const headerRow = document.createElement('tr');
+  
+  // Add headers with sort functionality for sortable columns
+  columnNames.forEach(header => {
+    const th = document.createElement('th');
+    
+    // Check if this column is sortable
+    if (sortableColumns.includes(header)) {
+      // Create a container div for the header content and sort icon
+      const headerContainer = document.createElement('div');
+      headerContainer.className = 'sortable-header';
+      headerContainer.style.display = 'flex';
+      headerContainer.style.alignItems = 'center';
+      headerContainer.style.cursor = 'pointer';
+      
+      // Add the header text
+      const headerText = document.createElement('span');
+      headerText.textContent = header;
+      headerContainer.appendChild(headerText);
+      
+      // Add the sort icon container
+      const sortIcon = document.createElement('span');
+      sortIcon.className = 'sort-icon';
+      sortIcon.style.marginLeft = '5px';
+      sortIcon.style.display = 'inline-block';
+      sortIcon.style.width = '12px';
+      
+      // Set the sort icon based on current sort state
+      if (currentSortColumn === header) {
+        sortIcon.innerHTML = currentSortDirection === 'asc' 
+          ? '&#9650;' // Up arrow for ascending
+          : '&#9660;'; // Down arrow for descending
+      } else {
+        sortIcon.innerHTML = '&#8597;'; // Up/down arrow for unsorted
+      }
+      
+      headerContainer.appendChild(sortIcon);
+      
+      // Add click event to handle sorting
+      headerContainer.addEventListener('click', () => {
+        // Toggle sort direction if clicking the same column
+        if (currentSortColumn === header) {
+          currentSortDirection = currentSortDirection === 'asc' ? 'desc' : 'asc';
+        } else {
+          currentSortColumn = header;
+          currentSortDirection = 'asc';
+        }
+        
+        // Sort the data
+        const sortedData = sortData(sortedData, header, currentSortDirection);
+        
+        // Re-render with sorted data
+        renderTableWithSortedData(sortedData, columnNames, targetElement, entriesPerPage, currentPage);
+      });
+      
+      th.appendChild(headerContainer);
+    } else {
+      // Regular non-sortable header
+      th.textContent = header;
+    }
+    
+    headerRow.appendChild(th);
+  });
+  
+  thead.appendChild(headerRow);
+  table.appendChild(thead);
+  
+  // Create table body
+  const tbody = document.createElement('tbody');
+  
+  // Calculate pagination details
+  const totalPages = Math.ceil(sortedData.length / entriesPerPage);
+  const startIndex = (currentPage - 1) * entriesPerPage;
+  const endIndex = startIndex + entriesPerPage;
+  const paginatedData = sortedData.slice(startIndex, endIndex);
+  
+  // Define columns that need width limitation
+  const maxWidthLimitingColumns = ['Title', 'Notes'];
+  
+  // Render paginated data
+  paginatedData.forEach(rowData => {
+    const tr = document.createElement('tr');
+    columnNames.forEach((columnName) => {
+      const td = document.createElement('td');
+      if (columnName === 'Notes') {
+        const notesText = rowData[columnName] !== null ? rowData[columnName] : '';
+        if (notesText.length > 200) {
+          const shortenedText = notesText.substring(0, 200) + '...';
+          const showMoreLink = document.createElement('a');
+          showMoreLink.href = '#';
+          showMoreLink.textContent = 'Show More';
+          showMoreLink.className = 'show-more-notes';
+          showMoreLink.style.cursor = 'pointer';
+          showMoreLink.addEventListener('click', (e) => {
+            e.preventDefault();
+            if (td.textContent.includes('Show Less')) {
+              td.textContent = shortenedText;
+              td.appendChild(showMoreLink);
+            } else {
+              td.textContent = notesText;
+              const showLessLink = document.createElement('a');
+              showLessLink.href = '#';
+              showLessLink.textContent = 'Show Less';
+              showLessLink.className = 'show-less-notes';
+              showLessLink.style.cursor = 'pointer';
+              showLessLink.addEventListener('click', (e) => {
+                e.preventDefault();
+                td.textContent = shortenedText;
+                td.appendChild(showMoreLink);
+              });
+              td.appendChild(showLessLink);
+            }
+          });
+          td.textContent = shortenedText;
+          td.appendChild(showMoreLink);
+        } else {
+          td.textContent = notesText;
+        }
+      } else {
+        td.textContent = rowData[columnName] !== null ? rowData[columnName] : '';
+      }
+      
+      // Apply max-width-column class to specific columns
+      if (maxWidthLimitingColumns.includes(columnName)) { 
+        td.classList.add('max-width-column');
+      }
+      
+      tr.appendChild(td);
+    });
+    tbody.appendChild(tr);
+  });
+  
+  table.appendChild(tbody);
+  
+  // Append table to card body
+  targetElement.appendChild(table);
+  
+  // Adjust column widths
+  adjustColumnWidths();
+  
+  // Update pagination controls
+  updatePaginationControls(sortedData, entriesPerPage, currentPage, targetElement);
+}
+
+// Function to sort data based on column and direction
+function sortData(data, column, direction) {
+  return [...data].sort((a, b) => {
+    let valueA = a[column] !== null ? a[column] : '';
+    let valueB = b[column] !== null ? b[column] : '';
+    
+    // Try to convert to numbers for numeric comparison
+    if (!isNaN(Number(valueA)) && !isNaN(Number(valueB))) {
+      valueA = Number(valueA);
+      valueB = Number(valueB);
+    } else if (typeof valueA === 'string' && typeof valueB === 'string') {
+      // Case-insensitive string comparison
+      valueA = valueA.toLowerCase();
+      valueB = valueB.toLowerCase();
+    }
+    
+    // Compare values
+    if (valueA < valueB) {
+      return direction === 'asc' ? -1 : 1;
+    } else if (valueA > valueB) {
+      return direction === 'asc' ? 1 : -1;
+    }
+    return 0;
+  });
+}
+
+// Function to update pagination controls
+function updatePaginationControls(filteredData, entriesPerPage, currentPage, targetElement) {
+  const entriesInfo = document.querySelector('.entries-info');
+  const totalPages = Math.ceil(filteredData.length / entriesPerPage);
+  const startIndex = (currentPage - 1) * entriesPerPage;
+  const endIndex = Math.min(startIndex + entriesPerPage, filteredData.length);
+  
+  entriesInfo.textContent = `Showing ${startIndex + 1} to ${endIndex} of ${filteredData.length} entries`;
+  
+  const pageNumbers = document.querySelector('.page-numbers');
+  pageNumbers.textContent = '';
+  
+  const prevButton = document.querySelector('.prev-page');
+  const nextButton = document.querySelector('.next-page');
+  
+  prevButton.disabled = currentPage === 1;
+  nextButton.disabled = currentPage === totalPages;
+  
+  if (totalPages > 1) {
+    const startPage = Math.max(1, currentPage - 1);
+    const endPage = Math.min(totalPages, currentPage + 1);
+    
+    for (let i = startPage; i <= endPage; i++) {
+      const pageButton = document.createElement('button');
+      pageButton.className = `btn btn-outline-primary page-number ${i === currentPage ? 'active' : ''}`;
+      pageButton.textContent = i;
+      pageButton.addEventListener('click', () => {
+        // Get current filters
+        const selectedPhase = document.querySelector('.phase-filter.active').getAttribute('data-phase');
+        const selectedStatusButtons = document.querySelectorAll('.status-filter.active');
+        const selectedStatuses = Array.from(selectedStatusButtons).map(btn => btn.getAttribute('data-status'));
+        
+        // Re-render with the new page
+        if (currentSortColumn) {
+          // Re-render with current sorting applied
+          const selectedTeam = document.querySelector('input[name="team-filter"]:checked').value;
+          let data = getFilteredData(window.crVerificationData, selectedPhase, selectedTeam, selectedStatuses);
+          data = sortData(data, currentSortColumn, currentSortDirection);
+          renderTableWithSortedData(data, window.crVerificationColumnNames, targetElement, entriesPerPage, i);
+        } else {
+          // Re-render with default ordering
+          renderFilteredCRVerificationTable(
+            window.crVerificationData,
+            window.crVerificationColumnNames,
+            targetElement,
+            selectedPhase,
+            entriesPerPage,
+            i,
+            selectedStatuses
+          );
+        }
+      });
+      pageNumbers.appendChild(pageButton);
+    }
+  }
+}
+
+// Add these styles to the document
+function addSortStyles() {
+  if (!document.getElementById('sort-styles')) {
+    const styleElement = document.createElement('style');
+    styleElement.id = 'sort-styles';
+    styleElement.textContent = `
+      .sortable-header {
+        user-select: none;
+      }
+      .sortable-header:hover {
+        color: #328AA4;
+      }
+      .sort-icon {
+        transition: transform 0.2s ease;
+      }
+      .sortable-header:hover .sort-icon {
+        color: #328AA4;
+      }
+    `;
+    document.head.appendChild(styleElement);
+  }
+}
+
+// Call this when the page loads
+document.addEventListener('DOMContentLoaded', function() {
+  addSortStyles();
+});
