@@ -1,83 +1,12 @@
-function downloadReport(reportType) {
-    const spSelect = document.getElementById('sp_name');
-    const selectedSp = spSelect.value;
-    if (!selectedSp) {
-        addAlert('danger', 'Please select an SP first');
-        return;
-    }
-    
-    const params = new URLSearchParams();
-    params.append('sp_name', selectedSp);
-    params.append('reportType', reportType);
-    
-    fetch(`{% url 'cst_reporting_views:download_excel' %}?${params.toString()}`)
-        .then(response => {
-            // Check if response is JSON (error) or file (success)
-            const contentType = response.headers.get('Content-Type');
-            if (contentType && contentType.includes('application/json')) {
-                return response.json().then(data => {
-                    throw new Error(data.error_msg || 'Download failed');
-                });
-            }
-            
-            if (!response.ok) {
-                throw new Error('Download failed with status: ' + response.status);
-            }
-            
-            // Extract filename from Content-Disposition header
-            const contentDisposition = response.headers.get('Content-Disposition');
-            let filename = '';
-            if (contentDisposition && contentDisposition.includes('filename=')) {
-                filename = contentDisposition.split('filename=')[1].replace(/['"]/g, '');
-            } else {
-                filename = `${selectedSp}_${reportType}.xlsx`; // Fallback if filename is not found
-            }
-            
-            return response.blob().then(blob => ({ blob, filename }));
-        })
-        .then(({ blob, filename }) => {
-            console.log("Blob type:", blob.type);
-            console.log("Blob size:", blob.size);
-            
-            // Double-check that we actually received a valid file
-            if (blob.size === 0) {
-                throw new Error("Received empty file");
-            }
-            
-            const url = window.URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.style.display = 'none';
-            a.href = url;
-            a.download = filename;
-            document.body.appendChild(a);
-            a.click();
-            window.URL.revokeObjectURL(url);
-            document.body.removeChild(a);
-            addAlert('success', `${filename} downloaded successfully!`);
-        })
-        .catch(error => {
-            console.error("Download error:", error);
-            addAlert('danger', `Error: ${error.message}`);
-            if (document.getElementById('statusMessage')) {
-                document.getElementById('statusMessage').textContent = 'Error: ' + error.message;
-            }
-        });
-}
-
-document.addEventListener('DOMContentLoaded', function() {
-    // Download dropdown buttons event listeners
-    document.getElementById('exportCoverageReport').addEventListener('click', function(e) {
-        e.preventDefault();
-        downloadReport('coverage_report');
-    });
-    
-    document.getElementById('exportCRVerification').addEventListener('click', function(e) {
-        e.preventDefault();
-        downloadReport('cr_verification_data');
-    });
-    
-    document.getElementById('exportScrumSheet').addEventListener('click', function(e) {
-        e.preventDefault();
-        downloadReport('scrum_sheet');
-    });
-});
+<div class="col-md-6 d-flex justify-content-end align-items-end">
+    <div class="dropdown">
+        <button class="btn btn-primary dropdown-toggle" type="button" id="downloadDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+            Downloads
+        </button>
+        <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="downloadDropdown">
+            <li><a class="dropdown-item" href="#" id="exportCoverageReport">Export Coverage Report to XL</a></li>
+            <li><a class="dropdown-item" href="#" id="exportCRVerification">Export CR Verification to XL</a></li>
+            <li><a class="dropdown-item" href="#" id="exportScrumSheet">Export Scrum Sheet to XL</a></li>
+        </ul>
+    </div>
+</div>
