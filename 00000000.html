@@ -1,8 +1,13 @@
 <style>
     .downloads-dropdown .dropdown-menu {
-        left: 0 !important;
-        right: auto !important;
+        right: 0 !important;
+        left: auto !important;
         min-width: 240px; /* Ensure dropdown is wide enough for your text */
+    }
+    
+    /* Position the menu to start from right side */
+    .dropdown-menu-end {
+        --bs-position: end;
     }
     
     /* For mobile responsiveness */
@@ -18,7 +23,7 @@
         <button class="btn btn-primary dropdown-toggle" type="button" id="downloadDropdown" data-bs-toggle="dropdown" aria-expanded="false">
             Downloads
         </button>
-        <ul class="dropdown-menu" aria-labelledby="downloadDropdown">
+        <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="downloadDropdown">
             <li><a class="dropdown-item" href="#" id="exportCoverageReport">Export Coverage Report to XL</a></li>
             <li><a class="dropdown-item" href="#" id="exportCRVerification">Export CR Verification to XL</a></li>
             <li><a class="dropdown-item" href="#" id="exportScrumSheet">Export Scrum Sheet to XL</a></li>
