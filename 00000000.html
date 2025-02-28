@@ -1,39 +1,55 @@
 def download_excel(request):
     selected_sp = request.GET.get('sp_name', '')
-    if not selected_sp:
-        return JsonResponse({'status': 'error', 'error_msg': 'No SP name provided'})
-    
     file_path = os.path.join(ConfigPaths.download_excel_files, "coverage_reports", f"{selected_sp}_coverage_report.xlsx")
     
     if not os.path.exists(file_path):
-        error_msg = f"File not found for SP: {selected_sp}"
-        return JsonResponse({'status': 'error', 'error_msg': error_msg})
+        return JsonResponse({'status': 'error', 'error_msg': "File not found"})
     
-    # Check if the file is a valid Excel file
-    try:
-        # Verify the file can be opened with openpyxl
-        openpyxl.load_workbook(file_path)
-    except Exception as e:
-        return JsonResponse({
-            'status': 'error', 
-            'error_msg': f"Invalid Excel file: {str(e)}"
-        }, status=500)
+    # Try using a more specific content type
+    content_type = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet; charset=binary'
     
-    # Serve the file
     try:
-        with open(file_path, 'rb') as file:
-            file_data = file.read()
-            
-        # Use FileResponse instead of HttpResponse for better file handling
-        response = FileResponse(
+        # Use Django's built-in file serving
+        return FileResponse(
             open(file_path, 'rb'),
-            content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+            as_attachment=True,
+            filename=f"{selected_sp}_coverage_report.xlsx",
+            content_type=content_type
         )
-        filename = f"{selected_sp}_coverage_report.xlsx"
-        response['Content-Disposition'] = f'attachment; filename="{filename}"'
-        return response
     except Exception as e:
-        return JsonResponse({
-            'status': 'error', 
-            'error_msg': f"File download error: {str(e)}"
-        }, status=500)
+        return JsonResponse({'status': 'error', 'error_msg': str(e)}, status=500)
+
+
+
+
+
+from django.views.static import serve
+
+def download_excel(request):
+    selected_sp = request.GET.get('sp_name', '')
+    file_path = os.path.join(ConfigPaths.download_excel_files, "coverage_reports", f"{selected_sp}_coverage_report.xlsx")
+    
+    if not os.path.exists(file_path):
+        return JsonResponse({'status': 'error', 'error_msg': "File not found"})
+    
+    return serve(request, os.path.basename(file_path), os.path.dirname(file_path))
+
+
+
+
+fetch(`{% url 'cst_reporting_views:download_excel' %}?${params.toString()}`)
+    .then(response => {
+        console.log("Response headers:", response.headers);
+        console.log("Response status:", response.status);
+        if (!response.ok) {
+            return response.json().then(data => {
+                throw new Error(data.error_msg);
+            });
+        }
+        return response.blob();
+    })
+    .then(blob => {
+        console.log("Blob type:", blob.type);
+        console.log("Blob size:", blob.size);
+        // Continue with download...
+    }) 
