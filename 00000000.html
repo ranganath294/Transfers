@@ -1,14 +1,33 @@
-document.getElementById('downloadButton').addEventListener('click', function() {
+document.addEventListener('DOMContentLoaded', function() {
+    // Download dropdown buttons event listeners
+    document.getElementById('exportCoverageReport').addEventListener('click', function(e) {
+        e.preventDefault();
+        downloadReport('coverage_report');
+    });
+    
+    document.getElementById('exportCRVerification').addEventListener('click', function(e) {
+        e.preventDefault();
+        downloadReport('cr_verification_data');
+    });
+    
+    document.getElementById('exportScrumSheet').addEventListener('click', function(e) {
+        e.preventDefault();
+        downloadReport('scrum_sheet');
+    });
+    
+    // Common download function
+    function downloadReport(reportType) {
         const spSelect = document.getElementById('sp_name');
         const selectedSp = spSelect.value;
         if (!selectedSp) {
-            addAlert('danger', 'Please select an SP first')
-            // alert('Please select an SP first');
+            addAlert('danger', 'Please select an SP first');
             return;
         }
+        
         const params = new URLSearchParams();
         params.append('sp_name', selectedSp);
-
+        params.append('reportType', reportType);
+        
         fetch(`{% url 'cst_reporting_views:download_excel' %}?${params.toString()}`)
             .then(response => {
                 if (!response.ok) {
@@ -21,11 +40,23 @@ document.getElementById('downloadButton').addEventListener('click', function() {
             .then(blob => {
                 console.log("Blob type:", blob.type);
                 console.log("Blob size:", blob.size);
+                
                 const url = window.URL.createObjectURL(blob);
                 const a = document.createElement('a');
                 a.style.display = 'none';
                 a.href = url;
-                a.download = `${selectedSp}_coverage_report.xlsx`;
+                
+                // Set filename based on report type
+                let filename = '';
+                if (reportType === 'coverage_report') {
+                    filename = `${selectedSp}_coverage_report.xlsx`;
+                } else if (reportType === 'cr_verification_data') {
+                    filename = `${selectedSp}_cr_verification.xlsx`;
+                } else if (reportType === 'scrum_sheet') {
+                    filename = `${selectedSp}_scrum_sheet.xlsx`;
+                }
+                
+                a.download = filename;
                 document.body.appendChild(a);
                 a.click();
                 window.URL.revokeObjectURL(url);
@@ -34,6 +65,9 @@ document.getElementById('downloadButton').addEventListener('click', function() {
             })
             .catch(error => {
                 addAlert('danger', `Error: ${error.message}`);
-                document.getElementById('statusMessage').textContent = 'Error: ' + error.message;
+                if (document.getElementById('statusMessage')) {
+                    document.getElementById('statusMessage').textContent = 'Error: ' + error.message;
+                }
             });
-    });
+    }
+});
