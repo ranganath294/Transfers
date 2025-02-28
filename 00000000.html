@@ -5,16 +5,25 @@ function downloadReport(reportType) {
         addAlert('danger', 'Please select an SP first');
         return;
     }
+    
     const params = new URLSearchParams();
     params.append('sp_name', selectedSp);
     params.append('reportType', reportType);
+    
     fetch(`{% url 'cst_reporting_views:download_excel' %}?${params.toString()}`)
         .then(response => {
-            if (!response.ok) {
+            // Check if response is JSON (error) or file (success)
+            const contentType = response.headers.get('Content-Type');
+            if (contentType && contentType.includes('application/json')) {
                 return response.json().then(data => {
-                    throw new Error(data.error_msg);
+                    throw new Error(data.error_msg || 'Download failed');
                 });
             }
+            
+            if (!response.ok) {
+                throw new Error('Download failed with status: ' + response.status);
+            }
+            
             // Extract filename from Content-Disposition header
             const contentDisposition = response.headers.get('Content-Disposition');
             let filename = '';
@@ -23,11 +32,18 @@ function downloadReport(reportType) {
             } else {
                 filename = `${selectedSp}_${reportType}.xlsx`; // Fallback if filename is not found
             }
+            
             return response.blob().then(blob => ({ blob, filename }));
         })
         .then(({ blob, filename }) => {
             console.log("Blob type:", blob.type);
             console.log("Blob size:", blob.size);
+            
+            // Double-check that we actually received a valid file
+            if (blob.size === 0) {
+                throw new Error("Received empty file");
+            }
+            
             const url = window.URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.style.display = 'none';
@@ -40,6 +56,7 @@ function downloadReport(reportType) {
             addAlert('success', `${filename} downloaded successfully!`);
         })
         .catch(error => {
+            console.error("Download error:", error);
             addAlert('danger', `Error: ${error.message}`);
             if (document.getElementById('statusMessage')) {
                 document.getElementById('statusMessage').textContent = 'Error: ' + error.message;
@@ -47,56 +64,20 @@ function downloadReport(reportType) {
         });
 }
 
-
-
-even if there is no file and backend is sending if not os.path.exists(file_path):
-        error_msg = "File not found"
-        print(f"{file_path} not Found")
-        return JsonResponse({'status': 'error', 'error_msg': error_msg})
-
-not found frontend is showing something like there is a xlsx file downloaded and file downloaded successfully and when opened it shows invalid excel file
-
-this is backend code. i want frontenbd code to be aligned with theis backend code, make both align
-def download_excel(request):
-    selected_sp = request.GET.get('sp_name', "")
-    report_type = request.GET.get('reportType', "")
-    error_msg = ""
-    filename = ""
-    content_type = ""
-
-    if selected_sp == "":
-        error_msg = "Please select an SP"
-        return JsonResponse({'status': 'error', 'error_msg': error_msg})
-
-    if report_type == "coverage_report":
-        file_path = os.path.join(ConfigPaths.coverage_report_xls_dir, f"{selected_sp}_coverage_report.xlsx")
-        filename = f"{selected_sp}_coverage_report.xlsx"
-        content_type = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
-    elif report_type == "cr_verification_data":
-        file_path = os.path.join(ConfigPaths.cr_verification_data_xls_dir, f"{selected_sp}_cr_verification_data.csv")
-        filename = f"{selected_sp}_cr_verification_data.csv"
-        content_type = 'text/csv'
-    elif report_type == "scrum_sheet":
-        file_path = os.path.join(ConfigPaths.scrum_sheet_xls_dir, f"{selected_sp}_scrum_sheet.xlsx")
-        filename = f"{selected_sp}_scrum_sheet.csv"
-        content_type = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
-    else:
-        error_msg = "Invalid report type"
-        return JsonResponse({'status': 'error', 'error_msg': error_msg})
-
-    print(file_path)
-
-    # Check if the file exists
-    if not os.path.exists(file_path):
-        error_msg = "File not found"
-        print(f"{file_path} not Found")
-        return JsonResponse({'status': 'error', 'error_msg': error_msg})
-
-    # Open the file
-    try:
-        with open(file_path, 'rb') as file:
-            response = HttpResponse(file.read(), content_type=content_type)
-            response['Content-Disposition'] = f'attachment; filename="{filename}"'
-            return response
-    except Exception as e:
-        return JsonResponse({'status': 'error', 'error_msg': str(e)}, status=500)
+document.addEventListener('DOMContentLoaded', function() {
+    // Download dropdown buttons event listeners
+    document.getElementById('exportCoverageReport').addEventListener('click', function(e) {
+        e.preventDefault();
+        downloadReport('coverage_report');
+    });
+    
+    document.getElementById('exportCRVerification').addEventListener('click', function(e) {
+        e.preventDefault();
+        downloadReport('cr_verification_data');
+    });
+    
+    document.getElementById('exportScrumSheet').addEventListener('click', function(e) {
+        e.preventDefault();
+        downloadReport('scrum_sheet');
+    });
+});
