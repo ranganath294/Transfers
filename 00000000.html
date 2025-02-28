@@ -1,10 +1,92 @@
-<li class="nav-item dropdown">
-    <a class="nav-link dropdown-toggle" href="#" data-bs-toggle="dropdown">
-        View SW Product Reports
-    </a>
-    <ul class="dropdown-menu">
-        <li><a class="dropdown-item" href="{% url 'cst_reporting_views:active_sps' %}">Active SPs</a></li>
-        <li><a class="dropdown-item" href="{% url 'cst_reporting_views:legacy_newfr' %}">SP Metrics</a></li>
-        <li><a class="dropdown-item" href="{% url 'cst_reporting_views:coverage_report' %}">Coverage Report</a></li>
-    </ul>
-</li>
+<div class="container container-fluid">
+    <h1 class="page-title">Coverage Report</h1>
+    <div class="card mb-3">
+        <div class="card-body">
+            <div class="row mb-3">
+                <div class="col-md-6">
+                    <div class="form-group">
+                        <label for="sp_name" class="form-label">Select SP:</label>
+                        <div class="input-group">
+                            <select id="sp_name" name="sp_name" class="form-select">
+                                <option value="">--No SP Selected--</option>
+                                {% for sp_name in sp_names %}
+                                    <option value="{{ sp_name }}" {% if sp_name == selected_sp %}selected{% endif %}>{{ sp_name }}</option>
+                                {% endfor %}
+                            </select>
+                            <button id="getDataBtn" class="btn btn-primary">Get Data</button>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-6 d-flex justify-content-end align-items-end">
+                    <div class="dropdown">
+                        <button class="btn btn-primary dropdown-toggle" type="button" id="downloadDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+                            Downloads
+                        </button>
+                        <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="downloadDropdown">
+                            <li><a class="dropdown-item" href="#" id="exportCoverageReport">Export Coverage Report to XL</a></li>
+                            <li><a class="dropdown-item" href="#" id="exportCRVerification">Export CR Verification to XL</a></li>
+                            <li><a class="dropdown-item" href="#" id="exportScrumSheet">Export Scrum Sheet to XL</a></li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+            <div id="teamFilters" style="display: none;" class="mb-3">
+                <div class="btn-group" role="group" aria-label="Test Team filters">
+                    <input type="radio" class="btn-check team-filter" name="team-filter" id="all" value="all" checked>
+                    <label class="btn btn-outline-primary" for="all">All Teams</label>
+                    <input type="radio" class="btn-check team-filter" name="team-filter" id="bt" value="BT">
+                    <label class="btn btn-outline-primary" for="bt">BT</label>
+                    <input type="radio" class="btn-check team-filter" name="team-filter" id="wlan" value="WLAN">
+                    <label class="btn btn-outline-primary" for="wlan">WLAN</label>
+                </div>
+            </div>
+
+            <div id="tableContainer" class="table-responsive">
+                <!-- Table will be rendered here -->
+            </div>
+        </div>
+    </div>
+</div>
+
+
+
+
+
+
+
+
+
+
+
+document.addEventListener('DOMContentLoaded', function() {
+    // Download buttons event listeners
+    document.getElementById('exportCoverageReport').addEventListener('click', function(e) {
+        e.preventDefault();
+        const selectedSp = document.getElementById('sp_name').value;
+        if (!selectedSp) {
+            alert('Please select an SP first');
+            return;
+        }
+        window.location.href = `/export-coverage-report/?sp_name=${encodeURIComponent(selectedSp)}`;
+    });
+    
+    document.getElementById('exportCRVerification').addEventListener('click', function(e) {
+        e.preventDefault();
+        const selectedSp = document.getElementById('sp_name').value;
+        if (!selectedSp) {
+            alert('Please select an SP first');
+            return;
+        }
+        window.location.href = `/export-cr-verification/?sp_name=${encodeURIComponent(selectedSp)}`;
+    });
+    
+    document.getElementById('exportScrumSheet').addEventListener('click', function(e) {
+        e.preventDefault();
+        const selectedSp = document.getElementById('sp_name').value;
+        if (!selectedSp) {
+            alert('Please select an SP first');
+            return;
+        }
+        window.location.href = `/export-scrum-sheet/?sp_name=${encodeURIComponent(selectedSp)}`;
+    });
+});
