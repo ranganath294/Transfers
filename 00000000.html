@@ -1,55 +1,44 @@
-def download_excel(request):
-    selected_sp = request.GET.get('sp_name', '')
-    file_path = os.path.join(ConfigPaths.download_excel_files, "coverage_reports", f"{selected_sp}_coverage_report.xlsx")
-    
-    if not os.path.exists(file_path):
-        return JsonResponse({'status': 'error', 'error_msg': "File not found"})
-    
-    # Try using a more specific content type
-    content_type = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet; charset=binary'
-    
-    try:
-        # Use Django's built-in file serving
-        return FileResponse(
-            open(file_path, 'rb'),
-            as_attachment=True,
-            filename=f"{selected_sp}_coverage_report.xlsx",
-            content_type=content_type
-        )
-    except Exception as e:
-        return JsonResponse({'status': 'error', 'error_msg': str(e)}, status=500)
+<div class="alert-container px-5">
+</div>
+<div class="container container-fluid">
+    <h1 class="page-title">Coverage Report</h1>
+    <div class="card mb-3">
+        <div class="card-body">
+            <div class="row mb-3">
+                <div class="col-md-6">
+                    <div class="form-group">
+                        <label for="sp_name" class="form-label">Select SP:</label>
+                        <div class="input-group">
+                            <select id="sp_name" name="sp_name" class="form-select">
+                                <option value="">--No SP Selected--</option>
+                                {% for sp_name in sp_names %}
+                                    <option value="{{ sp_name }}" {% if sp_name == selected_sp %}selected{% endif %}>{{ sp_name }}</option>
+                                {% endfor %}
+                            </select>
+                            <button id="getDataBtn" class="btn btn-primary">Get Data</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div id="teamFilters" style="display: none;" class="mb-3">
+                <div class="btn-group" role="group" aria-label="Test Team filters">
+                    <input type="radio" class="btn-check team-filter" name="team-filter" id="all" value="all" checked>
+                    <label class="btn btn-outline-primary" for="all">All Teams</label>
+                    <input type="radio" class="btn-check team-filter" name="team-filter" id="bt" value="BT">
+                    <label class="btn btn-outline-primary" for="bt">BT</label>
+                    <input type="radio" class="btn-check team-filter" name="team-filter" id="wlan" value="WLAN">
+                    <label class="btn btn-outline-primary" for="wlan">WLAN</label>
+                </div>
+            </div>
+            
+            <div id="download_excel_container" class="">
+                <button id="downloadButton">Download Excel</button>
+            </div>
 
-
-
-
-
-from django.views.static import serve
-
-def download_excel(request):
-    selected_sp = request.GET.get('sp_name', '')
-    file_path = os.path.join(ConfigPaths.download_excel_files, "coverage_reports", f"{selected_sp}_coverage_report.xlsx")
-    
-    if not os.path.exists(file_path):
-        return JsonResponse({'status': 'error', 'error_msg': "File not found"})
-    
-    return serve(request, os.path.basename(file_path), os.path.dirname(file_path))
-
-
-
-
-fetch(`{% url 'cst_reporting_views:download_excel' %}?${params.toString()}`)
-    .then(response => {
-        console.log("Response headers:", response.headers);
-        console.log("Response status:", response.status);
-        if (!response.ok) {
-            return response.json().then(data => {
-                throw new Error(data.error_msg);
-            });
-        }
-        return response.blob();
-    })
-    .then(blob => {
-        console.log("Blob type:", blob.type);
-        console.log("Blob size:", blob.size);
-        // Continue with download...
-    }) 
+            <div id="tableContainer" class="table-responsive">
+                <!-- Table will be rendered here -->
+            </div>
+        </div>
+    </div>
+</div>
+<style>
