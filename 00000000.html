@@ -1,455 +1,64 @@
-// Add these functions to your existing JavaScript code
-
-// Define the columns that should be sortable
-const sortableColumns = [
-  'CR ID', 'JIRA ID', 'WC', 'Priority', 'Severity', 'Age', 'Days Since Update'
-  // Add any other numeric columns you want to make sortable
-];
-
-// Current sorting state
-let currentSortColumn = null;
-let currentSortDirection = 'asc'; // 'asc' or 'desc'
-
-// Modify the renderFilteredCRVerificationTable function to add sorting functionality
-function renderFilteredCRVerificationTable(data, columnNames, targetElement, selectedPhase, entriesPerPage, currentPage, selectedStatuses) {
-  // Clear existing table if any
-  targetElement.querySelector('table')?.remove();
-  
-  // Create table element
-  const table = document.createElement('table');
-  table.className = 'coverage-table';
-  
-  // Create header
-  const thead = document.createElement('thead');
-  const headerRow = document.createElement('tr');
-  
-  // Add headers with sort functionality for sortable columns
-  columnNames.forEach(header => {
-    const th = document.createElement('th');
+def download_excel(request):
+    # Path to the Excel file
+    selected_sp = request.GET.get('sp_name', '')
+    file_path = os.path.join(ConfigPaths.download_excel_files, "coverage_reports", f"{selected_sp}_coverage_report.xlsx")
+    print(file_path)
     
-    // Check if this column is sortable
-    if (sortableColumns.includes(header)) {
-      // Create a container div for the header content and sort icon
-      const headerContainer = document.createElement('div');
-      headerContainer.className = 'sortable-header';
-      headerContainer.style.display = 'flex';
-      headerContainer.style.alignItems = 'center';
-      headerContainer.style.cursor = 'pointer';
-      
-      // Add the header text
-      const headerText = document.createElement('span');
-      headerText.textContent = header;
-      headerContainer.appendChild(headerText);
-      
-      // Add the sort icon container
-      const sortIcon = document.createElement('span');
-      sortIcon.className = 'sort-icon';
-      sortIcon.style.marginLeft = '5px';
-      sortIcon.style.display = 'inline-block';
-      sortIcon.style.width = '12px';
-      
-      // Set the initial sort icon based on current sort state
-      if (currentSortColumn === header) {
-        sortIcon.innerHTML = currentSortDirection === 'asc' 
-          ? '&#9650;' // Up arrow for ascending
-          : '&#9660;'; // Down arrow for descending
-      } else {
-        sortIcon.innerHTML = '&#8597;'; // Up/down arrow for unsorted
-      }
-      
-      headerContainer.appendChild(sortIcon);
-      
-      // Add click event to handle sorting
-      headerContainer.addEventListener('click', () => {
-        // Toggle sort direction if clicking the same column
-        if (currentSortColumn === header) {
-          currentSortDirection = currentSortDirection === 'asc' ? 'desc' : 'asc';
-        } else {
-          currentSortColumn = header;
-          currentSortDirection = 'asc';
-        }
-        
-        // Re-render the table with the new sort
-        const selectedPhase = document.querySelector('.phase-filter.active').getAttribute('data-phase');
-        const selectedStatusButtons = document.querySelectorAll('.status-filter.active');
-        const selectedStatuses = Array.from(selectedStatusButtons).map(btn => btn.getAttribute('data-status'));
-        const entriesPerPage = parseInt(document.querySelector('.form-select').value);
-        
-        // Get the selected team from the team filter
-        const selectedTeam = document.querySelector('input[name="team-filter"]:checked').value;
-        
-        // Get filtered data
-        let filteredData = getFilteredData(data, selectedPhase, selectedTeam, selectedStatuses);
-        
-        // Sort the filtered data
-        filteredData = sortData(filteredData, header, currentSortDirection);
-        
-        // Re-render with sorted data
-        renderTableWithSortedData(filteredData, columnNames, targetElement, entriesPerPage, currentPage);
-      });
-      
-      th.appendChild(headerContainer);
-    } else {
-      // Regular non-sortable header
-      th.textContent = header;
-    }
+    # Check if the file exists
+    if not os.path.exists(file_path):
+        error_msg = "File not found"
+        return JsonResponse({'status': 'error', 'error_msg': error_msg})
     
-    headerRow.appendChild(th);
-  });
-  
-  thead.appendChild(headerRow);
-  table.appendChild(thead);
-  
-  // Get the selected team from the team filter
-  const selectedTeam = document.querySelector('input[name="team-filter"]:checked').value;
-  
-  // Create table body
-  const tbody = document.createElement('tbody');
-  
-  // Filter data based on the selected team and phase
-  let filteredData = getFilteredData(data, selectedPhase, selectedTeam, selectedStatuses);
-  
-  // Apply current sort if set
-  if (currentSortColumn) {
-    filteredData = sortData(filteredData, currentSortColumn, currentSortDirection);
-  }
-  
-  // Calculate pagination details
-  const totalPages = Math.ceil(filteredData.length / entriesPerPage);
-  const startIndex = (currentPage - 1) * entriesPerPage;
-  const endIndex = startIndex + entriesPerPage;
-  const paginatedData = filteredData.slice(startIndex, endIndex);
-  
-  // Define columns that need width limitation
-  const maxWidthLimitingColumns = ['Title', 'Notes'];
-  
-  // Render paginated data
-  paginatedData.forEach(rowData => {
-    const tr = document.createElement('tr');
-    columnNames.forEach((columnName) => {
-      const td = document.createElement('td');
-      if (columnName === 'Notes') {
-        const notesText = rowData[columnName] !== null ? rowData[columnName] : '';
-        if (notesText.length > 200) {
-          const shortenedText = notesText.substring(0, 200) + '...';
-          const showMoreLink = document.createElement('a');
-          showMoreLink.href = '#';
-          showMoreLink.textContent = 'Show More';
-          showMoreLink.className = 'show-more-notes';
-          showMoreLink.style.cursor = 'pointer';
-          showMoreLink.addEventListener('click', (e) => {
-            e.preventDefault();
-            if (td.textContent.includes('Show Less')) {
-              td.textContent = shortenedText;
-              td.appendChild(showMoreLink);
-            } else {
-              td.textContent = notesText;
-              const showLessLink = document.createElement('a');
-              showLessLink.href = '#';
-              showLessLink.textContent = 'Show Less';
-              showLessLink.className = 'show-less-notes';
-              showLessLink.style.cursor = 'pointer';
-              showLessLink.addEventListener('click', (e) => {
-                e.preventDefault();
-                td.textContent = shortenedText;
-                td.appendChild(showMoreLink);
-              });
-              td.appendChild(showLessLink);
-            }
-          });
-          td.textContent = shortenedText;
-          td.appendChild(showMoreLink);
-        } else {
-          td.textContent = notesText;
+    # Open the Excel file
+    try:
+        with open(file_path, 'rb') as file:
+            response = HttpResponse(file.read(), content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+            response['Content-Disposition'] = f'attachment; filename="example.xlsx"'
+            return response
+    except Exception as e:
+        return JsonResponse({'status': 'error', 'error_msg': str(e)}, status=500)
+
+this is a djnahgo view to download an excel file. 
+and html froentend is 
+<script>
+    document.getElementById('downloadButton').addEventListener('click', function() {
+        const spSelect = document.getElementById('sp_name');
+        const selectedSp = spSelect.value;
+        if (!selectedSp) {
+            addAlert('danger', 'Please select an SP first')
+            // alert('Please select an SP first');
+            return;
         }
-      } else {
-        td.textContent = rowData[columnName] !== null ? rowData[columnName] : '';
-      }
-      
-      // Apply max-width-column class to specific columns
-      if (maxWidthLimitingColumns.includes(columnName)) { 
-        td.classList.add('max-width-column');
-      }
-      
-      tr.appendChild(td);
+        const params = new URLSearchParams();
+        params.append('sp_name', selectedSp);
+
+        fetch(`{% url 'cst_reporting_views:download_excel' %}?${params.toString()}`)
+            .then(response => {
+                if (!response.ok) {
+                    return response.json().then(data => {
+                        throw new Error(data.error_msg);
+                    });
+                }
+                return response.blob();
+            })
+            .then(blob => {
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.style.display = 'none';
+                a.href = url;
+                a.download = 'example.xlsx';
+                document.body.appendChild(a);
+                a.click();
+                window.URL.revokeObjectURL(url);
+                document.body.removeChild(a);
+                addAlert('success', 'File downloaded successfully!');
+            })
+            .catch(error => {
+                addAlert('success', `Error: ${error.message}`);
+                document.getElementById('statusMessage').textContent = 'Error: ' + error.message;
+            });
     });
-    tbody.appendChild(tr);
-  });
-  
-  table.appendChild(tbody);
-  
-  // Append table to card body
-  targetElement.appendChild(table);
-  
-  // Adjust column widths
-  adjustColumnWidths();
-  
-  // Update pagination controls
-  updatePaginationControls(filteredData, entriesPerPage, currentPage, targetElement);
-}
+</script>
 
-// Function to render the table with sorted data
-function renderTableWithSortedData(sortedData, columnNames, targetElement, entriesPerPage, currentPage) {
-  // Clear existing table if any
-  targetElement.querySelector('table')?.remove();
-  
-  // Create table element
-  const table = document.createElement('table');
-  table.className = 'coverage-table';
-  
-  // Create header
-  const thead = document.createElement('thead');
-  const headerRow = document.createElement('tr');
-  
-  // Add headers with sort functionality for sortable columns
-  columnNames.forEach(header => {
-    const th = document.createElement('th');
-    
-    // Check if this column is sortable
-    if (sortableColumns.includes(header)) {
-      // Create a container div for the header content and sort icon
-      const headerContainer = document.createElement('div');
-      headerContainer.className = 'sortable-header';
-      headerContainer.style.display = 'flex';
-      headerContainer.style.alignItems = 'center';
-      headerContainer.style.cursor = 'pointer';
-      
-      // Add the header text
-      const headerText = document.createElement('span');
-      headerText.textContent = header;
-      headerContainer.appendChild(headerText);
-      
-      // Add the sort icon container
-      const sortIcon = document.createElement('span');
-      sortIcon.className = 'sort-icon';
-      sortIcon.style.marginLeft = '5px';
-      sortIcon.style.display = 'inline-block';
-      sortIcon.style.width = '12px';
-      
-      // Set the sort icon based on current sort state
-      if (currentSortColumn === header) {
-        sortIcon.innerHTML = currentSortDirection === 'asc' 
-          ? '&#9650;' // Up arrow for ascending
-          : '&#9660;'; // Down arrow for descending
-      } else {
-        sortIcon.innerHTML = '&#8597;'; // Up/down arrow for unsorted
-      }
-      
-      headerContainer.appendChild(sortIcon);
-      
-      // Add click event to handle sorting
-      headerContainer.addEventListener('click', () => {
-        // Toggle sort direction if clicking the same column
-        if (currentSortColumn === header) {
-          currentSortDirection = currentSortDirection === 'asc' ? 'desc' : 'asc';
-        } else {
-          currentSortColumn = header;
-          currentSortDirection = 'asc';
-        }
-        
-        // Sort the data
-        const sortedData = sortData(sortedData, header, currentSortDirection);
-        
-        // Re-render with sorted data
-        renderTableWithSortedData(sortedData, columnNames, targetElement, entriesPerPage, currentPage);
-      });
-      
-      th.appendChild(headerContainer);
-    } else {
-      // Regular non-sortable header
-      th.textContent = header;
-    }
-    
-    headerRow.appendChild(th);
-  });
-  
-  thead.appendChild(headerRow);
-  table.appendChild(thead);
-  
-  // Create table body
-  const tbody = document.createElement('tbody');
-  
-  // Calculate pagination details
-  const totalPages = Math.ceil(sortedData.length / entriesPerPage);
-  const startIndex = (currentPage - 1) * entriesPerPage;
-  const endIndex = startIndex + entriesPerPage;
-  const paginatedData = sortedData.slice(startIndex, endIndex);
-  
-  // Define columns that need width limitation
-  const maxWidthLimitingColumns = ['Title', 'Notes'];
-  
-  // Render paginated data
-  paginatedData.forEach(rowData => {
-    const tr = document.createElement('tr');
-    columnNames.forEach((columnName) => {
-      const td = document.createElement('td');
-      if (columnName === 'Notes') {
-        const notesText = rowData[columnName] !== null ? rowData[columnName] : '';
-        if (notesText.length > 200) {
-          const shortenedText = notesText.substring(0, 200) + '...';
-          const showMoreLink = document.createElement('a');
-          showMoreLink.href = '#';
-          showMoreLink.textContent = 'Show More';
-          showMoreLink.className = 'show-more-notes';
-          showMoreLink.style.cursor = 'pointer';
-          showMoreLink.addEventListener('click', (e) => {
-            e.preventDefault();
-            if (td.textContent.includes('Show Less')) {
-              td.textContent = shortenedText;
-              td.appendChild(showMoreLink);
-            } else {
-              td.textContent = notesText;
-              const showLessLink = document.createElement('a');
-              showLessLink.href = '#';
-              showLessLink.textContent = 'Show Less';
-              showLessLink.className = 'show-less-notes';
-              showLessLink.style.cursor = 'pointer';
-              showLessLink.addEventListener('click', (e) => {
-                e.preventDefault();
-                td.textContent = shortenedText;
-                td.appendChild(showMoreLink);
-              });
-              td.appendChild(showLessLink);
-            }
-          });
-          td.textContent = shortenedText;
-          td.appendChild(showMoreLink);
-        } else {
-          td.textContent = notesText;
-        }
-      } else {
-        td.textContent = rowData[columnName] !== null ? rowData[columnName] : '';
-      }
-      
-      // Apply max-width-column class to specific columns
-      if (maxWidthLimitingColumns.includes(columnName)) { 
-        td.classList.add('max-width-column');
-      }
-      
-      tr.appendChild(td);
-    });
-    tbody.appendChild(tr);
-  });
-  
-  table.appendChild(tbody);
-  
-  // Append table to card body
-  targetElement.appendChild(table);
-  
-  // Adjust column widths
-  adjustColumnWidths();
-  
-  // Update pagination controls
-  updatePaginationControls(sortedData, entriesPerPage, currentPage, targetElement);
-}
-
-// Function to sort data based on column and direction
-function sortData(data, column, direction) {
-  return [...data].sort((a, b) => {
-    let valueA = a[column] !== null ? a[column] : '';
-    let valueB = b[column] !== null ? b[column] : '';
-    
-    // Try to convert to numbers for numeric comparison
-    if (!isNaN(Number(valueA)) && !isNaN(Number(valueB))) {
-      valueA = Number(valueA);
-      valueB = Number(valueB);
-    } else if (typeof valueA === 'string' && typeof valueB === 'string') {
-      // Case-insensitive string comparison
-      valueA = valueA.toLowerCase();
-      valueB = valueB.toLowerCase();
-    }
-    
-    // Compare values
-    if (valueA < valueB) {
-      return direction === 'asc' ? -1 : 1;
-    } else if (valueA > valueB) {
-      return direction === 'asc' ? 1 : -1;
-    }
-    return 0;
-  });
-}
-
-// Function to update pagination controls
-function updatePaginationControls(filteredData, entriesPerPage, currentPage, targetElement) {
-  const entriesInfo = document.querySelector('.entries-info');
-  const totalPages = Math.ceil(filteredData.length / entriesPerPage);
-  const startIndex = (currentPage - 1) * entriesPerPage;
-  const endIndex = Math.min(startIndex + entriesPerPage, filteredData.length);
-  
-  entriesInfo.textContent = `Showing ${startIndex + 1} to ${endIndex} of ${filteredData.length} entries`;
-  
-  const pageNumbers = document.querySelector('.page-numbers');
-  pageNumbers.textContent = '';
-  
-  const prevButton = document.querySelector('.prev-page');
-  const nextButton = document.querySelector('.next-page');
-  
-  prevButton.disabled = currentPage === 1;
-  nextButton.disabled = currentPage === totalPages;
-  
-  if (totalPages > 1) {
-    const startPage = Math.max(1, currentPage - 1);
-    const endPage = Math.min(totalPages, currentPage + 1);
-    
-    for (let i = startPage; i <= endPage; i++) {
-      const pageButton = document.createElement('button');
-      pageButton.className = `btn btn-outline-primary page-number ${i === currentPage ? 'active' : ''}`;
-      pageButton.textContent = i;
-      pageButton.addEventListener('click', () => {
-        // Get current filters
-        const selectedPhase = document.querySelector('.phase-filter.active').getAttribute('data-phase');
-        const selectedStatusButtons = document.querySelectorAll('.status-filter.active');
-        const selectedStatuses = Array.from(selectedStatusButtons).map(btn => btn.getAttribute('data-status'));
-        
-        // Re-render with the new page
-        if (currentSortColumn) {
-          // Re-render with current sorting applied
-          const selectedTeam = document.querySelector('input[name="team-filter"]:checked').value;
-          let data = getFilteredData(window.crVerificationData, selectedPhase, selectedTeam, selectedStatuses);
-          data = sortData(data, currentSortColumn, currentSortDirection);
-          renderTableWithSortedData(data, window.crVerificationColumnNames, targetElement, entriesPerPage, i);
-        } else {
-          // Re-render with default ordering
-          renderFilteredCRVerificationTable(
-            window.crVerificationData,
-            window.crVerificationColumnNames,
-            targetElement,
-            selectedPhase,
-            entriesPerPage,
-            i,
-            selectedStatuses
-          );
-        }
-      });
-      pageNumbers.appendChild(pageButton);
-    }
-  }
-}
-
-// Add these styles to the document
-function addSortStyles() {
-  if (!document.getElementById('sort-styles')) {
-    const styleElement = document.createElement('style');
-    styleElement.id = 'sort-styles';
-    styleElement.textContent = `
-      .sortable-header {
-        user-select: none;
-      }
-      .sortable-header:hover {
-        color: #328AA4;
-      }
-      .sort-icon {
-        transition: transform 0.2s ease;
-      }
-      .sortable-header:hover .sort-icon {
-        color: #328AA4;
-      }
-    `;
-    document.head.appendChild(styleElement);
-  }
-}
-
-// Call this when the page loads
-document.addEventListener('DOMContentLoaded', function() {
-  addSortStyles();
-});
+but after downloading i am unable to open excel file. it is saying 
+Excel cannot open the file 'example.xlsx' because the file format or file extension is not valid. Verify that the file has not been corrupted and that the file extension matches the format of the file.
