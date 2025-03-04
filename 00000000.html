@@ -1,5 +1,9 @@
-coverage_types = ['Legacy', 'NewFR']
+import pandas as pd
+import os
+from config_paths import ConfigPaths
+from CNSS_Metrics.cst_reporting_views.scripts.legacy_new_fr_view import calculate_counts
 
+coverage_types = ['Legacy', 'NewFR']
 csv_file_path = os.path.join(ConfigPaths.ref_dir, "projected_percentages.csv")
 projection_df = pd.read_csv(csv_file_path)
 
@@ -14,40 +18,96 @@ sp_groups = all_tc_df.groupby('SP Name')
 for sp_name, sp_group in sp_groups:
     sp_teams = []
     team_groups = sp_group.groupby('Test Team')
-
+    
     for team_name, team_group in team_groups:
         team_phase_data = []
-
+        
         for phase in phases:
-            phase_metrics = phase_data[phase]
-            phase_date = get_phase_date(phase_dates_df, sp_name, phase)
-            unique_issue_count, unique_issue_list, unique_cr_list, unique_cr_count, unique_jira_list, unique_jira_count = get_unique_issue_counts(all_tc_df, sp_name, team_name, phase)
-
-            phase_info = {
+            phase_coverage_data = []
+            
+            for coverage_type in coverage_types:
+                phase_metrics = phase_data[phase][coverage_type]
+                
+                metrics = phase_metrics[
+                    (phase_metrics['SP Name'] == sp_name) &
+                    (phase_metrics['Test Team'] == team_name)
+                ].to_dict('records')
+                
+                metrics = metrics[0] if metrics else {
+                    'total': 0, 'passed': 0, 'failed': 0, 'blocked': 0,
+                    'coverage': 0, 'coverage_percentage': 0,
+                    'passed_percentage': 0, 'failed_percentage': 0, 'blocked_percentage': 0
+                }
+                
+                phase_date = "NA"
+                if phase in ["ES", "FC", "CS"]:
+                    date_value = phase_dates_df.loc[
+                        phase_dates_df['FirstCustomerSP'] == sp_name, phase
+                    ].iloc[0] if not phase_dates_df[
+                        phase_dates_df['FirstCustomerSP'] == sp_name
+                    ].empty else None
+                    if pd.notna(date_value):
+                        phase_date = date_value.strftime('%m-%d-%Y')
+                
+                base_filter_func = lambda df: (
+                    (df['SP Name'] == sp_name) & 
+                    (df['Test Team'] == team_name) & 
+                    (df['Test Phase'] == phase) & 
+                    (df['Result'] == "Failed")
+                )
+                
+                filter_func = lambda df: base_filter_func(df) & (df['Legacy_NewFRs'] == coverage_type)
+                
+                unique_issue_counts, column_name_result, unique_issue_lists = calculate_counts(
+                    all_tc_df, 'Issues', filter_func=filter_func, unique=True
+                )
+                
+                unique_issue_count = unique_issue_counts.set_index('Test Team').loc[team_name, column_name_result] if not unique_issue_counts.empty else 0
+                unique_issue_list = unique_issue_lists.get(team_name, [])
+                unique_cr_list = [issue for issue in unique_issue_list if issue.startswith("CR-")]
+                unique_cr_count = len(unique_cr_list)
+                unique_jira_list = [issue for issue in unique_issue_list if issue.startswith(("QSTABILITY-", "CNSSDEBUG-"))]
+                unique_jira_count = len(unique_jira_list)
+                
+                filtered_df = projection_df[
+                    (projection_df['SP Name'] == sp_name) &
+                    (projection_df['Test Team'] == team_name) &
+                    (projection_df['Test Phase'] == phase)
+                ]
+                
+                if not filtered_df.empty:
+                    expected_cov_percentage = filtered_df.iloc[0]['Goal Coverage%'] if pd.notna(filtered_df.iloc[0]['Goal Coverage%']) else "NA"
+                else:
+                    expected_cov_percentage = "NA"
+                
+                phase_coverage_data.append({
+                    'coverage_type': coverage_type,
+                    'metrics': {
+                        'coverage_percentage': metrics['coverage_percentage'],
+                        'passed_percentage': metrics['passed_percentage'],
+                        'failed_percentage': metrics['failed_percentage'],
+                        'blocked_percentage': metrics['blocked_percentage'],
+                    },
+                    'unique_issue_count': int(unique_issue_count),
+                    'unique_issue_list': unique_issue_list,
+                    'unique_cr_list': unique_cr_list,
+                    'unique_cr_count': unique_cr_count,
+                    'unique_jira_list': unique_jira_list,
+                    'unique_jira_count': unique_jira_count,
+                    "expected_cov_percentage": expected_cov_percentage
+                })
+            
+            team_phase_data.append({
                 'phase': phase,
                 'date': phase_date,
-                'metrics': {
-                    'coverage_percentage': phase_metrics['coverage_percentage'],
-                    'passed_percentage': phase_metrics['passed_percentage'],
-                    'failed_percentage': phase_metrics['failed_percentage'],
-                    'blocked_percentage': phase_metrics['blocked_percentage']
-                },
-                'unique_issue_count': int(unique_issue_count),
-                'unique_issue_list': unique_issue_list,
-                'unique_cr_list': unique_cr_list,
-                'unique_cr_count': unique_cr_count,
-                'unique_jira_list': unique_jira_list,
-                'unique_jira_count': unique_jira_count,
-                "expected_cov_percentage": get_expected_coverage(projection_df, sp_name, team_name, phase)
-            }
-
-            team_phase_data.append(phase_info)
-
+                'coverage_types': phase_coverage_data
+            })
+        
         sp_teams.append({
             'team_name': team_name,
             'phases': team_phase_data
         })
-
+    
     table_data.append({
         'sp_name': sp_name,
         'teams': sp_teams
