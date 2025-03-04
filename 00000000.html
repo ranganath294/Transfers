@@ -1,32 +1,42 @@
-<style>
-    .downloads-dropdown .dropdown-menu {
-        right: 0 !important;
-        left: auto !important;
-        min-width: 240px; /* Ensure dropdown is wide enough for your text */
-    }
+def gen_cr_freq_info(cr_df, tc_df):
+    # print(tc_df.columns)
     
-    /* Position the menu to start from right side */
-    .dropdown-menu-end {
-        --bs-position: end;
-    }
+    # Filter tc_df to include only rows where the "Result" column is "Failed"
+    tc_df = tc_df[tc_df["Result"] == "Failed"]
     
-    /* For mobile responsiveness */
-    @media (max-width: 767.98px) {
-        .downloads-dropdown {
-            margin-top: 10px;
-        }
-    }
-</style>
-
-<div class="col-md-6 d-flex justify-content-end align-items-end">
-    <div class="dropdown downloads-dropdown">
-        <button class="btn btn-primary dropdown-toggle" type="button" id="downloadDropdown" data-bs-toggle="dropdown" aria-expanded="false">
-            Downloads
-        </button>
-        <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="downloadDropdown">
-            <li><a class="dropdown-item" href="#" id="exportCoverageReport">Export Coverage Report to XL</a></li>
-            <li><a class="dropdown-item" href="#" id="exportCRVerification">Export CR Verification to XL</a></li>
-            <li><a class="dropdown-item" href="#" id="exportScrumSheet">Export Scrum Sheet to XL</a></li>
-        </ul>
-    </div>
-</div>
+    tc_df = tc_df.dropna(subset=["Issues"])
+    tc_df["Issues"] = tc_df["Issues"].str.strip()
+    tc_df = tc_df[tc_df["Issues"] != ""]
+    tc_df = tc_df[tc_df["Issues"].notna() & (tc_df["Issues"] != "")]
+    print("1", tc_df["Issues"])
+    tc_df = tc_df.copy()
+    # tc_df["CR"] = tc_df["Issues"].apply(
+    #     lambda x: [i for i in str(x).split(",") if i.startswith("CR-")]
+    # )
+    tc_df.to_csv(r"C:\Dropbox\To Laptop\New folder\debug\tc_df_1.csv")
+    
+    # Ensure the "Issues" column is treated as a string
+    # tc_df["Issues"] = tc_df["Issues"].astype(str)
+    
+    def remove_duplicates_from_issues(issues_str):
+        if pd.isna(issues_str):
+            return ""
+        issues_list = issues_str.split(',')
+        unique_issues = list(set(issues_list))
+        unique_issues.sort()
+        return ','.join(unique_issues)
+    
+    # Create a temporary column to handle duplicates within each row
+    # tc_df["Temp_Issues"] = tc_df["Issues"].apply(lambda x: ','.join(set(str(x).split(','))))
+    tc_df["Temp_Issues"] = tc_df["Issues"].apply(remove_duplicates_from_issues)
+    
+    tc_df["CR"] = tc_df["Temp_Issues"].str.split(",")
+    tc_df = tc_df.explode("CR")
+    tc_df = tc_df[tc_df['CR'].str.contains('CR-')]
+    print("2", tc_df["CR"])
+    print(len(tc_df["CR"]))
+    tc_df.to_csv(r"C:\Dropbox\To Laptop\New folder\debug\tc_df_2.csv")
+    
+    # Remove duplicate rows - Added to remove the duplicates present in same row of issues column. Simple to remove after exploding. If more num of duplicates are expected then better to use a lambda and remove duplicates before exploding for efficiency. 
+    # tc_df = tc_df.drop_duplicates()
+    tc_df.to_csv(r"C:\Dropbox\To Laptop\New folder\debug\tc_df_3.csv")
