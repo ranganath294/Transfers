@@ -1,1 +1,419 @@
-in this, in Issues column each row will be comma seperated and we are using strip and then split. What i want is sometimes there are duplicates in the isssues that is in comma seperated values sometimes there are duplicates. so affter exploding because in same cell there are duplicates, after exploding they are becoming two rows and count is increasing. so to remove these duplicates, it is better to remove before epxloding or after exploding. If we want to remove after exploding then it means we will get those duplicate rows completely same for all columns. we can do unique on all columns. if we want to remove duplicates before exploding then on each row of CR column we need to remove use unique. give bothe ways and whcih is better, like efficient etc
+import pandas as pd
+
+import logging
+
+import os
+
+import sys
+
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', '..')))
+
+from config_paths import ConfigPaths
+
+from CNSS_Metrics.cst_reporting_views.scripts.legacy_new_fr_view import calculate_counts
+
+def prepare_table_data_active_sps(all_tc_df, phases, phase_dates_df, include_values=False, coverage_types=None, include_coverage_types=False, include_projected_coverage=False):
+
+    if coverage_types is None:
+
+        coverage_types = ['Legacy', 'NewFR']
+
+    
+
+    projection_df = None
+
+    if include_projected_coverage:
+
+        csv_file_path = os.path.join(ConfigPaths.ref_dir, "projected_percentages.csv")
+
+        projection_df = pd.read_csv(csv_file_path)
+
+    
+
+    phase_data = calculate_phase_data(all_tc_df, phases, coverage_types, include_coverage_types)
+
+    table_data = build_table_data(all_tc_df, phase_data, phases, phase_dates_df, include_values, coverage_types, include_coverage_types, include_projected_coverage, projection_df)
+
+    return table_data
+
+def calculate_phase_data(all_tc_df, phases, coverage_types, include_coverage_types):
+
+    if include_coverage_types:
+
+        return {
+
+            phase: {coverage_type: calculate_phase_metrics(all_tc_df, phase, coverage_type) for coverage_type in coverage_types}
+
+            for phase in phases
+
+        }
+
+    else:
+
+        return {phase: calculate_phase_metrics(all_tc_df, phase) for phase in phases}
+
+def calculate_phase_metrics(df, phase, coverage_type=None):
+
+    if coverage_type is not None:
+
+        filtered_df = df[
+
+            (df['Test Phase'] == phase) &
+
+            (df['Legacy_NewFRs'] == coverage_type)
+
+        ]
+
+    else:
+
+        filtered_df = df[df['Test Phase'] == phase]
+
+    
+
+    metrics = filtered_df.groupby(['SP Name', 'Test Team']).agg(
+
+        total=('Result', 'size'),
+
+        passed=('Result', lambda x: (x == 'Passed').sum()),
+
+        failed=('Result', lambda x: (x == 'Failed').sum()),
+
+        blocked=('Result', lambda x: (x == 'Blocked').sum())
+
+    ).reset_index()
+
+    metrics['coverage'] = metrics['passed'] + metrics['failed']
+
+    metrics['coverage_percentage'] = (metrics['coverage'] / metrics['total'] * 100).fillna(0)
+
+    metrics['passed_percentage'] = (metrics['passed'] / metrics['total'] * 100).fillna(0)
+
+    metrics['failed_percentage'] = (metrics['failed'] / metrics['total'] * 100).fillna(0)
+
+    metrics['blocked_percentage'] = (metrics['blocked'] / metrics['total'] * 100).fillna(0)
+
+    return metrics
+
+def build_table_data(all_tc_df, phase_data, phases, phase_dates_df, include_values, coverage_types, include_coverage_types, include_projected_coverage, projection_df):
+
+    table_data = []
+
+    sp_groups = all_tc_df.groupby('SP Name')
+
+    for sp_name, sp_group in sp_groups:
+
+        sp_teams = []
+
+        team_groups = sp_group.groupby('Test Team')
+
+        for team_name, team_group in team_groups:
+
+            team_phase_data = []
+
+            for phase in phases:
+
+                phase_info = process_phase_data(
+
+                    all_tc_df, phase_data, phase_dates_df, sp_name, team_name, phase,
+
+                    include_coverage_types, coverage_types, include_values, include_projected_coverage, projection_df
+
+                )
+
+                team_phase_data.append(phase_info)
+
+            sp_teams.append({
+
+                'team_name': team_name,
+
+                'phases': team_phase_data
+
+            })
+
+        table_data.append({
+
+            'sp_name': sp_name,
+
+            'teams': sp_teams
+
+        })
+
+    return table_data
+
+def extract_unique_cr_and_jira(unique_issue_list):
+
+    unique_cr_list = [issue for issue in unique_issue_list if issue.startswith("CR-")]
+
+    unique_cr_count = len(unique_cr_list)
+
+    unique_jira_list = [issue for issue in unique_issue_list if issue.startswith(("QSTABILITY-", "CNSSDEBUG-"))]
+
+    unique_jira_count = len(unique_jira_list)
+
+    return unique_cr_list, unique_cr_count, unique_jira_list, unique_jira_count
+
+def get_unique_issue_counts(all_tc_df, sp_name, team_name, phase, coverage_type=None):
+
+    base_filter_func = lambda df: ((df['SP Name'] == sp_name) &
+
+                                  (df['Test Team'] == team_name) &
+
+                                  (df['Test Phase'] == phase) &
+
+                                  (df['Result'] == "Failed"))
+
+    if coverage_type:
+
+        filter_func = lambda df: base_filter_func(df) & (df['Legacy_NewFRs'] == coverage_type)
+
+    else:
+
+        filter_func = base_filter_func
+
+    if 'Issues' in all_tc_df.columns:
+
+        unique_issue_counts, column_name_result, unique_issue_lists = calculate_counts(all_tc_df, 'Issues', filter_func=filter_func, unique=True)
+
+        unique_issue_count = unique_issue_counts.set_index('Test Team').loc[team_name, column_name_result] if not unique_issue_counts.empty else 0
+
+        unique_issue_list = unique_issue_lists.get(team_name, [])
+
+        unique_cr_list, unique_cr_count, unique_jira_list, unique_jira_count = extract_unique_cr_and_jira(unique_issue_list)
+
+        return unique_issue_count, unique_issue_list, unique_cr_list, unique_cr_count, unique_jira_list, unique_jira_count
+
+    else:
+
+        logging.warning(f"Column 'Issues' not found in DataFrame for SP Name: {sp_name}, Test Team: {team_name}, Phase: {phase}, Coverage Type: {coverage_type}")
+
+        return 0, [], [], 0, [], 0
+
+def process_phase_data(all_tc_df, phase_data, phase_dates_df, sp_name, team_name, phase, include_coverage_types, coverage_types, include_values, include_projected_coverage, projection_df):
+
+    if include_coverage_types:
+
+        phase_coverage_data = []
+
+        for coverage_type in coverage_types:
+
+            phase_metrics = phase_data[phase][coverage_type]
+
+            metrics = get_metrics(phase_metrics, sp_name, team_name)
+
+            phase_date = get_phase_date(phase_dates_df, sp_name, phase)
+
+            unique_issue_count, unique_issue_list, unique_cr_list, unique_cr_count, unique_jira_list, unique_jira_count = get_unique_issue_counts(all_tc_df, sp_name, team_name, phase, coverage_type)
+
+            phase_coverage_info = {
+
+                'coverage_type': coverage_type,
+
+                'metrics': format_metrics(metrics, include_values),
+
+                'unique_issue_count': int(unique_issue_count),
+
+                'unique_issue_list': unique_issue_list,
+
+                'unique_cr_list': unique_cr_list,
+
+                'unique_cr_count': unique_cr_count,
+
+                'unique_jira_list': unique_jira_list,
+
+                'unique_jira_count': unique_jira_count
+
+            }
+
+            if include_projected_coverage:
+
+                phase_coverage_info.update({
+
+                    "expected_cov_percentage": get_expected_coverage(projection_df, sp_name, team_name, phase)
+
+                })
+
+            phase_coverage_data.append(phase_coverage_info)
+
+        phase_info = {
+
+            'phase': phase,
+
+            'date': phase_date,
+
+            'coverage_types': phase_coverage_data
+
+        }
+
+    else:
+
+        phase_metrics = phase_data[phase]
+
+        metrics = get_metrics(phase_metrics, sp_name, team_name)
+
+        phase_date = get_phase_date(phase_dates_df, sp_name, phase)
+
+        unique_issue_count, unique_issue_list, unique_cr_list, unique_cr_count, unique_jira_list, unique_jira_count = get_unique_issue_counts(all_tc_df, sp_name, team_name, phase)
+
+        phase_info = {
+
+            'phase': phase,
+
+            'date': phase_date,
+
+            'metrics': format_metrics(metrics, include_values),
+
+            'unique_issue_count': int(unique_issue_count),
+
+            'unique_issue_list': unique_issue_list,
+
+            'unique_cr_list': unique_cr_list,
+
+            'unique_cr_count': unique_cr_count,
+
+            'unique_jira_list': unique_jira_list,
+
+            'unique_jira_count': unique_jira_count
+
+        }
+
+        if include_projected_coverage:
+
+            phase_info.update({
+
+                "expected_cov_percentage": get_expected_coverage(projection_df, sp_name, team_name, phase)
+
+            })
+
+    return phase_info
+
+def get_metrics(phase_metrics, sp_name, team_name):
+
+    metrics = phase_metrics[
+
+        (phase_metrics['SP Name'] == sp_name) &
+
+        (phase_metrics['Test Team'] == team_name)
+
+    ].to_dict('records')
+
+    return metrics[0] if metrics else {
+
+        'total': 0,
+
+        'passed': 0,
+
+        'failed': 0,
+
+        'blocked': 0,
+
+        'coverage': 0,
+
+        'coverage_percentage': 0,
+
+        'passed_percentage': 0,
+
+        'failed_percentage': 0,
+
+        'blocked_percentage': 0
+
+    }
+
+def get_phase_date(phase_dates_df, sp_name, phase):
+
+    phase_date = "NA"
+
+    if phase in ["ES", "FC", "CS"]:
+
+        date_value = phase_dates_df.loc[
+
+            phase_dates_df['FirstCustomerSP'] == sp_name,
+
+            phase
+
+        ].iloc[0] if not phase_dates_df[
+
+            phase_dates_df['FirstCustomerSP'] == sp_name
+
+        ].empty else None
+
+        if pd.notna(date_value):
+
+            phase_date = date_value.strftime('%m-%d-%Y')
+
+    return phase_date
+
+def format_metrics(metrics, include_values):
+
+    formatted_metrics = {
+
+        'coverage_percentage': metrics['coverage_percentage'],
+
+        'passed_percentage': metrics['passed_percentage'],
+
+        'failed_percentage': metrics['failed_percentage'],
+
+        'blocked_percentage': metrics['blocked_percentage']
+
+    }
+
+    if include_values:
+
+        formatted_metrics.update({
+
+            'total': metrics['total'],
+
+            'passed': metrics['passed'],
+
+            'failed': metrics['failed'],
+
+            'blocked': metrics['blocked'],
+
+            'coverage': metrics['coverage']
+
+        })
+
+    return formatted_metrics
+
+def get_expected_coverage(projection_df, sp_name, team_name, phase):
+
+    filtered_df = projection_df[
+
+        (projection_df['SP Name'] == sp_name) &
+
+        (projection_df['Test Team'] == team_name) &
+
+        (projection_df['Test Phase'] == phase)
+
+    ]
+
+    if not filtered_df.empty:
+
+        print(filtered_df)
+
+        if filtered_df['Goal Coverage%'].isna().any():
+
+            expected_cov_percentage = "NA"
+
+            print(f"Goal Coverage% for {sp_name}, {team_name}, {phase} is NaN. Replaced with {expected_cov_percentage}")
+
+        else:
+
+            expected_cov_percentage = filtered_df.iloc[0]['Goal Coverage%']
+
+            print(f"Goal Coverage% for {sp_name}, {team_name}, {phase}: {expected_cov_percentage}")
+
+    else:
+
+        expected_cov_percentage = "NA"
+
+        print(f"No data found for {sp_name}, {team_name}, {phase}")
+
+    return expected_cov_percentage
+
+
+
+
+
+
+
+in this give me code which will be execcuted when prepare_table_data_active_sps(all_tc_df, phases, phase_dates_df, include_projected_coverage=True) is called. like give me code which gets executed with this, dont give other rest of code. that means take default kind of parameters. remove all the extra other code also. that is parameters etc. only give code what will be executed when prepare_table_data_active_sps(all_tc_df, phases, phase_dates_df, include_projected_coverage=True) is called
