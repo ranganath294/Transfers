@@ -92,6 +92,19 @@ tc_df = tc_df.drop(columns=['Issues']).merge(issues_df, on='SP Planning ID', how
 
 
 
+# Create the All_Issues column
+issues_df = tc_df.groupby('SP Planning ID')['Issues'].apply(lambda x: ', '.join(x.dropna().unique())).reset_index()
+issues_df.rename(columns={'Issues': 'All_Issues'}, inplace=True)
+
+# Merge All_Issues into the main DataFrame
+tc_df = tc_df.merge(issues_df, on='SP Planning ID', how='left')
+
+
+
+
+
+
+
 
 # Save All Active SPs Data
 ref_dir_path = ConfigPaths.ref_dir
