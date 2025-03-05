@@ -1,14 +1,139 @@
-grouped_by_sp_name = tc_df.groupby('SP Name')
-ref_dir_path = ConfigPaths.ref_dir
+WITH RankedResults AS (
+    SELECT 
+        p.*, 
+        e.[Execution DUT],
+        e.[Result],
+        e.[Issues],
+        e.[Execution Date],
+        e.[Actual Tester Name],
+        e.[Execution Build],
+        e.[TC Added By] AS executedby, 
+        e.[TC Added On] AS executedon, 
+        ROW_NUMBER() OVER (PARTITION BY p.[SP Planning ID] ORDER BY e.[TC Added On] DESC) AS rn
+    FROM 
+        [QCABD].[wlanspbot].[tblSPPlanning_Production] AS p 
+    LEFT JOIN 
+        [QCABD].[wlanspbot].[tblSPExecutionResults_Production] AS e 
+    ON 
+        p.[SP Planning ID] = e.[SP_Planned_TCID] 
+    {query_filter}
+) 
+SELECT 
+    * 
+FROM 
+    RankedResults 
+WHERE 
+    rn = 1 
+ORDER BY 
+    executedon DESC;
 
+
+
+
+
+import pandas as pd
+import os
+import pyodbc
+
+# Database connection
+conn = pyodbc.connect("DRIVER={SQL Server};SERVER=your_server;DATABASE=your_db;UID=user;PWD=password")
+
+# Fetch the data
+query = """
+    WITH RankedResults AS (
+        SELECT 
+            p.*, 
+            e.[Execution DUT],
+            e.[Result],
+            e.[Issues],
+            e.[Execution Date],
+            e.[Actual Tester Name],
+            e.[Execution Build],
+            e.[TC Added By] AS executedby, 
+            e.[TC Added On] AS executedon, 
+            ROW_NUMBER() OVER (PARTITION BY p.[SP Planning ID] ORDER BY e.[TC Added On] DESC) AS rn
+        FROM 
+            [QCABD].[wlanspbot].[tblSPPlanning_Production] AS p 
+        LEFT JOIN 
+            [QCABD].[wlanspbot].[tblSPExecutionResults_Production] AS e 
+        ON 
+            p.[SP Planning ID] = e.[SP_Planned_TCID] 
+        WHERE 
+            p.[SP Name] IN ({sp_list})
+    ) 
+    SELECT 
+        * 
+    FROM 
+        RankedResults 
+    WHERE 
+        rn = 1 
+    ORDER BY 
+        executedon DESC;
+"""
+
+tc_df = pd.read_sql(query, conn)
+conn.close()
+
+
+
+
+
+
+
+
+# Aggregate Issues by SP Planning ID
+issues_df = tc_df.groupby('SP Planning ID')['Issues'].apply(lambda x: ', '.join(x.dropna().unique())).reset_index()
+
+# Merge back with the main DataFrame
+tc_df = tc_df.drop(columns=['Issues']).merge(issues_df, on='SP Planning ID', how='left')
+
+
+
+
+
+
+
+# Save All Active SPs Data
+ref_dir_path = ConfigPaths.ref_dir
 active_sps_path = os.path.join(ref_dir_path, "All_Active_SPs_TC_results.csv")
 tc_df.to_csv(active_sps_path, index=False)
-# Iterate over each group and save to a CSV file
+
+# Group by SP Name and Save Each File
+grouped_by_sp_name = tc_df.groupby('SP Name')
 for sp_name, group_df in grouped_by_sp_name:
     filename = f"{sp_name}_TC_results.csv"
     saved_path = os.path.join(ref_dir_path, filename)
-    
-    # Save the group DataFrame to a CSV file
     group_df.to_csv(saved_path, index=False)
-    
     print(f"Saved data for {filename} to {saved_path}")
+
+
+
+
+
+
+
+
+
+ref_dir_path = ConfigPaths.ref_dir
+
+# Placeholder DataFrame to collect all SP data
+all_active_sps_df = pd.DataFrame()
+
+grouped_by_sp_name = tc_df.groupby('SP Name')
+for sp_name, group_df in grouped_by_sp_name:
+    # Compute `All_Issues` for each SP
+    issues_df = group_df.groupby('SP Planning ID')['Issues'].apply(lambda x: ', '.join(x.dropna().unique())).reset_index()
+    group_df = group_df.drop(columns=['Issues']).merge(issues_df, on='SP Planning ID', how='left')
+
+    # Save individual SP file
+    filename = f"{sp_name}_TC_results.csv"
+    saved_path = os.path.join(ref_dir_path, filename)
+    group_df.to_csv(saved_path, index=False)
+    print(f"Saved data for {filename} to {saved_path}")
+
+    # Append to final DataFrame
+    all_active_sps_df = pd.concat([all_active_sps_df, group_df], ignore_index=True)
+
+# Save the combined data
+active_sps_path = os.path.join(ref_dir_path, "All_Active_SPs_TC_results.csv")
+all_active_sps_df.to_csv(active_sps_path, index=False)
