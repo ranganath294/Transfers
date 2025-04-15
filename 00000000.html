@@ -13,7 +13,7 @@ graphsInput.addEventListener('change', async () => {
 
         contentContainer.innerHTML = ''; // Clear the content container
         
-        // Create a card structure for graphs view
+        // Create a single card structure for graphs view
         const graphCardElement = document.createElement('div');
         graphCardElement.className = 'card mb-3';
 
@@ -116,36 +116,22 @@ async function fetchAndRenderGraphs(selectedSp, selectedTeam, selectedPhase, con
             noGraphMessage.className = 'text-center mt-3';
             container.appendChild(noGraphMessage);
         } else {
-            // Create a container for the images with card-like styling
+            // Create a container for the images
             const imageContainer = document.createElement('div');
             imageContainer.className = 'graph-images-container';
             
             images.forEach((imageBase64, index) => {
-                // Create a card for each image
-                const imageCard = document.createElement('div');
-                imageCard.className = 'card mb-4'; // Add margin bottom for spacing between image cards
-                
-                // Create card body for the image
-                const imageCardBody = document.createElement('div');
-                imageCardBody.className = 'card-body p-3'; // Add padding for spacing
-                
                 // Create an image element
                 const img = document.createElement('img');
-                img.className = 'img-fluid'; // Add Bootstrap class for responsive image
+                img.className = 'img-fluid mb-3'; // Add Bootstrap class for responsive image with bottom margin
                 img.alt = `Graph Image ${index + 1}`;
                 img.style.width = '100%'; // Ensure image takes full width of its container
 
                 // Set the src attribute of the image to the base64 data
                 img.src = `data:image/jpg;base64,${imageBase64}`;
 
-                // Append the image to the image card body
-                imageCardBody.appendChild(img);
-                
-                // Append the image card body to the image card
-                imageCard.appendChild(imageCardBody);
-                
-                // Append the image card to the image container
-                imageContainer.appendChild(imageCard);
+                // Append the image directly to the image container
+                imageContainer.appendChild(img);
             });
             
             // Append the image container to the main container
