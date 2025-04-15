@@ -1,1 +1,158 @@
-in this in graph generation part, it is rendering it directly, but i want to do it like this. similar to other like scrum sheet or cr verfication tab, we will create another card like sructure and rest remains same that is phases buttons and other graph rendering etc. the only chnage i want is to show it similar to other like a card
+// Add event listener for Graphs button
+graphsInput.addEventListener('change', async () => {
+    if (graphsInput.checked) {
+        console.log('Graphs clicked');
+        const spSelect = document.getElementById('sp_name');
+        const selectedSp = spSelect.value;
+        const selectedTeam = document.querySelector('input[name="team-filter"]:checked').value;
+
+        if (!selectedSp) {
+            addAlert('danger', 'Please select an SP first');
+            return;
+        }
+
+        contentContainer.innerHTML = ''; // Clear the content container
+        
+        // Create a card structure for graphs view
+        const graphCardElement = document.createElement('div');
+        graphCardElement.className = 'card mb-3';
+
+        // Create card body
+        const graphCardBody = document.createElement('div');
+        graphCardBody.className = 'card-body';
+        
+        // Create phase filter container for graphs view
+        const phaseFilterContainer = document.createElement('div');
+        phaseFilterContainer.className = 'mb-3'; // Add margin bottom for spacing
+
+        // Create button group for phase filters
+        const graphPhaseButtonGroup = document.createElement('div');
+        graphPhaseButtonGroup.className = 'btn-group';
+        graphPhaseButtonGroup.setAttribute('role', 'group');
+        graphPhaseButtonGroup.setAttribute('aria-label', 'Phase filters');
+
+        // Create phase filter buttons
+        const phases = ['all', 'ES', 'FC', 'CS'];
+        phases.forEach(phase => {
+            const button = document.createElement('button');
+            button.type = 'button';
+            button.className = `btn btn-outline-primary graph-phase-filter ${phase === 'all' ? 'active' : ''}`;
+            button.setAttribute('data-phase', phase);
+            button.textContent = phase === 'all' ? 'All Phases' : phase;
+            graphPhaseButtonGroup.appendChild(button);
+        });
+        
+        // Create graph content container
+        const graphContentContainer = document.createElement('div');
+        graphContentContainer.id = 'graphContentContainer';
+        graphContentContainer.className = 'mt-3'; // Add margin top for spacing
+        
+        // Append elements to the card
+        phaseFilterContainer.appendChild(graphPhaseButtonGroup);
+        graphCardBody.appendChild(phaseFilterContainer);
+        graphCardBody.appendChild(graphContentContainer);
+        graphCardElement.appendChild(graphCardBody);
+        
+        // Append card to the main content container
+        contentContainer.appendChild(graphCardElement);
+        
+        // Add event listeners for phase filter buttons
+        graphPhaseButtonGroup.addEventListener('click', async (e) => {
+            if (e.target.classList.contains('graph-phase-filter')) {
+                // Remove active class from all buttons
+                graphPhaseButtonGroup.querySelectorAll('.graph-phase-filter').forEach(btn => btn.classList.remove('active'));
+                // Add active class to the clicked button
+                e.target.classList.add('active');
+                // Get the selected phase
+                const selectedPhase = e.target.getAttribute('data-phase');
+                
+                // Clear the graph content container
+                graphContentContainer.innerHTML = '';
+                
+                // Create loading indicator
+                const loadingIndicator = document.createElement('div');
+                loadingIndicator.className = 'text-center mt-3';
+                loadingIndicator.textContent = 'Loading graphs...';
+                graphContentContainer.appendChild(loadingIndicator);
+                
+                // Fetch and render graphs with the selected phase
+                await fetchAndRenderGraphs(selectedSp, selectedTeam, selectedPhase, graphContentContainer);
+                
+                // Remove loading indicator
+                loadingIndicator.remove();
+            }
+        });
+        
+        // Fetch and render graphs with default 'all' phase
+        const loadingIndicator = document.createElement('div');
+        loadingIndicator.className = 'text-center mt-3';
+        loadingIndicator.textContent = 'Loading graphs...';
+        graphContentContainer.appendChild(loadingIndicator);
+        
+        await fetchAndRenderGraphs(selectedSp, selectedTeam, 'all', graphContentContainer);
+        
+        // Remove loading indicator
+        loadingIndicator.remove();
+    }
+});
+
+// Function to fetch and render graphs based on selected parameters
+async function fetchAndRenderGraphs(selectedSp, selectedTeam, selectedPhase, container) {
+    const params = new URLSearchParams();
+    params.append('sp_name', selectedSp);
+    params.append('team', selectedTeam);
+    params.append('phase', selectedPhase);
+    
+    try {
+        const response = await fetch(`{% url 'cst_reporting_views:get_graph_image' %}?${params.toString()}`);
+        if (!response.ok) throw new Error('Network response was not ok');
+
+        const data = await response.json();
+        const images = data.images;
+
+        if (images.length === 0) {
+            const noGraphMessage = document.createElement('div');
+            noGraphMessage.textContent = 'Graph not available for selected phase';
+            noGraphMessage.className = 'text-center mt-3';
+            container.appendChild(noGraphMessage);
+        } else {
+            // Create a container for the images with card-like styling
+            const imageContainer = document.createElement('div');
+            imageContainer.className = 'graph-images-container';
+            
+            images.forEach((imageBase64, index) => {
+                // Create a card for each image
+                const imageCard = document.createElement('div');
+                imageCard.className = 'card mb-4'; // Add margin bottom for spacing between image cards
+                
+                // Create card body for the image
+                const imageCardBody = document.createElement('div');
+                imageCardBody.className = 'card-body p-3'; // Add padding for spacing
+                
+                // Create an image element
+                const img = document.createElement('img');
+                img.className = 'img-fluid'; // Add Bootstrap class for responsive image
+                img.alt = `Graph Image ${index + 1}`;
+                img.style.width = '100%'; // Ensure image takes full width of its container
+
+                // Set the src attribute of the image to the base64 data
+                img.src = `data:image/jpg;base64,${imageBase64}`;
+
+                // Append the image to the image card body
+                imageCardBody.appendChild(img);
+                
+                // Append the image card body to the image card
+                imageCard.appendChild(imageCardBody);
+                
+                // Append the image card to the image container
+                imageContainer.appendChild(imageCard);
+            });
+            
+            // Append the image container to the main container
+            container.appendChild(imageContainer);
+        }
+    } catch (error) {
+        console.error('Error fetching graph images:', error);
+        addAlert('danger', `Error fetching graph images. Please try again.\n ${error}`);
+    }
+}
