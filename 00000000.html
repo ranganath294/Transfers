@@ -25,12 +25,13 @@ graphsInput.addEventListener('change', async () => {
         const phaseFilterContainer = document.createElement('div');
         phaseFilterContainer.className = 'mb-3'; // Add margin bottom for spacing
 
-        // Create button group for phase filters
+        // Create button group for phase filters with 4px gap
         const graphPhaseButtonGroup = document.createElement('div');
         graphPhaseButtonGroup.className = 'btn-group';
         graphPhaseButtonGroup.setAttribute('role', 'group');
         graphPhaseButtonGroup.setAttribute('aria-label', 'Phase filters');
-
+        graphPhaseButtonGroup.style.gap = '4px'; // Add 4px gap between buttons
+        
         // Create phase filter buttons
         const phases = ['all', 'ES', 'FC', 'CS'];
         phases.forEach(phase => {
@@ -108,7 +109,7 @@ async function fetchAndRenderGraphs(selectedSp, selectedTeam, selectedPhase, con
         if (!response.ok) throw new Error('Network response was not ok');
 
         const data = await response.json();
-        const images = data.images;
+        const images = data.images || [];
 
         if (images.length === 0) {
             const noGraphMessage = document.createElement('div');
@@ -120,18 +121,30 @@ async function fetchAndRenderGraphs(selectedSp, selectedTeam, selectedPhase, con
             const imageContainer = document.createElement('div');
             imageContainer.className = 'graph-images-container';
             
-            images.forEach((imageBase64, index) => {
+            images.forEach((imageData, index) => {
+                // Create a figure element to hold image and caption
+                const figure = document.createElement('figure');
+                figure.className = 'figure mb-4'; // Add margin bottom for spacing between images
+                
                 // Create an image element
                 const img = document.createElement('img');
-                img.className = 'img-fluid mb-3'; // Add Bootstrap class for responsive image with bottom margin
-                img.alt = `Graph Image ${index + 1}`;
-                img.style.width = '100%'; // Ensure image takes full width of its container
-
+                img.className = 'figure-img img-fluid rounded'; // Add Bootstrap classes for responsive image
+                img.alt = imageData.title || `Graph Image ${index + 1}`;
+                
                 // Set the src attribute of the image to the base64 data
-                img.src = `data:image/jpg;base64,${imageBase64}`;
-
-                // Append the image directly to the image container
-                imageContainer.appendChild(img);
+                img.src = `data:image/jpg;base64,${imageData.graph_image}`;
+                
+                // Create title caption
+                const figureCaption = document.createElement('figcaption');
+                figureCaption.className = 'figure-caption text-center fw-bold';
+                figureCaption.textContent = imageData.title || `Graph ${index + 1}`;
+                
+                // Append elements to figure
+                figure.appendChild(img);
+                figure.appendChild(figureCaption);
+                
+                // Append figure to image container
+                imageContainer.appendChild(figure);
             });
             
             // Append the image container to the main container
