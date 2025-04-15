@@ -1,633 +1,121 @@
-function renderCRVerificationInCumulativeTable(data, columnNames, targetElement) {
-    // Create card element
-    const cardElement = document.createElement('div');
-    cardElement.className = 'card mb-3';
-
-    // Create card body
-    const cardBody = document.createElement('div');
-    cardBody.className = 'card-body';
-
-    // Create button container
-    const buttonContainer = document.createElement('div');
-    buttonContainer.id = 'cumulativeTableFilters';
-    buttonContainer.className = 'mb-3';
-
-    // Create container for phase filters
-    const phaseFilterContainer = document.createElement('div');
-    phaseFilterContainer.className = 'mb-3'; // Add margin bottom for spacing
-
-    // Create button group for phase filters
-    const buttonGroup = document.createElement('div');
-    buttonGroup.className = 'btn-group';
-    buttonGroup.setAttribute('role', 'group');
-    buttonGroup.setAttribute('aria-label', 'Phase filters');
-
-    // Create phase filter buttons
-    const phases = ['all', 'ES', 'FC', 'CS'];
-    phases.forEach(phase => {
-        const button = document.createElement('button');
-        button.type = 'button';
-        button.className = `btn btn-outline-primary phase-filter ${phase === 'all' ? 'active' : ''}`;
-        button.setAttribute('data-phase', phase);
-        button.textContent = phase === 'all' ? 'All Phases' : phase;
-        buttonGroup.appendChild(button);
-    });
-
-    // Create container for status filters
-    const statusFilterContainer = document.createElement('div');
-    statusFilterContainer.className = 'mb-3'; // Add margin bottom for spacing
-
-    // Create button group for status filters
-    const statusButtonGroup = document.createElement('div');
-    statusButtonGroup.className = 'btn-group';
-    statusButtonGroup.setAttribute('role', 'group');
-    statusButtonGroup.setAttribute('aria-label', 'Status filters');
-
-    // Create status filter buttons
-    // Determine the statuses array based on the selected view button
-    let statuses;
-    if (document.getElementById('cr-verification').checked) {
-        statuses = ['All', 'Analysis', 'Fix', 'NotApplicable', 'Obsolete', 'Open', 'Ready', 'Reopen', 'Untested', 'Withdrawn', 'Built', 'Duplicate', 'CannotDuplicate', 'NeedsRelease', 'Tested', 'Postponed', 'null'];
-    } else if (document.getElementById('scrum-sheet').checked) {
-        statuses = ["All", "Debug", "Retest"];
-    } else {
-        statuses = ['All', 'Analysis', 'Fix', 'NotApplicable', 'Obsolete', 'Open', 'Ready', 'Reopen', 'Untested', 'Withdrawn', 'Built', 'Duplicate', 'CannotDuplicate', 'NeedsRelease', 'Tested', 'Postponed', 'null'];
-    }
-    statuses.forEach(status => {
-        const button = document.createElement('button');
-        button.type = 'button';
-        button.className = `btn btn-outline-primary status-filter ${status === 'All' ? 'active' : ''}`;
-        button.setAttribute('data-status', status);
-        button.textContent = status;
-        // button.style.marginRight = '5px'; // Add some margin for spacing
-        statusButtonGroup.appendChild(button);
-    });
-
-    // Create a container for entries dropdown and pagination
-    const paginationContainer = document.createElement('div');
-    paginationContainer.className = 'row align-items-center mt-3 mb-3';
-
-    // Create column for entries per page dropdown
-    const entriesCol = document.createElement('div');
-    entriesCol.className = 'col-12 col-md-4 mb-2 mb-md-0';
-    const entriesWrapper = document.createElement('div');
-    entriesWrapper.className = 'd-flex align-items-center';
-    const entriesLabel = document.createElement('label');
-    entriesLabel.className = 'me-2 text-nowrap';
-    entriesLabel.textContent = 'Show entries:';
-    const entriesDropdown = document.createElement('select');
-    entriesDropdown.className = 'form-select form-select-sm w-auto';
-    [25, 50, 100].forEach(value => {
-        const option = document.createElement('option');
-        option.value = value;
-        option.textContent = value;
-        if (value === 25) option.selected = true;
-        entriesDropdown.appendChild(option);
-    });
-    entriesWrapper.appendChild(entriesLabel);
-    entriesWrapper.appendChild(entriesDropdown);
-    entriesCol.appendChild(entriesWrapper);
-
-    // Create column for entries info
-    const infoCol = document.createElement('div');
-    infoCol.className = 'col-12 col-md-4 text-center mb-2 mb-md-0';
-    const entriesInfo = document.createElement('div');
-    entriesInfo.className = 'entries-info text-muted';
-    entriesInfo.style.fontSize = '0.9rem';
-    infoCol.appendChild(entriesInfo);
-
-    // Create column for pagination buttons
-    const paginationCol = document.createElement('div');
-    paginationCol.className = 'col-12 col-md-4';
-    const paginationNav = document.createElement('nav');
-    paginationNav.setAttribute('aria-label', 'Table navigation');
-    const paginationList = document.createElement('ul');
-    paginationList.className = 'pagination pagination-sm justify-content-center justify-content-md-end mb-0';
-
-    // Previous button
-    const prevListItem = document.createElement('li');
-    prevListItem.className = 'page-item prev-item'; // Added class for styling
-    const prevButton = document.createElement('button');
-    prevButton.className = 'page-link prev-page';
-    prevButton.innerHTML = '&laquo; Previous';
-    prevListItem.appendChild(prevButton);
-
-    // Page numbers container
-    const pageNumbersItem = document.createElement('li');
-    pageNumbersItem.className = 'page-item page-numbers-item'; // Added class for styling
-    const pageNumbers = document.createElement('div');
-    pageNumbers.className = 'page-numbers d-flex';
-    pageNumbersItem.appendChild(pageNumbers);
-
-    // Next button
-    const nextListItem = document.createElement('li');
-    nextListItem.className = 'page-item next-item'; // Added class for styling
-    const nextButton = document.createElement('button');
-    nextButton.className = 'page-link next-page';
-    nextButton.innerHTML = 'Next &raquo;';
-    nextListItem.appendChild(nextButton);
-
-    // Update pagination styles
-    const paginationStyles = document.createElement('style');
-    paginationStyles.textContent = `
-    .pagination {
-        gap: 8px; /* Add space between all pagination items */
-        display: flex;
-        align-items: center;
-    }
-    .page-numbers {
-        gap: 4px; /* Space between page number buttons */
-        margin: 0 8px; /* Add margin on both sides of page numbers */
-    }
-    .page-link {
-        padding: 0.375rem 0.75rem;
-        color: #328AA4;
-        background-color: #fff;
-        border: 1px solid #dee2e6;
-        transition: color 0.15s ease-in-out, background-color 0.15s ease-in-out, border-color 0.15s ease-in-out;
-        border-radius: 4px; /* Add rounded corners to all buttons */
-    }
-    .page-link:hover {
-        color: #fff;
-        background-color: #328AA4;
-        border-color: #328AA4;
-    }
-    .page-item.active .page-link {
-        background-color: #328AA4;
-        border-color: #328AA4;
-        color: #fff;
-    }
-    .page-item.disabled .page-link {
-        color: #6c757d;
-        pointer-events: none;
-        background-color: #fff;
-        border-color: #dee2e6;
-    }
-    /* Ensure consistent spacing in mobile view */
-    @media (max-width: 768px) {
-        .pagination {
-            flex-wrap: nowrap; /* Prevent wrapping on mobile */
-            justify-content: center;
-            gap: 8px;
-        }
-        .page-numbers {
-            margin: 0 8px;
-            gap: 4px;
-        }
-        .page-link {
-            padding: 0.25rem 0.5rem; /* Slightly smaller padding on mobile */
-        }
-    }
-    `;
-    document.head.appendChild(paginationStyles);
-
-    // Add responsive styles for filters
-    const filterStyles = document.createElement('style');
-    filterStyles.textContent = `
-    #cumulativeTableFilters .btn-group {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 4px;
-        width: 100%;
-    }
-    #cumulativeTableFilters .btn {
-        margin: 0;
-        flex: 0 1 auto;
-        white-space: nowrap;
-    }
-    @media (max-width: 768px) {
-        #cumulativeTableFilters .btn-group {
-            flex-direction: row;
-            width: 100%;
-            margin-bottom: 10px;
-        }
-        #cumulativeTableFilters .btn {
-            font-size: 0.875rem;
-            padding: 0.375rem 0.75rem;
-        }
-    }
-    `;
-    document.head.appendChild(filterStyles);
-
-    // Update the structure to stack filters vertically
-    phaseFilterContainer.appendChild(buttonGroup);
-    statusFilterContainer.appendChild(statusButtonGroup);
-
-    // Append filters and pagination in the desired order
-    buttonContainer.appendChild(phaseFilterContainer);
-    buttonContainer.appendChild(statusFilterContainer);
-    buttonContainer.appendChild(paginationContainer);
-
-    // Create content container for tables
-    const contentContainer = document.createElement('div');
-    contentContainer.id = 'reportContentContainer';
-
-    // Append button container and content container to card body
-    cardBody.appendChild(buttonContainer);
-    cardBody.appendChild(contentContainer);
-
-    // Append card body to card element
-    cardElement.appendChild(cardBody);
-
-    // Append card element to target element
-    targetElement.appendChild(cardElement);
-
-    // Add event listeners for phase filter buttons
-    buttonGroup.addEventListener('click', (e) => {
-        if (e.target.classList.contains('phase-filter')) {
-            // Remove active class from all buttons
-            buttonGroup.querySelectorAll('.phase-filter').forEach(btn => btn.classList.remove('active'));
-            // Add active class to the clicked button
-            e.target.classList.add('active');
-            // Get the selected phase
-            const selectedPhase = e.target.getAttribute('data-phase');
-            // Get the selected status
-            const selectedStatus = statusButtonGroup.querySelector('.active').getAttribute('data-status');
-            // Render the table based on the selected phase
-            renderFilteredCRVerificationTable(data, columnNames, contentContainer, selectedPhase, parseInt(entriesDropdown.value), 1, selectedStatus);
-        }
-    });
-
-    // Add event listeners for status filter buttons
-    statusButtonGroup.addEventListener('click', (e) => {
-        if (e.target.classList.contains('status-filter')) {
-            const selectedStatusButtons = statusButtonGroup.querySelectorAll('.status-filter.active');
-            const allButton = statusButtonGroup.querySelector('.status-filter[data-status="All"]');
-
-            if (e.target.getAttribute('data-status') === 'All') {
-                // If "All" is clicked, uncheck all other buttons
-                selectedStatusButtons.forEach(btn => {
-                    if (btn !== e.target) {
-                        btn.classList.remove('active');
-                    }
-                });
-            } else {
-                // If any other button is clicked, uncheck "All" button
-                allButton.classList.remove('active');
-            }
-
-            // Toggle the active class for the clicked button
-            e.target.classList.toggle('active');
-
-            // Get the selected phase
-            const selectedPhase = buttonGroup.querySelector('.active').getAttribute('data-phase');
-
-            // Get the selected statuses
-            const selectedStatuses = Array.from(statusButtonGroup.querySelectorAll('.status-filter.active'))
-                .map(btn => btn.getAttribute('data-status'));
-
-            // Render the table based on the selected phase and statuses
-            renderFilteredCRVerificationTable(data, columnNames, contentContainer, selectedPhase, parseInt(entriesDropdown.value), 1, selectedStatuses);
-        }
-    });
-
-    // Add event listener for entries per page dropdown
-    entriesDropdown.addEventListener('change', (e) => {
-        const selectedPhase = buttonGroup.querySelector('.active').getAttribute('data-phase');
-        const selectedStatus = statusButtonGroup.querySelector('.active').getAttribute('data-status');
-        const entriesPerPage = parseInt(e.target.value);
-        renderFilteredCRVerificationTable(data, columnNames, contentContainer, selectedPhase, entriesPerPage, 1, selectedStatus);
-    });
-
-    // Add event listeners for pagination buttons
-    prevButton.addEventListener('click', () => {
-        console.log('Previous button clicked');
-        const selectedPhase = buttonGroup.querySelector('.active').getAttribute('data-phase');
-        const selectedStatus = statusButtonGroup.querySelector('.active').getAttribute('data-status');
-        const entriesPerPage = parseInt(entriesDropdown.value);
-        const currentPage = parseInt(pageNumbers.querySelector('.page-number.active').textContent);
+// Add event listener for Graphs button
+graphsInput.addEventListener('change', async () => {
+    if (graphsInput.checked) {
+        console.log('Graphs clicked');
+        const spSelect = document.getElementById('sp_name');
+        const selectedSp = spSelect.value;
         const selectedTeam = document.querySelector('input[name="team-filter"]:checked').value;
-        const filteredData = getFilteredData(data, selectedPhase, selectedTeam, selectedStatus);
-        console.log(`Current Page: ${currentPage}, Total Pages: ${Math.ceil(filteredData.length / entriesPerPage)}`);
-        if (currentPage > 1) {
-            renderFilteredCRVerificationTable(data, columnNames, contentContainer, selectedPhase, entriesPerPage, currentPage - 1, selectedStatus);
+
+        if (!selectedSp) {
+            addAlert('danger', 'Please select an SP first');
+            return;
         }
-    });
 
-    nextButton.addEventListener('click', () => {
-        console.log('Next button clicked');
-        const selectedPhase = buttonGroup.querySelector('.active').getAttribute('data-phase');
-        const selectedStatus = statusButtonGroup.querySelector('.active').getAttribute('data-status');
-        const entriesPerPage = parseInt(entriesDropdown.value);
-        const currentPage = parseInt(pageNumbers.querySelector('.page-number.active').textContent);
-        const selectedTeam = document.querySelector('input[name="team-filter"]:checked').value;
-        const filteredData = getFilteredData(data, selectedPhase, selectedTeam, selectedStatus);
-        const totalPages = Math.ceil(filteredData.length / entriesPerPage);
-        console.log(`Current Page: ${currentPage}, Total Pages: ${totalPages}`);
-        if (currentPage < totalPages) {
-            renderFilteredCRVerificationTable(data, columnNames, contentContainer, selectedPhase, entriesPerPage, currentPage + 1, selectedStatus);
+        contentContainer.innerHTML = ''; // Clear the content container
+        
+        // Create phase filter buttons for graphs view
+        const phaseFilterContainer = document.createElement('div');
+        phaseFilterContainer.className = 'mb-3'; // Add margin bottom for spacing
+
+        // Create button group for phase filters
+        const graphPhaseButtonGroup = document.createElement('div');
+        graphPhaseButtonGroup.className = 'btn-group';
+        graphPhaseButtonGroup.setAttribute('role', 'group');
+        graphPhaseButtonGroup.setAttribute('aria-label', 'Phase filters');
+
+        // Create phase filter buttons
+        const phases = ['all', 'ES', 'FC', 'CS'];
+        phases.forEach(phase => {
+            const button = document.createElement('button');
+            button.type = 'button';
+            button.className = `btn btn-outline-primary graph-phase-filter ${phase === 'all' ? 'active' : ''}`;
+            button.setAttribute('data-phase', phase);
+            button.textContent = phase === 'all' ? 'All Phases' : phase;
+            graphPhaseButtonGroup.appendChild(button);
+        });
+        
+        phaseFilterContainer.appendChild(graphPhaseButtonGroup);
+        contentContainer.appendChild(phaseFilterContainer);
+        
+        // Add event listeners for phase filter buttons
+        graphPhaseButtonGroup.addEventListener('click', async (e) => {
+            if (e.target.classList.contains('graph-phase-filter')) {
+                // Remove active class from all buttons
+                graphPhaseButtonGroup.querySelectorAll('.graph-phase-filter').forEach(btn => btn.classList.remove('active'));
+                // Add active class to the clicked button
+                e.target.classList.add('active');
+                // Get the selected phase
+                const selectedPhase = e.target.getAttribute('data-phase');
+                
+                // Remove any existing graph images
+                const existingImages = contentContainer.querySelectorAll('img');
+                existingImages.forEach(img => img.remove());
+                
+                // Remove any "no graph" message
+                const existingMessages = contentContainer.querySelectorAll('.text-center.mt-3');
+                existingMessages.forEach(msg => msg.remove());
+                
+                // Create loading indicator
+                const loadingIndicator = document.createElement('div');
+                loadingIndicator.className = 'text-center mt-3';
+                loadingIndicator.textContent = 'Loading graphs...';
+                contentContainer.appendChild(loadingIndicator);
+                
+                // Fetch and render graphs with the selected phase
+                await fetchAndRenderGraphs(selectedSp, selectedTeam, selectedPhase, contentContainer);
+                
+                // Remove loading indicator
+                loadingIndicator.remove();
+            }
+        });
+        
+        // Fetch and render graphs with default 'all' phase
+        await fetchAndRenderGraphs(selectedSp, selectedTeam, 'all', contentContainer);
+    }
+});
+
+// Function to fetch and render graphs based on selected parameters
+async function fetchAndRenderGraphs(selectedSp, selectedTeam, selectedPhase, container) {
+    const params = new URLSearchParams();
+    params.append('sp_name', selectedSp);
+    params.append('team', selectedTeam);
+    params.append('phase', selectedPhase);
+    
+    try {
+        const response = await fetch(`{% url 'cst_reporting_views:get_graph_image' %}?${params.toString()}`);
+        if (!response.ok) throw new Error('Network response was not ok');
+
+        const data = await response.json();
+        const images = data.images;
+
+        if (images.length === 0) {
+            const noGraphMessage = document.createElement('div');
+            noGraphMessage.textContent = 'Graph not available for selected phase';
+            noGraphMessage.className = 'text-center mt-3';
+            container.appendChild(noGraphMessage);
+        } else {
+            // Create a container for the images
+            const imageContainer = document.createElement('div');
+            imageContainer.className = 'graph-images-container';
+            
+            images.forEach((imageBase64, index) => {
+                // Create an image element
+                const img = document.createElement('img');
+                img.className = 'img-fluid mb-3'; // Add Bootstrap classes for responsive image and margin
+                img.alt = `Graph Image ${index + 1}`;
+
+                // Set the src attribute of the image to the base64 data
+                img.src = `data:image/jpg;base64,${imageBase64}`;
+
+                // Append the image to the image container
+                imageContainer.appendChild(img);
+            });
+            
+            // Append the image container to the main container
+            container.appendChild(imageContainer);
         }
-    });
-
-    // Append all columns to the container
-    paginationContainer.appendChild(entriesCol);
-    paginationContainer.appendChild(infoCol);
-    paginationContainer.appendChild(paginationCol);
-
-    // Append pagination items to the list
-    paginationList.appendChild(prevListItem);
-    paginationList.appendChild(pageNumbersItem);
-    paginationList.appendChild(nextListItem);
-    paginationNav.appendChild(paginationList);
-    paginationCol.appendChild(paginationNav);
-
-    // Initial render of CR Verification table with 'all' phases
-    renderFilteredCRVerificationTable(data, columnNames, contentContainer, 'all', 25, 1, 'All');
-}
-
-function renderCumulativeTable(coverageSummaryData, data, targetElementId) {
-    console.log("renderCumulativeTable");
-    const targetElement = document.getElementById(targetElementId);
-    targetElement.innerHTML = ''; // Clear everything first
-
-    // Create card element
-    const cardElement = document.createElement('div');
-    cardElement.className = 'card mb-3';
-
-    // Create card body
-    const cardBody = document.createElement('div');
-    cardBody.className = 'card-body';
-
-    // Create button container
-    const buttonContainer = document.createElement('div');
-    buttonContainer.id = 'cumulativeTableFilters';
-    buttonContainer.className = 'mb-3';
-
-    // Create button group
-    const buttonGroup = document.createElement('div');
-    buttonGroup.className = 'btn-group';
-    buttonGroup.setAttribute('role', 'group');
-    buttonGroup.setAttribute('aria-label', 'Report filters');
-
-    // Create Complete Report button
-    const completeReportInput = document.createElement('input');
-    completeReportInput.type = 'radio';
-    completeReportInput.className = 'btn-check team-filter';
-    completeReportInput.name = 'report-filter';
-    completeReportInput.id = 'complete-report';
-    completeReportInput.value = 'complete-report';
-    completeReportInput.checked = true;
-    const completeReportLabel = document.createElement('label');
-    completeReportLabel.className = 'btn btn-outline-primary report-filter-btn';
-    completeReportLabel.setAttribute('for', 'complete-report');
-    completeReportLabel.textContent = 'Complete Report';
-
-    // Create CR Verification button
-    const crVerificationInput = document.createElement('input');
-    crVerificationInput.type = 'radio';
-    crVerificationInput.className = 'btn-check team-filter';
-    crVerificationInput.name = 'report-filter';
-    crVerificationInput.id = 'cr-verification';
-    crVerificationInput.value = 'cr-verification';
-    const crVerificationLabel = document.createElement('label');
-    crVerificationLabel.className = 'btn btn-outline-primary report-filter-btn';
-    crVerificationLabel.setAttribute('for', 'cr-verification');
-    crVerificationLabel.textContent = 'CR Verification';
-
-    // Create Attached CRs button
-    const scrumSheetInput = document.createElement('input');
-    scrumSheetInput.type = 'radio';
-    scrumSheetInput.className = 'btn-check team-filter';
-    scrumSheetInput.name = 'report-filter';
-    scrumSheetInput.id = 'scrum-sheet';
-    scrumSheetInput.value = 'scrum-sheet';
-    const scrumSheetLabel = document.createElement('label');
-    scrumSheetLabel.className = 'btn btn-outline-primary report-filter-btn';
-    scrumSheetLabel.setAttribute('for', 'scrum-sheet');
-    scrumSheetLabel.textContent = 'Scrum Sheet';
-
-    // Create Graphs button
-    const graphsInput = document.createElement('input');
-    graphsInput.type = 'radio';
-    graphsInput.className = 'btn-check team-filter';
-    graphsInput.name = 'report-filter';
-    graphsInput.id = 'graphs';
-    graphsInput.value = 'graphs';
-    const graphsLabel = document.createElement('label');
-    graphsLabel.className = 'btn btn-outline-primary report-filter-btn';
-    graphsLabel.setAttribute('for', 'graphs');
-    graphsLabel.textContent = 'Graphs';
-
-    // Append buttons to button group
-    buttonGroup.appendChild(completeReportInput);
-    buttonGroup.appendChild(completeReportLabel);
-    buttonGroup.appendChild(crVerificationInput);
-    buttonGroup.appendChild(crVerificationLabel);
-    buttonGroup.appendChild(scrumSheetInput);
-    buttonGroup.appendChild(scrumSheetLabel);
-    buttonGroup.appendChild(graphsInput);
-    buttonGroup.appendChild(graphsLabel);
-
-    // Append button group to button container
-    buttonContainer.appendChild(buttonGroup);
-
-    // Create content container for tables
-    const contentContainer = document.createElement('div');
-    contentContainer.id = 'reportContentContainer';
-
-    // Append button container and content container to card body
-    cardBody.appendChild(buttonContainer);
-    cardBody.appendChild(contentContainer);
-
-    // Append card body to card element
-    cardElement.appendChild(cardBody);
-
-    // Append card element to target element
-    targetElement.appendChild(cardElement);
-
-    // Add event listeners for report filter buttons
-    completeReportInput.addEventListener('change', () => {
-        if (completeReportInput.checked) {
-            console.log('Complete Report clicked');
-            contentContainer.innerHTML = ''; // Clear the content container
-            renderCompleteReportInCumulativeTable(coverageSummaryData, data, contentContainer);
-        }
-    });
-
-    crVerificationInput.addEventListener('change', async () => {
-        if (crVerificationInput.checked) {
-            console.log('CR Verification clicked');
-            const spSelect = document.getElementById('sp_name');
-            const selectedSp = spSelect.value;
-            if (!selectedSp) {
-                addAlert('danger', 'Please select an SP first')
-                // alert('Please select an SP first');
-                return;
-            }
-            contentContainer.innerHTML = ''; // Clear the content container
-            if (!(crVerificationData && crVerificationColumnNames)) {
-                const params = new URLSearchParams();
-                params.append('sp_name', selectedSp);
-                try {
-                    const response = await fetch(`{% url 'cst_reporting_views:get_cr_verification_data' %}?${params.toString()}`);
-                    if (!response.ok) throw new Error('Network response was not ok');
-                    const responseData = await response.json();
-                    crVerificationData = responseData["data"];
-                    crVerificationColumnNames = responseData["column_names"];
-                } catch (error) {
-                    console.error('Error fetching data:', error);
-                    addAlert('danger', `Error fetching data. Please try again.\n ${error}`)
-                    // alert('Error fetching data. Please try again.');
-                    return;
-                }
-            }
-            console.log("Fetched from initial async fetch")
-
-            // Log Unique Statuses Available - For Debugging Only
-            function logUniqueStatuses(crVerificationData) {
-                const uniqueStatuses = new Set();
-
-                // Iterate through each team and phase to collect unique statuses
-                for (const team in crVerificationData) {
-                    if (crVerificationData.hasOwnProperty(team)) {
-                        for (const phase in crVerificationData[team]) {
-                            if (crVerificationData[team].hasOwnProperty(phase)) {
-                                crVerificationData[team][phase].forEach(item => {
-                                    if (item.Status) {
-                                        uniqueStatuses.add(item.Status);
-                                    }
-                                });
-                            }
-                        }
-                    }
-                }
-
-                // Convert the Set to an array and log it
-                const uniqueStatusesArray = Array.from(uniqueStatuses);
-                console.log('Unique Statuses:', uniqueStatusesArray);
-
-                const teamStatusCounts = {};
-
-                // Iterate through each team and phase to collect and count unique statuses
-                for (const team in crVerificationData) {
-                    if (crVerificationData.hasOwnProperty(team)) {
-                        teamStatusCounts[team] = {};
-                        for (const phase in crVerificationData[team]) {
-                            if (crVerificationData[team].hasOwnProperty(phase)) {
-                                crVerificationData[team][phase].forEach(item => {
-                                    if (item.Status) {
-                                        if (!teamStatusCounts[team][item.Status]) {
-                                            teamStatusCounts[team][item.Status] = 0;
-                                        }
-                                        teamStatusCounts[team][item.Status]++;
-                                    }
-                                });
-                            }
-                        }
-                    }
-                }
-
-                // Log the unique statuses and their counts for each team
-                for (const team in teamStatusCounts) {
-                    if (teamStatusCounts.hasOwnProperty(team)) {
-                        console.log(`Team: ${team}`);
-                        for (const status in teamStatusCounts[team]) {
-                            if (teamStatusCounts[team].hasOwnProperty(status)) {
-                                console.log(`  Status: ${status}, Count: ${teamStatusCounts[team][status]}`);
-                            }
-                        }
-                    }
-                }
-            }
-
-            // logUniqueStatuses(crVerificationData);
-            renderCRVerificationInCumulativeTable(crVerificationData, crVerificationColumnNames, contentContainer);
-        }
-    });
-
-    scrumSheetInput.addEventListener('change', async () => {
-        if (scrumSheetInput.checked) {
-            console.log('Attached CRs clicked');
-            const spSelect = document.getElementById('sp_name');
-            const selectedSp = spSelect.value;
-            if (!selectedSp) {
-                addAlert('danger', 'Please select an SP first');
-                return;
-            }
-            contentContainer.innerHTML = ''; // Clear the content container
-            if (!(scrumSheetData && crVerificationData && crVerificationColumnNames)) {
-                const params = new URLSearchParams();
-                params.append('sp_name', selectedSp);
-                try {
-                    const response = await fetch(`{% url 'cst_reporting_views:get_cr_verification_data' %}?${params.toString()}`);
-                    if (!response.ok) throw new Error('Network response was not ok');
-                    const responseData = await response.json();
-                    crVerificationData = responseData["data"];
-                    crVerificationColumnNames = responseData["column_names"];
-                } catch (error) {
-                    console.error('Error fetching data:', error);
-                    addAlert('danger', `Error fetching data. Please try again.\n ${error}`)
-                    // alert('Error fetching data. Please try again.');
-                    return;
-                }
-                await createscrumSheetData();
-            }
-            renderCRVerificationInCumulativeTable(scrumSheetData, crVerificationColumnNames, contentContainer);
-        }
-    });
-
-    // Add event listener for Graphs button
-    graphsInput.addEventListener('change', async () => {
-        if (graphsInput.checked) {
-            console.log('Graphs clicked');
-            const spSelect = document.getElementById('sp_name');
-            const selectedSp = spSelect.value;
-            const selectedTeam = document.querySelector('input[name="team-filter"]:checked').value;
-
-            if (!selectedSp) {
-                addAlert('danger', 'Please select an SP first');
-                return;
-            }
-
-            contentContainer.innerHTML = ''; // Clear the content container
-
-            const params = new URLSearchParams();
-            params.append('sp_name', selectedSp);
-            params.append('team', selectedTeam);
-
-            try {
-                const response = await fetch(`{% url 'cst_reporting_views:get_graph_image' %}?${params.toString()}`);
-                if (!response.ok) throw new Error('Network response was not ok');
-
-                const data = await response.json();
-                const images = data.images;
-
-                if (images.length === 0) {
-                    const noGraphMessage = document.createElement('div');
-                    noGraphMessage.textContent = 'Graph not available';
-                    noGraphMessage.className = 'text-center mt-3'; // Optional: Add Bootstrap classes for styling
-                    contentContainer.appendChild(noGraphMessage);
-                } else {
-                    images.forEach((imageBase64, index) => {
-                        // Create an image element
-                        const img = document.createElement('img');
-                        img.className = 'img-fluid mb-3'; // Optional: Add Bootstrap classes for responsive image and margin
-                        img.alt = `Graph Image ${index + 1}`;
-
-                        // Set the src attribute of the image to the base64 data
-                        img.src = `data:image/jpg;base64,${imageBase64}`;
-
-                        // Append the image to the content container
-                        contentContainer.appendChild(img);
-                    });
-                }
-            } catch (error) {
-                console.error('Error fetching graph images:', error);
-                addAlert('danger', `Error fetching graph images. Please try again.\n ${error}`);
-            }
-        }
-    });
-
-    // Add event listeners for "more" links
-    targetElement.addEventListener('click', (e) => {
-        if (e.target.classList.contains('show-more-list')) {
-            e.preventDefault();
-            const title = e.target.getAttribute('data-title');
-            const list = JSON.parse(decodeURIComponent(e.target.getAttribute('data-list')));
-            createListModal(title, list);
-        }
-    });
-
-    // Initial render of Complete Report
-    renderCompleteReportInCumulativeTable(coverageSummaryData, data, contentContainer);
+    } catch (error) {
+        console.error('Error fetching graph images:', error);
+        addAlert('danger', `Error fetching graph images. Please try again.\n ${error}`);
+    }
 }
