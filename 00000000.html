@@ -1,157 +1,136 @@
-// Add event listener for Graphs button
-graphsInput.addEventListener('change', async () => {
-    if (graphsInput.checked) {
-        console.log('Graphs clicked');
-        const spSelect = document.getElementById('sp_name');
-        const selectedSp = spSelect.value;
-        const selectedTeam = document.querySelector('input[name="team-filter"]:checked').value;
-
-        if (!selectedSp) {
-            addAlert('danger', 'Please select an SP first');
-            return;
-        }
-
-        contentContainer.innerHTML = ''; // Clear the content container
-        
-        // Create a single card structure for graphs view
-        const graphCardElement = document.createElement('div');
-        graphCardElement.className = 'card mb-3';
-
-        // Create card body
-        const graphCardBody = document.createElement('div');
-        graphCardBody.className = 'card-body';
-        
-        // Create phase filter container for graphs view
-        const phaseFilterContainer = document.createElement('div');
-        phaseFilterContainer.className = 'mb-3'; // Add margin bottom for spacing
-
-        // Create button group for phase filters with 4px gap
-        const graphPhaseButtonGroup = document.createElement('div');
-        graphPhaseButtonGroup.className = 'btn-group';
-        graphPhaseButtonGroup.setAttribute('role', 'group');
-        graphPhaseButtonGroup.setAttribute('aria-label', 'Phase filters');
-        graphPhaseButtonGroup.style.gap = '4px'; // Add 4px gap between buttons
-        
-        // Create phase filter buttons
-        const phases = ['all', 'ES', 'FC', 'CS'];
-        phases.forEach(phase => {
-            const button = document.createElement('button');
-            button.type = 'button';
-            button.className = `btn btn-outline-primary graph-phase-filter ${phase === 'all' ? 'active' : ''}`;
-            button.setAttribute('data-phase', phase);
-            button.textContent = phase === 'all' ? 'All Phases' : phase;
-            graphPhaseButtonGroup.appendChild(button);
+function renderInnerTable2(CoverageTypeData, targetRow, coverageSummaryData) {
+    // Get the selected team from the team filter
+    const selectedTeam = document.querySelector('input[name="team-filter"]:checked').value;
+    // Calculate detailed metrics using the full table data
+    const detailedMetrics = calculateInnerTable2Metrics(CoverageTypeData, coverageSummaryData, selectedTeam);
+    // Create inner table 1 (existing logic)
+    const innerTable1 = document.createElement('table');
+    innerTable1.className = 'coverage-table inner-table-2';
+    innerTable1.style.width = '100%';
+    // Create header (same as before)
+    const thead1 = document.createElement('thead');
+    const headerRow1 = document.createElement('tr');
+    const headers1 = [
+        'Test Group',
+        'Total TCs',
+        'Coverage', 'Coverage %',
+        'Passed', 'Pass %',
+        'Failed', 'Fail %',
+        'Blocked', 'Block %',
+        'Unique CRs',
+        'Unique JIRAs'
+    ];
+    headers1.forEach(header => {
+        const th = document.createElement('th');
+        th.textContent = header;
+        headerRow1.appendChild(th);
+    });
+    thead1.appendChild(headerRow1);
+    innerTable1.appendChild(thead1);
+    // Create body
+    const tbody1 = document.createElement('tbody');
+    detailedMetrics.forEach(entry => {
+        const tr = document.createElement('tr');
+        const cells = [
+            entry.test_group,
+            entry.metrics.total,
+            entry.metrics.coverage,
+            formatPercentage(entry.metrics.coverage_percentage),
+            entry.metrics.passed,
+            formatPercentage(entry.metrics.passed_percentage),
+            entry.metrics.failed,
+            formatPercentage(entry.metrics.failed_percentage),
+            entry.metrics.blocked,
+            formatPercentage(entry.metrics.blocked_percentage)
+        ];
+        cells.forEach(cellData => {
+            const td = document.createElement('td');
+            td.textContent = cellData;
+            tr.appendChild(td);
         });
-        
-        // Create graph content container
-        const graphContentContainer = document.createElement('div');
-        graphContentContainer.id = 'graphContentContainer';
-        graphContentContainer.className = 'mt-3'; // Add margin top for spacing
-        
-        // Append elements to the card
-        phaseFilterContainer.appendChild(graphPhaseButtonGroup);
-        graphCardBody.appendChild(phaseFilterContainer);
-        graphCardBody.appendChild(graphContentContainer);
-        graphCardElement.appendChild(graphCardBody);
-        
-        // Append card to the main content container
-        contentContainer.appendChild(graphCardElement);
-        
-        // Add event listeners for phase filter buttons
-        graphPhaseButtonGroup.addEventListener('click', async (e) => {
-            if (e.target.classList.contains('graph-phase-filter')) {
-                // Remove active class from all buttons
-                graphPhaseButtonGroup.querySelectorAll('.graph-phase-filter').forEach(btn => btn.classList.remove('active'));
-                // Add active class to the clicked button
-                e.target.classList.add('active');
-                // Get the selected phase
-                const selectedPhase = e.target.getAttribute('data-phase');
-                
-                // Clear the graph content container
-                graphContentContainer.innerHTML = '';
-                
-                // Create loading indicator
-                const loadingIndicator = document.createElement('div');
-                loadingIndicator.className = 'text-center mt-3';
-                loadingIndicator.textContent = 'Loading graphs...';
-                graphContentContainer.appendChild(loadingIndicator);
-                
-                // Fetch and render graphs with the selected phase
-                await fetchAndRenderGraphs(selectedSp, selectedTeam, selectedPhase, graphContentContainer);
-                
-                // Remove loading indicator
-                loadingIndicator.remove();
-            }
-        });
-        
-        // Fetch and render graphs with default 'all' phase
-        const loadingIndicator = document.createElement('div');
-        loadingIndicator.className = 'text-center mt-3';
-        loadingIndicator.textContent = 'Loading graphs...';
-        graphContentContainer.appendChild(loadingIndicator);
-        
-        await fetchAndRenderGraphs(selectedSp, selectedTeam, 'all', graphContentContainer);
-        
-        // Remove loading indicator
-        loadingIndicator.remove();
-    }
-});
+        // Unique CRs column
+        const crTd = document.createElement('td');
+        crTd.innerHTML = formatLongList(entry.unique_cr_list, entry.unique_cr_count);
+        tr.appendChild(crTd);
+        // Unique JIRAs column
+        const jiraTd = document.createElement('td');
+        jiraTd.innerHTML = formatLongList(entry.unique_jira_list, entry.unique_jira_count);
+        tr.appendChild(jiraTd);
+        tbody1.appendChild(tr);
+    });
+    innerTable1.appendChild(tbody1);
 
-// Function to fetch and render graphs based on selected parameters
-async function fetchAndRenderGraphs(selectedSp, selectedTeam, selectedPhase, container) {
-    const params = new URLSearchParams();
-    params.append('sp_name', selectedSp);
-    params.append('team', selectedTeam);
-    params.append('phase', selectedPhase);
-    
-    try {
-        const response = await fetch(`{% url 'cst_reporting_views:get_graph_image' %}?${params.toString()}`);
-        if (!response.ok) throw new Error('Network response was not ok');
+    // Create inner table 2 (new table for Test Group and Percentage)
+    const innerTable2 = document.createElement('table');
+    innerTable2.className = 'coverage-table inner-table-2';
+    innerTable2.style.width = '100%';
+    // Create header
+    const thead2 = document.createElement('thead');
+    const headerRow2 = document.createElement('tr');
+    const headers2 = [
+        'Test Group',
+        'Percentage'
+    ];
+    headers2.forEach(header => {
+        const th = document.createElement('th');
+        th.textContent = header;
+        headerRow2.appendChild(th);
+    });
+    thead2.appendChild(headerRow2);
+    innerTable2.appendChild(thead2);
+    // Create body
+    const tbody2 = document.createElement('tbody');
+    detailedMetrics.forEach(entry => {
+        console.log(entry)
+        const tr = document.createElement('tr');
+        const testGroupCell = document.createElement('td');
+        testGroupCell.textContent = entry.test_group;
+        tr.appendChild(testGroupCell);
+        const percentageCell = document.createElement('td');
+        percentageCell.textContent = formatPercentage(entry.test_group_level_percentage);
+        tr.appendChild(percentageCell);
+        tbody2.appendChild(tr);
+    });
+    innerTable2.appendChild(tbody2);
 
-        const data = await response.json();
-        const images = data.images || [];
+    // Create a new row to span across all columns for innerTable1
+    const innerTableRow1 = document.createElement('tr');
+    const innerTableCell1 = document.createElement('td');
+    innerTableCell1.setAttribute('colspan', '13');
+    innerTableCell1.appendChild(innerTable1);
+    innerTableRow1.appendChild(innerTableCell1);
+    innerTableRow1.classList.add('inner-table-2-row');
 
-        if (images.length === 0) {
-            const noGraphMessage = document.createElement('div');
-            noGraphMessage.textContent = 'Graph not available for selected phase';
-            noGraphMessage.className = 'text-center mt-3';
-            container.appendChild(noGraphMessage);
-        } else {
-            // Create a container for the images
-            const imageContainer = document.createElement('div');
-            imageContainer.className = 'graph-images-container';
-            
-            images.forEach((imageData, index) => {
-                // Create a figure element to hold image and caption
-                const figure = document.createElement('figure');
-                figure.className = 'figure mb-4'; // Add margin bottom for spacing between images
-                
-                // Create an image element
-                const img = document.createElement('img');
-                img.className = 'figure-img img-fluid rounded'; // Add Bootstrap classes for responsive image
-                img.alt = imageData.title || `Graph Image ${index + 1}`;
-                
-                // Set the src attribute of the image to the base64 data
-                img.src = `data:image/jpg;base64,${imageData.graph_image}`;
-                
-                // Create title caption
-                const figureCaption = document.createElement('figcaption');
-                figureCaption.className = 'figure-caption text-center fw-bold';
-                figureCaption.textContent = imageData.title || `Graph ${index + 1}`;
-                
-                // Append elements to figure
-                figure.appendChild(img);
-                figure.appendChild(figureCaption);
-                
-                // Append figure to image container
-                imageContainer.appendChild(figure);
-            });
-            
-            // Append the image container to the main container
-            container.appendChild(imageContainer);
+    // Create a new row to span across all columns for innerTable2
+    const innerTableRow2 = document.createElement('tr');
+    const innerTableCell2 = document.createElement('td');
+    innerTableCell2.setAttribute('colspan', '13');
+    innerTableCell2.appendChild(innerTable2);
+    innerTableRow2.appendChild(innerTableCell2);
+    innerTableRow2.classList.add('inner-table-2-row');
+
+    // Insert the inner table rows after the clicked row
+    targetRow.insertAdjacentElement('afterend', innerTableRow2);
+    targetRow.insertAdjacentElement('afterend', innerTableRow1);
+
+    // Add event listeners for "more" links in the inner tables
+    innerTableCell1.addEventListener('click', (e) => {
+        if (e.target.classList.contains('show-more-list')) {
+            e.preventDefault();
+            const title = e.target.getAttribute('data-title');
+            const list = JSON.parse(decodeURIComponent(e.target.getAttribute('data-list')));
+            createListModal(title, list);
         }
-    } catch (error) {
-        console.error('Error fetching graph images:', error);
-        addAlert('danger', `Error fetching graph images. Please try again.\n ${error}`);
-    }
+    });
+    innerTableCell2.addEventListener('click', (e) => {
+        if (e.target.classList.contains('show-more-list')) {
+            e.preventDefault();
+            const title = e.target.getAttribute('data-title');
+            const list = JSON.parse(decodeURIComponent(e.target.getAttribute('data-list')));
+            createListModal(title, list);
+        }
+    });
 }
+
+everything is okay, but the second innertable 2 new one which we did now is having col-13 innerTableCell2.setAttribute('colspan', '13');
+but it has only 2 columns. So colspan 2 is looking good, but then if i set that to 2 then i am getting a border vertically just after this table is competed at its last column and it is not looking good. i want it adjust like this. there may be more another table like this just having 2 rows and appending it is not looking good. can we do like these small tables come side by side and also they may have differnt number of rows.
