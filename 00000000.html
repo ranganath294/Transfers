@@ -1,52 +1,159 @@
-const flexContainer = document.createElement('div');
-flexContainer.style.display = 'flex';
-flexContainer.style.gap = '20px'; // Optional: spacing between tables
-flexContainer.style.justifyContent = 'flex-start'; // Align to left
+function renderInnerTable2(CoverageTypeData, targetRow, coverageSummaryData) {
+    // Get the selected team from the team filter
+    const selectedTeam = document.querySelector('input[name="team-filter"]:checked').value;
+    // Calculate detailed metrics using the full table data
+    const detailedMetrics = calculateInnerTable2Metrics(CoverageTypeData, coverageSummaryData, selectedTeam);
+    // Create inner table 1 (existing logic)
+    const innerTable1 = document.createElement('table');
+    innerTable1.className = 'coverage-table inner-table-2';
+    innerTable1.style.width = '100%';
+    // Create header (same as before)
+    const thead1 = document.createElement('thead');
+    const headerRow1 = document.createElement('tr');
+    const headers1 = [
+        'Test Group',
+        'Total TCs',
+        'Coverage', 'Coverage %',
+        'Passed', 'Pass %',
+        'Failed', 'Fail %',
+        'Blocked', 'Block %',
+        'Unique CRs',
+        'Unique JIRAs'
+    ];
+    headers1.forEach(header => {
+        const th = document.createElement('th');
+        th.textContent = header;
+        headerRow1.appendChild(th);
+    });
+    thead1.appendChild(headerRow1);
+    innerTable1.appendChild(thead1);
+    // Create body
+    const tbody1 = document.createElement('tbody');
+    detailedMetrics.forEach(entry => {
+        const tr = document.createElement('tr');
+        const cells = [
+            entry.test_group,
+            entry.metrics.total,
+            entry.metrics.coverage,
+            formatPercentage(entry.metrics.coverage_percentage),
+            entry.metrics.passed,
+            formatPercentage(entry.metrics.passed_percentage),
+            entry.metrics.failed,
+            formatPercentage(entry.metrics.failed_percentage),
+            entry.metrics.blocked,
+            formatPercentage(entry.metrics.blocked_percentage)
+        ];
+        cells.forEach(cellData => {
+            const td = document.createElement('td');
+            td.textContent = cellData;
+            tr.appendChild(td);
+        });
+        // Unique CRs column
+        const crTd = document.createElement('td');
+        crTd.innerHTML = formatLongList(entry.unique_cr_list, entry.unique_cr_count);
+        tr.appendChild(crTd);
+        // Unique JIRAs column
+        const jiraTd = document.createElement('td');
+        jiraTd.innerHTML = formatLongList(entry.unique_jira_list, entry.unique_jira_count);
+        tr.appendChild(jiraTd);
+        tbody1.appendChild(tr);
+    });
+    innerTable1.appendChild(tbody1);
 
-// Add multiple tables here
-flexContainer.appendChild(innerTable2);
+    // Create inner table 2 (new table for Test Group and Percentage)
+    const innerTable2 = document.createElement('table');
+    innerTable2.className = 'coverage-table inner-table-2';
+    innerTable2.style.width = '100%';
+    // Create header
+    const thead2 = document.createElement('thead');
+    const headerRow2 = document.createElement('tr');
+    const headers2 = [
+        'Test Group',
+        'Percentage'
+    ];
+    headers2.forEach(header => {
+        const th = document.createElement('th');
+        th.textContent = header;
+        headerRow2.appendChild(th);
+    });
+    thead2.appendChild(headerRow2);
+    innerTable2.appendChild(thead2);
+    // Create body
+    const tbody2 = document.createElement('tbody');
+    detailedMetrics.forEach(entry => {
+        console.log(entry)
+        const tr = document.createElement('tr');
+        const testGroupCell = document.createElement('td');
+        testGroupCell.textContent = entry.test_group;
+        tr.appendChild(testGroupCell);
+        const percentageCell = document.createElement('td');
+        percentageCell.textContent = formatPercentage(entry.test_group_level_percentage);
+        tr.appendChild(percentageCell);
+        tbody2.appendChild(tr);
+    });
+    innerTable2.appendChild(tbody2);
 
-// You can append more tables like this:
-const anotherSmallTable = document.createElement('table');
-// Populate anotherSmallTable like you did for innerTable2
-// Then:
-flexContainer.appendChild(anotherSmallTable);
+    // Create a new row to span across all columns for innerTable1
+    const innerTableRow1 = document.createElement('tr');
+    const innerTableCell1 = document.createElement('td');
+    innerTableCell1.setAttribute('colspan', '13');
+    innerTableCell1.appendChild(innerTable1);
+    innerTableRow1.appendChild(innerTableCell1);
+    innerTableRow1.classList.add('inner-table-2-row');
 
-innerTableCell2.appendChild(flexContainer);
+    // Create a container for innerTableCell2 and innerTableCell3
+    const container = document.createElement('div');
+    container.style.display = 'flex';
+    container.style.justifyContent = 'center';
+    container.style.alignItems = 'flex-start';
 
+    // Create a new row to span across all columns for innerTable2
+    const innerTableRow2 = document.createElement('tr');
+    const innerTableCell2 = document.createElement('td');
+    innerTableCell2.setAttribute('colspan', '4');
+    innerTableCell2.appendChild(innerTable2);
+    innerTableRow2.appendChild(innerTableCell2);
+    innerTableRow2.classList.add('inner-table-2-row');
 
+    // Create a new row to span across all columns for innerTable3 (assuming innerTableCell3 is similar to innerTableCell2)
+    const innerTableRow3 = document.createElement('tr');
+    const innerTableCell3 = document.createElement('td');
+    innerTableCell3.setAttribute('colspan', '4');
+    innerTableCell3.appendChild(innerTable2.cloneNode(true)); // Clone innerTable2 for demonstration
+    innerTableRow3.appendChild(innerTableCell3);
+    innerTableRow3.classList.add('inner-table-2-row');
 
+    // Append innerTableCell2 and innerTableCell3 to the container
+    container.appendChild(innerTableCell2);
+    container.appendChild(innerTableCell3);
 
+    // Create a new row to span across all columns for the container
+    const containerRow = document.createElement('tr');
+    const containerCell = document.createElement('td');
+    containerCell.setAttribute('colspan', '13');
+    containerCell.appendChild(container);
+    containerRow.appendChild(containerCell);
+    containerRow.classList.add('inner-table-2-row');
 
+    // Insert the inner table rows after the clicked row
+    targetRow.insertAdjacentElement('afterend', containerRow);
+    targetRow.insertAdjacentElement('afterend', innerTableRow1);
 
-
-
-innerTableCell2.setAttribute('colspan', '13');
-
-
-
-
-
-
-
-
-
-
-
-.coverage-table.inner-table-2 {
-    width: auto; /* Let the table size adjust to content */
-    min-width: 200px; /* Or whatever minimum you prefer */
+    // Add event listeners for "more" links in the inner tables
+    innerTableCell1.addEventListener('click', (e) => {
+        if (e.target.classList.contains('show-more-list')) {
+            e.preventDefault();
+            const title = e.target.getAttribute('data-title');
+            const list = JSON.parse(decodeURIComponent(e.target.getAttribute('data-list')));
+            createListModal(title, list);
+        }
+    });
+    containerRow.addEventListener('click', (e) => {
+        if (e.target.classList.contains('show-more-list')) {
+            e.preventDefault();
+            const title = e.target.getAttribute('data-title');
+            const list = JSON.parse(decodeURIComponent(e.target.getAttribute('data-list')));
+            createListModal(title, list);
+        }
+    });
 }
-
-.inner-table-2-row td {
-    padding: 0;
-    border: none;
-}
-
-
-
-
-
-
-
-
