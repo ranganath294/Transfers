@@ -1,13 +1,4 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SP Metrics Report</title>
-</head>
-<body>
 <div id="alert-container" class="alert-container px-5">
-    <div id="alert-message" class="alert hidden" role="alert"></div>
 </div>
 <div id="main-container" class="container container-fluid">
     <h1 id="page-title" class="page-title">SP Metrics Report</h1>
@@ -23,7 +14,6 @@
     </div>
 
     <div id="table-container" class="table-responsive">
-        <div id="loading-indicator" class="loading-indicator hidden"></div>
         <table id="metrics-table" class="table table-hover">
             <thead>
                 <tr id="table-headers">
@@ -31,267 +21,76 @@
                 </tr>
             </thead>
             <tbody id="table-body">
-                <tr>
-                    <td id="empty-message" colspan="100%" class="table-empty">Please select an SP to view metrics</td>
-                </tr>
             </tbody>
         </table>
     </div>
 </div>
 
 <script>
-    document.addEventListener('DOMContentLoaded', function() {
-        // Element references with IDs
-        const spSelect = document.getElementById('sp-select');
-        const alertMessage = document.getElementById('alert-message');
-        const loadingIndicator = document.getElementById('loading-indicator');
-        const tableHeaders = document.getElementById('table-headers');
-        const tableBody = document.getElementById('table-body');
-        const metricsTable = document.getElementById('metrics-table');
-        
-        // Configurable options
-        const MAX_RETRIES = 3;
-        const RETRY_DELAY_BASE = 1000; // milliseconds
-        
-        // State variables
-        let retryCount = 0;
-        
-        /**
-         * Display alert message
-         * @param {string} message - Alert text
-         * @param {string} type - Alert type (success, danger, warning)
-         */
-        function showAlert(message, type) {
-            if (!alertMessage) return;
-            
-            alertMessage.textContent = message;
-            alertMessage.className = `alert alert-${type}`;
-            alertMessage.classList.remove('hidden');
-        }
-        
-        /**
-         * Hide alert message
-         */
-        function hideAlert() {
-            if (!alertMessage) return;
-            alertMessage.classList.add('hidden');
-        }
-        
-        /**
-         * Show loading indicator
-         */
-        function showLoading() {
-            if (!loadingIndicator) return;
-            loadingIndicator.classList.remove('hidden');
-        }
-        
-        /**
-         * Hide loading indicator
-         */
-        function hideLoading() {
-            if (!loadingIndicator) return;
-            loadingIndicator.classList.add('hidden');
-        }
-        
-        /**
-         * Validate SP name
-         * @param {string} spName - SP name to validate
-         * @returns {boolean} - Whether the SP name is valid
-         */
-        function validateSpName(spName) {
-            if (!spName || typeof spName !== 'string') return false;
-            // Allow alphanumeric characters, dashes, underscores, and periods
-            return /^[a-zA-Z0-9_\-\.]+$/.test(spName);
-        }
-        
-        /**
-         * Clear table data
-         */
-        function clearTable() {
-            if (!tableHeaders || !tableBody) return;
-            
-            // Reset headers to just the metrics column
-            tableHeaders.innerHTML = '';
-            const metricsHeader = document.createElement('th');
-            metricsHeader.setAttribute('id', 'metrics-header');
-            metricsHeader.setAttribute('scope', 'col');
-            metricsHeader.classList.add('metrics-cell');
-            metricsHeader.textContent = 'Metrics';
-            tableHeaders.appendChild(metricsHeader);
-            
-            // Clear body
-            tableBody.innerHTML = '';
-        }
-        
-        /**
-         * Display empty message in table
-         * @param {string} message - Message to display
-         */
-        function showEmptyMessage(message) {
-            if (!tableBody) return;
-            
-            const tr = document.createElement('tr');
-            const td = document.createElement('td');
-            td.setAttribute('id', 'empty-message');
-            td.setAttribute('colspan', '100%');
-            td.classList.add('table-empty');
-            td.textContent = message;
-            tr.appendChild(td);
-            tableBody.appendChild(tr);
-        }
-        
-        /**
-         * Update table with data
-         * @param {Array} data - Data to display in table
-         */
-        function updateTable(data) {
-            if (!tableHeaders || !tableBody) return;
-            
-            clearTable();
-            
-            if (!Array.isArray(data) || data.length === 0) {
-                showEmptyMessage('No data available for the selected SP');
-                return;
-            }
-            
-            try {
-                // Add team headers
-                const teams = Object.keys(data[0]).filter(key => key !== 'Metrics');
-                const metricsHeader = document.createElement('th');
-                metricsHeader.setAttribute('id', 'metrics-header');
-                metricsHeader.setAttribute('scope', 'col');
-                metricsHeader.classList.add('metrics-cell');
-                metricsHeader.textContent = 'Metrics';
-                tableHeaders.appendChild(metricsHeader);
-                
-                teams.forEach((team, index) => {
-                    const th = document.createElement('th');
-                    th.setAttribute('id', `team-header-${index}`);
-                    th.setAttribute('scope', 'col');
-                    th.textContent = team;
-                    tableHeaders.appendChild(th);
-                });
-                
-                // Add data rows
-                data.forEach((row, rowIndex) => {
-                    const tr = document.createElement('tr');
-                    tr.setAttribute('id', `data-row-${rowIndex}`);
-                    
-                    const metricsTd = document.createElement('td');
-                    metricsTd.setAttribute('id', `metrics-cell-${rowIndex}`);
-                    metricsTd.classList.add('metrics-cell');
-                    metricsTd.textContent = row.Metrics;
-                    tr.appendChild(metricsTd);
-                    
-                    teams.forEach((team, colIndex) => {
-                        const td = document.createElement('td');
-                        td.setAttribute('id', `data-cell-${rowIndex}-${colIndex}`);
-                        const value = row[team];
-                        td.textContent = value === 0 ? '0' : (value || '');
-                        tr.appendChild(td);
-                    });
-                    
-                    tableBody.appendChild(tr);
-                });
-            } catch (error) {
-                console.error('Error updating table:', error);
-                showEmptyMessage('Error rendering data. Please try again.');
-                showAlert('Error rendering table data: ' + error.message, 'danger');
-            }
-        }
-        
-        /**
-         * Fetch data with retry capability
-         * @param {string} spName - SP name to fetch data for
-         * @param {boolean} isRetry - Whether this is a retry attempt
-         */
-        function fetchData(spName, isRetry = false) {
-            if (!spName) {
-                clearTable();
-                showEmptyMessage('Please select an SP to view metrics');
-                return;
-            }
-            
-            // Show loading state
-            showLoading();
-            
-            // Clear any existing alerts on new fetch
-            if (!isRetry) {
-                hideAlert();
-                retryCount = 0;
-            }
-            
-            // Validate input
-            if (!validateSpName(spName)) {
-                hideLoading();
-                showAlert('Invalid SP name format.', 'danger');
-                clearTable();
-                showEmptyMessage('Invalid SP name format');
-                return;
-            }
-            
-            // Add cache buster and safely encode parameters
-            const url = `/get_counts/?sp_name=${encodeURIComponent(spName)}&_=${Date.now()}`;
-            
-            fetch(url)
-                .then(response => {
-                    if (!response.ok) {
-                        const error = new Error(`Server returned ${response.status}: ${response.statusText}`);
-                        error.status = response.status;
-                        throw error;
-                    }
-                    return response.json();
-                })
+    document.getElementById('sp-select').addEventListener('change', function() {
+        const spName = this.value;
+        const tableContainer = document.getElementById('table-container');
+
+        if (spName) {
+            // Add loading state
+            tableContainer.classList.add('table-loading');
+
+            fetch(`/get_counts/?sp_name=${encodeURIComponent(spName)}`)
+                .then(response => response.json())
                 .then(data => {
-                    hideLoading();
-                    updateTable(data);
-                    retryCount = 0; // Reset retry count on success
+                    // Remove loading state
+                    tableContainer.classList.remove('table-loading');
+
+                    const tableBody = document.getElementById('table-body');
+                    tableBody.innerHTML = '';
+                    const tableHeaders = document.getElementById('table-headers');
+                    tableHeaders.innerHTML = '<th id="metrics-header" scope="col" class="metrics-cell">Metrics</th>';
+                    
+                    if (data.length > 0) {
+                        const teams = Object.keys(data[0]).filter(key => key !== 'Metrics');
+                        teams.forEach((team, index) => {
+                            const th = document.createElement('th');
+                            th.setAttribute('id', `team-header-${index}`);
+                            th.setAttribute('scope', 'col');
+                            th.textContent = team;
+                            tableHeaders.appendChild(th);
+                        });
+                        
+                        data.forEach((row, rowIndex) => {
+                            const tr = document.createElement('tr');
+                            tr.setAttribute('id', `data-row-${rowIndex}`);
+                            
+                            const metricsTd = document.createElement('td');
+                            metricsTd.setAttribute('id', `metrics-cell-${rowIndex}`);
+                            metricsTd.textContent = row.Metrics;
+                            metricsTd.className = 'metrics-cell';
+                            tr.appendChild(metricsTd);
+                            
+                            teams.forEach((team, colIndex) => {
+                                const td = document.createElement('td');
+                                td.setAttribute('id', `data-cell-${rowIndex}-${colIndex}`);
+                                const value = row[team] !== undefined ? row[team] : '';
+                                td.textContent = value === 0 ? '0' : value; // Ensure '0' is displayed
+                                tr.appendChild(td);
+                            });
+                            
+                            tableBody.appendChild(tr);
+                        });
+                    }
                 })
                 .catch(error => {
-                    console.error('Error fetching data:', error);
-                    
-                    if (retryCount < MAX_RETRIES) {
-                        retryCount++;
-                        const retryDelay = RETRY_DELAY_BASE * Math.pow(2, retryCount - 1);
-                        
-                        showAlert(`Error loading data. Retrying (${retryCount}/${MAX_RETRIES})...`, 'warning');
-                        
-                        setTimeout(() => {
-                            fetchData(spName, true);
-                        }, retryDelay);
-                    } else {
-                        hideLoading();
-                        
-                        // Handle specific error cases
-                        if (error.status === 404) {
-                            showAlert('SP data not found on the server.', 'danger');
-                            showEmptyMessage('SP data not found');
-                        } else if (error.status === 500) {
-                            showAlert('Server error occurred. Please try again later.', 'danger');
-                            showEmptyMessage('Server error occurred');
-                        } else if (!navigator.onLine) {
-                            showAlert('Network connection lost. Please check your internet connection.', 'danger');
-                            showEmptyMessage('Network connection lost');
-                        } else {
-                            showAlert('Failed to load data after multiple attempts. Please try again later.', 'danger');
-                            showEmptyMessage('Failed to load data');
-                        }
-                    }
+                    // Remove loading state
+                    tableContainer.classList.remove('table-loading');
+
+                    console.error('Error:', error);
+                    const tableBody = document.getElementById('table-body');
+                    tableBody.innerHTML = '<tr><td id="error-message" colspan="100%" class="text-center text-danger">Error loading data. Please try again.</td></tr>';
                 });
-        }
-        
-        // Initialize event listener
-        if (spSelect) {
-            spSelect.addEventListener('change', function() {
-                fetchData(this.value);
-            });
-            
-            // Initial load if SP is already selected
-            if (spSelect.value) {
-                fetchData(spSelect.value);
-            }
+        } else {
+            const tableBody = document.getElementById('table-body');
+            tableBody.innerHTML = '<tr><td id="empty-message" colspan="100%" class="table-empty">Please select an SP to view metrics</td></tr>';
+            const tableHeaders = document.getElementById('table-headers');
+            tableHeaders.innerHTML = '<th id="metrics-header" scope="col" class="metrics-cell">Metrics</th>';
         }
     });
 </script>
-</body>
-</html>
