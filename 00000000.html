@@ -1,3 +1,148 @@
+{% extends 'base.html' %}
+{% block content %}
+<style>
+    /* Container styles */
+    .container {
+        padding: 2rem;
+        max-width: 100%;
+    }
+
+    /* Select dropdown styles */
+    .select-container {
+        margin-bottom: 2rem;
+    }
+
+    .form-select {
+        max-width: 300px;
+        border: 1px solid #dee2e6;
+        padding: 0.5rem;
+        border-radius: 4px;
+    }
+
+    /* Enhanced table container styles */
+    .table-responsive {
+        border-radius: 8px;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+        display: inline-block;
+        min-width: min-content;
+        border: 1px solid #dee2e6;
+        overflow: hidden; /* Maintains border-radius with table inside */
+    }
+
+    /* Enhanced table styles */
+    .table {
+        margin-bottom: 0;
+        width: auto !important;
+        min-width: 0 !important;
+        border-collapse: separate;
+        border-spacing: 0;
+    }
+
+    /* Header styles */
+    .table th {
+        background-color: #f8f9fa;
+        font-weight: 600;
+        white-space: nowrap;
+        border: 1px solid #dee2e6;
+        padding: 1rem;
+        position: sticky;
+        top: 0;
+        z-index: 1;
+        color: #2c3e50;
+    }
+
+    /* Cell styles */
+    .table td {
+        vertical-align: middle;
+        border: 1px solid #dee2e6;
+        padding: 0.75rem 1rem;
+    }
+
+    /* Metrics column styling */
+    .metrics-cell {
+        background-color: #e8f4ff;
+        font-weight: 500;
+        color: #1e90ff !important;
+        white-space: nowrap;
+        padding-right: 1.5rem !important;
+        border-right: 2px solid #dee2e6 !important; /* Emphasize metrics column */
+    }
+
+    th.metrics-cell{
+        background-color: #f7f9fa !important;
+        color: #2c3e50 !important;
+        font-weight: 600 !important;
+    }
+
+    /* Other columns */
+    .table th:not(:first-child),
+    .table td:not(:first-child) {
+        text-align: center;
+        white-space: nowrap;
+        min-width: 100px; /* Ensures minimum column width */
+    }
+
+    /* Hover effect */
+    .table tbody tr:hover {
+        background-color: rgba(232, 244, 255, 0.3);
+    }
+
+    /* Title styling */
+    .page-title {
+        color: #2c3e50;
+        margin-bottom: 2rem;
+        font-weight: 600;
+    }
+
+    /* Responsive design */
+    @media (max-width: 1200px) {
+        .container {
+            padding: 1.5rem;
+        }
+        
+        .table th,
+        .table td {
+            padding: 0.75rem;
+        }
+    }
+
+    @media (max-width: 768px) {
+        .container {
+            padding: 1rem;
+        }
+        
+        .metrics-cell {
+            padding-right: 1rem !important;
+        }
+        
+        .table td:not(:first-child), 
+        .table th:not(:first-child) {
+            padding: 0.5rem;
+            min-width: 80px;
+        }
+        
+        .table-responsive {
+            margin: 0 -1rem;
+            border-radius: 0;
+            border-left: none;
+            border-right: none;
+        }
+    }
+
+    /* Loading state */
+    .table-loading {
+        opacity: 0.6;
+        pointer-events: none;
+    }
+
+    /* Empty state */
+    .table-empty {
+        padding: 2rem;
+        text-align: center;
+        color: #6c757d;
+    }
+</style>
+
 <div id="alert-container" class="alert-container px-5">
 </div>
 <div id="main-container" class="container container-fluid">
@@ -83,14 +228,11 @@
                     tableContainer.classList.remove('table-loading');
 
                     console.error('Error:', error);
-                    const tableBody = document.getElementById('table-body');
-                    tableBody.innerHTML = '<tr><td id="error-message" colspan="100%" class="text-center text-danger">Error loading data. Please try again.</td></tr>';
+                    addAlert('danger', `Error loading data. Please try again.`);
                 });
         } else {
-            const tableBody = document.getElementById('table-body');
-            tableBody.innerHTML = '<tr><td id="empty-message" colspan="100%" class="table-empty">Please select an SP to view metrics</td></tr>';
-            const tableHeaders = document.getElementById('table-headers');
-            tableHeaders.innerHTML = '<th id="metrics-header" scope="col" class="metrics-cell">Metrics</th>';
+            addAlert('danger', `Please select an SP to view metrics`);
         }
     });
 </script>
+{% endblock %}
