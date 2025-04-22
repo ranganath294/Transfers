@@ -1,19 +1,204 @@
-sp_list = request.GET.getlist('sp_name')
-counts_df = pd.DataFrame()
-
-counts_df_dict = {}
-
-for selected_sp in sp_list:
-    counts_df = process_sp(selected_sp)
-    counts_df = counts_df.set_index('Test Team').T.reset_index().rename(columns={'index': 'Metrics'})
-    counts_df = counts_df.fillna(0)  # Replace NaN with 0 or another appropriate value
-    # counts_df_dict[selected_sp] = counts_df.to_dict(orient='records')
+document.getElementById('sp-select').addEventListener('change', function() {
+    // Get all selected options
+    const selectedOptions = Array.from(this.selectedOptions).map(option => option.value);
+    // Filter out any empty values
+    const spNames = selectedOptions.filter(name => name);
     
-    for _, row in counts_df.iterrows():
-        metric = row['Metrics']
-        if metric not in counts_df_dict:
-            counts_df_dict[metric] = {}
-        counts_df_dict[metric][selected_sp] = {
-            'BT': row.get('BT', 0),
-            'WLAN': row.get('WLAN', 0)
-        }
+    const tableContainer = document.getElementById('table-container');
+
+    if (spNames.length > 0) {
+        // Add loading state
+        tableContainer.classList.add('table-loading');
+
+        // Create the URL with multiple sp_name parameters
+        const params = new URLSearchParams();
+        spNames.forEach(name => {
+            params.append('sp_name', name);
+        });
+
+        fetch(`/get_counts/?${params.toString()}`)
+            .then(response => response.json())
+            .then(data => {
+                // Remove loading state
+                tableContainer.classList.remove('table-loading');
+                
+                // Get metrics (row headers) and SP names (column groups)
+                const metrics = Object.keys(data);
+                const spNames = new Set();
+                const teamsBySp = {};
+                
+                // First pass: gather all SPs and their teams
+                metrics.forEach(metric => {
+                    Object.keys(data[metric]).forEach(sp => {
+                        spNames.add(sp);
+                        if (!teamsBySp[sp]) {
+                            teamsBySp[sp] = new Set();
+                        }
+                        Object.keys(data[metric][sp]).forEach(team => {
+                            teamsBySp[sp].add(team);
+                        });
+                    });
+                });
+                
+                // Create table structure
+                const tableHeaders = document.getElementById('table-headers');
+                const tableBody = document.getElementById('table-body');
+                
+                // Clear previous content
+                tableHeaders.innerHTML = '';
+                tableBody.innerHTML = '';
+                
+                // Create header row with two levels
+                // First level: Metrics header and SP names spanning their teams
+                const spHeaderRow = document.createElement('tr');
+                
+                // Add Metrics header that spans both header rows
+                const metricsHeader = document.createElement('th');
+                metricsHeader.setAttribute('id', 'metrics-header');
+                metricsHeader.setAttribute('scope', 'col');
+                metricsHeader.className = 'metrics-cell';
+                metricsHeader.textContent = 'Metrics';
+                metricsHeader.setAttribute('rowspan', '2'); // Span two rows
+                spHeaderRow.appendChild(metricsHeader);
+                
+                // Add SP headers that span their respective teams
+                Array.from(spNames).forEach((sp, spIndex) => {
+                    const spHeader = document.createElement('th');
+                    spHeader.setAttribute('id', `sp-header-${spIndex}`);
+                    spHeader.setAttribute('scope', 'col');
+                    spHeader.textContent = sp;
+                    spHeader.setAttribute('colspan', teamsBySp[sp].size); // Span team columns
+                    spHeader.className = 'sp-header';
+                    spHeaderRow.appendChild(spHeader);
+                });
+                
+                // Second level: Team headers under each SP
+                const teamHeaderRow = document.createElement('tr');
+                
+                // Add team headers
+                Array.from(spNames).forEach(sp => {
+                    Array.from(teamsBySp[sp]).forEach((team, teamIndex) => {
+                        const teamHeader = document.createElement('th');
+                        teamHeader.setAttribute('id', `team-header-${sp}-${team}`);
+                        teamHeader.setAttribute('scope', 'col');
+                        teamHeader.textContent = team;
+                        teamHeader.className = 'team-header';
+                        teamHeaderRow.appendChild(teamHeader);
+                    });
+                });
+                
+                // Add both header rows to the table
+                tableHeaders.appendChild(spHeaderRow);
+                tableHeaders.appendChild(teamHeaderRow);
+                
+                // Create data rows
+                metrics.forEach((metric, metricIndex) => {
+                    const tr = document.createElement('tr');
+                    tr.setAttribute('id', `data-row-${metricIndex}`);
+                    
+                    // Add metric cell
+                    const metricCell = document.createElement('td');
+                    metricCell.setAttribute('id', `metric-cell-${metricIndex}`);
+                    metricCell.className = 'metrics-cell';
+                    metricCell.textContent = metric;
+                    tr.appendChild(metricCell);
+                    
+                    // Add data cells for each SP and team
+                    Array.from(spNames).forEach(sp => {
+                        Array.from(teamsBySp[sp]).forEach(team => {
+                            const td = document.createElement('td');
+                            td.setAttribute('id', `data-cell-${metricIndex}-${sp}-${team}`);
+                            
+                            // Get the value if it exists, otherwise use 0
+                            let value = 0;
+                            if (data[metric][sp] && data[metric][sp][team] !== undefined) {
+                                value = data[metric][sp][team];
+                            }
+                            
+                            td.textContent = value === 0 ? '0' : value;
+                            tr.appendChild(td);
+                        });
+                    });
+                    
+                    tableBody.appendChild(tr);
+                });
+            })
+            .catch(error => {
+                // Remove loading state
+                tableContainer.classList.remove('table-loading');
+
+                console.error('Error:', error);
+                addAlert('danger', `Error loading data. Please try again.`);
+            });
+    } else {
+        addAlert('danger', `Please select at least one SP to view metrics`);
+    }
+});
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<style>
+    /* Existing styles */
+    /* ... */
+    
+    /* Hierarchical table styles */
+    .table th.sp-header {
+        background-color: #e9ecef;
+        border-bottom: 2px solid #dee2e6;
+        text-align: center;
+        font-weight: 600;
+        color: #495057;
+    }
+    
+    .table th.team-header {
+        background-color: #f8f9fa;
+        font-weight: 500;
+        font-size: 0.9rem;
+        border-top: none;
+    }
+    
+    /* Zebra striping for better readability */
+    .table tbody tr:nth-child(even) {
+        background-color: rgba(0, 0, 0, 0.02);
+    }
+    
+    /* Fixed first column */
+    .table th.metrics-cell,
+    .table td.metrics-cell {
+        position: sticky;
+        left: 0;
+        z-index: 2;
+        background-color: #fff;
+        box-shadow: 2px 0 5px -2px rgba(0, 0, 0, 0.1);
+    }
+    
+    .table tbody tr:nth-child(even) td.metrics-cell {
+        background-color: rgba(0, 0, 0, 0.02);
+    }
+    
+    /* Visible column separation */
+    .sp-header:not(:first-of-type) {
+        border-left: 2px solid #dee2e6;
+    }
+    
+    /* Ensure the table can scroll horizontally when needed */
+    .table-responsive {
+        overflow-x: auto;
+        max-width: 100%;
+    }
+</style>
