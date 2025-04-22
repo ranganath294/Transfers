@@ -6,6 +6,21 @@ spSelect.addEventListener('change', function() {
     const spNames = selectedOptions.filter(name => name);
     
     const tableContainer = document.getElementById('table-container');
+    const tableBody = document.getElementById('table-body');
+    const tableHeaders = document.getElementById('table-headers');
+
+    // Clear existing content
+    tableBody.innerHTML = '';
+    
+    // Completely rebuild the table header (including removing any existing header rows)
+    const thead = tableHeaders.parentNode;
+    thead.innerHTML = ''; // Remove all existing header rows
+    
+    // Create the main headers row
+    const mainHeaderRow = document.createElement('tr');
+    mainHeaderRow.id = 'table-headers';
+    mainHeaderRow.innerHTML = '<th id="metrics-header" scope="col" class="metrics-cell">Metrics</th>';
+    thead.appendChild(mainHeaderRow);
 
     if (spNames.length > 0) {
         // Add loading state
@@ -22,12 +37,6 @@ spSelect.addEventListener('change', function() {
             .then(data => {
                 // Remove loading state
                 tableContainer.classList.remove('table-loading');
-
-                // Reset table
-                const tableBody = document.getElementById('table-body');
-                tableBody.innerHTML = '';
-                const tableHeaders = document.getElementById('table-headers');
-                tableHeaders.innerHTML = '<th id="metrics-header" scope="col" class="metrics-cell">Metrics</th>';
                 
                 // Get all metrics (keys of the data object)
                 const metrics = Object.keys(data);
@@ -46,34 +55,35 @@ spSelect.addEventListener('change', function() {
                         });
                     });
                     
-                    // Create header row with SP groups
+                    // Check if we need a second header row for teams
+                    let needTeamHeaders = false;
+                    Object.values(spTeams).forEach(teams => {
+                        if (teams.size > 1) needTeamHeaders = true;
+                    });
+                    
+                    // Create SP headers (with colspan if needed)
                     Object.keys(spTeams).forEach(sp => {
                         const teams = Array.from(spTeams[sp]);
                         
-                        // Create a colspan header for the SP if it has multiple teams
                         if (teams.length > 1) {
+                            // SP with multiple teams - add colspan header
                             const spHeader = document.createElement('th');
                             spHeader.setAttribute('colspan', teams.length);
                             spHeader.setAttribute('scope', 'colgroup');
                             spHeader.textContent = sp;
-                            spHeader.style.borderBottom = '2px solid #dee2e6';
-                            tableHeaders.appendChild(spHeader);
-                        } else {
-                            // Single team case - just create the team header with SP name
-                            const teamHeader = document.createElement('th');
-                            teamHeader.setAttribute('scope', 'col');
-                            teamHeader.textContent = sp;
-                            tableHeaders.appendChild(teamHeader);
+                            spHeader.style.borderBottom = needTeamHeaders ? '1px solid #dee2e6' : 'none';
+                            mainHeaderRow.appendChild(spHeader);
+                        } else if (teams.length === 1) {
+                            // SP with just one team - simpler header
+                            const spHeader = document.createElement('th');
+                            spHeader.setAttribute('scope', 'col');
+                            spHeader.textContent = sp;
+                            mainHeaderRow.appendChild(spHeader);
                         }
                     });
                     
-                    // Create second header row for teams if needed
-                    let hasMultipleTeams = false;
-                    Object.values(spTeams).forEach(teams => {
-                        if (teams.size > 1) hasMultipleTeams = true;
-                    });
-                    
-                    if (hasMultipleTeams) {
+                    // Create second row for team headers if needed
+                    if (needTeamHeaders) {
                         const teamHeaderRow = document.createElement('tr');
                         teamHeaderRow.innerHTML = '<th class="metrics-cell"></th>'; // Empty cell above metrics
                         
@@ -87,7 +97,7 @@ spSelect.addEventListener('change', function() {
                             });
                         });
                         
-                        tableHeaders.parentNode.insertBefore(teamHeaderRow, tableHeaders.nextSibling);
+                        thead.appendChild(teamHeaderRow);
                     }
                     
                     // Create data rows
@@ -114,16 +124,30 @@ spSelect.addEventListener('change', function() {
                         
                         tableBody.appendChild(tr);
                     });
+                } else {
+                    // No data case
+                    const emptyRow = document.createElement('tr');
+                    emptyRow.innerHTML = '<td colspan="2" class="table-empty">No data available</td>';
+                    tableBody.appendChild(emptyRow);
                 }
             })
             .catch(error => {
                 // Remove loading state
                 tableContainer.classList.remove('table-loading');
-
                 console.error('Error:', error);
                 addAlert('danger', `Error loading data. Please try again.`);
+                
+                // Show empty state
+                const emptyRow = document.createElement('tr');
+                emptyRow.innerHTML = '<td colspan="2" class="table-empty">Error loading data</td>';
+                tableBody.appendChild(emptyRow);
             });
     } else {
+        // No SP selected
+        const emptyRow = document.createElement('tr');
+        emptyRow.innerHTML = '<td colspan="2" class="table-empty">Please select at least one SP to view metrics</td>';
+        tableBody.appendChild(emptyRow);
+        
         addAlert('warning', `Please select at least one SP to view metrics`);
     }
 });
@@ -131,6 +155,11 @@ spSelect.addEventListener('change', function() {
 // Helper function to show alerts
 function addAlert(type, message) {
     const alertContainer = document.getElementById('alert-container');
+    
+    // Clear existing alerts
+    const existingAlerts = alertContainer.querySelectorAll('.alert');
+    existingAlerts.forEach(alert => alert.remove());
+    
     const alertDiv = document.createElement('div');
     alertDiv.className = `alert alert-${type} alert-dismissible fade show`;
     alertDiv.role = 'alert';
