@@ -1,92 +1,254 @@
-<!-- Change the select to allow multiple selections -->
-<div id="sp-selector" class="select-container">
-    <label for="sp-select" class="form-label">Select SP:</label>
-    <select id="sp-select" name="sp_name" class="form-select" multiple>
-        <option value="">--No SP Selected--</option>
-        {% for sp_name in sp_names %}
-            <option value="{{ sp_name }}" {% if sp_name == selected_sp %}selected{% endif %}>{{ sp_name }}</option>
-        {% endfor %}
-    </select>
-</div>
-
-
-
-
-
-
-
-
-
-document.getElementById('sp-select').addEventListener('change', function() {
-    // Get all selected options
-    const selectedOptions = Array.from(this.selectedOptions).map(option => option.value);
-    // Filter out any empty values
-    const spNames = selectedOptions.filter(name => name);
-    
-    const tableContainer = document.getElementById('table-container');
-
-    if (spNames.length > 0) {
-        // Add loading state
-        tableContainer.classList.add('table-loading');
-
-        // Create the URL with multiple sp_name parameters
-        const params = new URLSearchParams();
-        spNames.forEach(name => {
-            params.append('sp_name', name);
-        });
-
-        fetch(`/get_counts/?${params.toString()}`)
-            .then(response => response.json())
-            .then(data => {
-                // Remove loading state
-                tableContainer.classList.remove('table-loading');
-
-                // Rest of your code to populate the table
-                const tableBody = document.getElementById('table-body');
-                tableBody.innerHTML = '';
-                const tableHeaders = document.getElementById('table-headers');
-                tableHeaders.innerHTML = '<th id="metrics-header" scope="col" class="metrics-cell">Metrics</th>';
-                
-                if (data.length > 0) {
-                    const teams = Object.keys(data[0]).filter(key => key !== 'Metrics');
-                    teams.forEach((team, index) => {
-                        const th = document.createElement('th');
-                        th.setAttribute('id', `team-header-${index}`);
-                        th.setAttribute('scope', 'col');
-                        th.textContent = team;
-                        tableHeaders.appendChild(th);
-                    });
-                    
-                    data.forEach((row, rowIndex) => {
-                        const tr = document.createElement('tr');
-                        tr.setAttribute('id', `data-row-${rowIndex}`);
-                        
-                        const metricsTd = document.createElement('td');
-                        metricsTd.setAttribute('id', `metrics-cell-${rowIndex}`);
-                        metricsTd.textContent = row.Metrics;
-                        metricsTd.className = 'metrics-cell';
-                        tr.appendChild(metricsTd);
-                        
-                        teams.forEach((team, colIndex) => {
-                            const td = document.createElement('td');
-                            td.setAttribute('id', `data-cell-${rowIndex}-${colIndex}`);
-                            const value = row[team] !== undefined ? row[team] : '';
-                            td.textContent = value === 0 ? '0' : value; // Ensure '0' is displayed
-                            tr.appendChild(td);
-                        });
-                        
-                        tableBody.appendChild(tr);
-                    });
-                }
-            })
-            .catch(error => {
-                // Remove loading state
-                tableContainer.classList.remove('table-loading');
-
-                console.error('Error:', error);
-                addAlert('danger', `Error loading data. Please try again.`);
-            });
-    } else {
-        addAlert('danger', `Please select at least one SP to view metrics`);
+<style>
+    .optimized-select-wrapper {
+        position: relative;
+        width: 100%;
     }
-});
+    
+    .optimized-select-button {
+        width: 100%;
+        text-align: left;
+        cursor: pointer;
+    }
+    
+    .optimized-select-dropdown {
+        display: none;
+        position: absolute;
+        top: 100%;
+        left: 0;
+        right: 0;
+        background: white;
+        border: 1px solid #dee2e6;
+        border-radius: 0.375rem;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        z-index: 1000;
+        margin-top: 0.25rem;
+    }
+    
+    .optimized-select-search {
+        width: 100%;
+        padding: 0.5rem;
+        border-bottom: 1px solid #dee2e6;
+        border-radius: 0.375rem 0.375rem 0 0;
+    }
+    
+    .optimized-select-options {
+        overflow-y: auto;
+        position: relative;
+        border-radius: 0 0 0.375rem 0.375rem;
+    }
+    
+    .virtual-scroll-container {
+        position: relative;
+    }
+    
+    .optimized-select-option {
+        padding: 0.5rem 1rem;
+        cursor: pointer;
+        position: absolute;
+        width: 100%;
+        display: flex;
+        align-items: center;
+    }
+    
+    .optimized-select-option:hover {
+        background-color: #f8f9fa;
+    }
+    
+    .optimized-select-options::-webkit-scrollbar {
+        width: 6px;
+    }
+    
+    .optimized-select-options::-webkit-scrollbar-track {
+        background: #f1f1f1;
+        border-radius: 3px;
+    }
+    
+    .optimized-select-options::-webkit-scrollbar-thumb {
+        background: #888;
+        border-radius: 3px;
+    }
+    
+    .optimized-select-options::-webkit-scrollbar-thumb:hover {
+        background: #555;
+    }
+</style>
+
+<script>
+    // Custom select with virtual scrolling and search that can be reused
+    class OptimizedSelect {
+        constructor(originalSelect, options = {}) {
+            if(originalSelect.dataset.initialized){
+                return;
+            }
+
+          this.originalSelect = originalSelect;
+          this.options = options;
+          this.itemHeight = 35;
+          this.visibleItems = 8;
+          this.allOptions = Array.from(originalSelect.options).map(opt => ({
+            value: opt.value,
+            label: opt.text
+          }));
+          this.isOpen = false;
+
+          originalSelect.dataset.initialized = 'true';
+
+          this.elementId = `${originalSelect.id}-optimized-select`;
+      
+          this.init();
+        }
+      
+        init() {
+          // Create wrapper
+          this.wrapper = document.createElement('div');
+          this.wrapper.className = 'optimized-select-wrapper';
+          this.wrapper.id = `${this.elementId}-wrapper`;
+      
+          // Create custom select button
+          this.button = document.createElement('button');
+          this.button.className = 'optimized-select-button form-select';
+          this.button.id = `${this.elementId}-button`;
+          this.button.type = 'button'; // Prevent form submission
+          this.button.textContent = this.originalSelect.selectedOptions[0]?.text || 'Choose...';
+      
+          // Create dropdown container
+          this.dropdown = document.createElement('div');
+          this.dropdown.className = 'optimized-select-dropdown';
+          this.dropdown.id = `${this.elementId}-dropdown`;
+      
+          // Create search input
+          this.searchInput = document.createElement('input');
+          this.searchInput.className = 'optimized-select-search form-control';
+          this.searchInput.id = `${this.elementId}-search`;
+          this.searchInput.placeholder = 'Search...';
+      
+          // Create options container
+          this.optionsContainer = document.createElement('div');
+          this.optionsContainer.className = 'optimized-select-options';
+          this.optionsContainer.id = `${this.elementId}-options`;
+          this.optionsContainer.style.height = `${this.itemHeight * this.visibleItems}px`;
+      
+          // Create virtual scroll container
+          this.virtualScroll = document.createElement('div');
+          this.virtualScroll.className = 'virtual-scroll-container';
+          this.virtualScroll.id = `${this.elementId}-virtual-scroll`;
+      
+          // Assemble the components
+          this.dropdown.appendChild(this.searchInput);
+          this.dropdown.appendChild(this.optionsContainer);
+          this.optionsContainer.appendChild(this.virtualScroll);
+          this.wrapper.appendChild(this.button);
+          this.wrapper.appendChild(this.dropdown);
+      
+          // Insert custom select after original
+          this.originalSelect.style.display = 'none';
+          this.originalSelect.parentNode.insertBefore(this.wrapper, this.originalSelect.nextSibling);
+      
+          this.addEventListeners();
+          this.filterAndRenderOptions();
+        }
+      
+        addEventListeners() {
+          // Toggle dropdown with improved handling
+          this.button.addEventListener('mousedown', (e) => {
+            e.preventDefault(); // Prevent focus issues
+            this.toggleDropdown();
+          });
+      
+          // Handle search
+          this.searchInput.addEventListener('input', () => {
+            this.filterAndRenderOptions();
+          });
+      
+          // Prevent search input from closing dropdown
+          this.searchInput.addEventListener('mousedown', (e) => {
+            e.stopPropagation();
+          });
+      
+          // Handle scroll
+          this.optionsContainer.addEventListener('scroll', () => {
+            this.renderVisibleOptions();
+          });
+      
+          // Close dropdown when clicking outside
+          document.addEventListener('mousedown', (e) => {
+            if (!this.wrapper.contains(e.target)) {
+              this.closeDropdown();
+            }
+          });
+      
+          // Prevent dropdown from closing when clicking inside
+          this.dropdown.addEventListener('mousedown', (e) => {
+            e.stopPropagation();
+          });
+        }
+      
+        toggleDropdown() {
+          if (this.isOpen) {
+            this.closeDropdown();
+          } else {
+            this.openDropdown();
+          }
+        }
+      
+        openDropdown() {
+          this.isOpen = true;
+          this.dropdown.style.display = 'block';
+          this.searchInput.focus();
+          this.filterAndRenderOptions();
+        }
+      
+        closeDropdown() {
+          this.isOpen = false;
+          this.dropdown.style.display = 'none';
+          this.searchInput.value = '';
+          this.filterAndRenderOptions();
+        }
+      
+        filterAndRenderOptions() {
+          const searchTerm = this.searchInput.value.toLowerCase();
+          this.filteredOptions = this.allOptions.filter(option => 
+            option.label.toLowerCase().includes(searchTerm)
+          );
+      
+          // Reset scroll position
+          this.optionsContainer.scrollTop = 0;
+          this.virtualScroll.style.height = `${this.filteredOptions.length * this.itemHeight}px`;
+          this.renderVisibleOptions();
+        }
+      
+        renderVisibleOptions() {
+          const scrollTop = this.optionsContainer.scrollTop;
+          const startIndex = Math.floor(scrollTop / this.itemHeight);
+          const endIndex = startIndex + this.visibleItems + 2;
+      
+          this.virtualScroll.innerHTML = '';
+      
+          this.filteredOptions.slice(startIndex, endIndex).forEach((option, index) => {
+            const optionEl = document.createElement('div');
+            optionEl.className = 'optimized-select-option';
+            optionEl.textContent = option.label;
+            optionEl.style.position = 'absolute';
+            optionEl.style.top = `${(startIndex + index) * this.itemHeight}px`;
+            optionEl.style.height = `${this.itemHeight}px`;
+      
+            optionEl.addEventListener('mousedown', (e) => {
+              e.preventDefault(); // Prevent focus issues
+              this.selectOption(option);
+            });
+      
+            this.virtualScroll.appendChild(optionEl);
+          });
+        }
+      
+        selectOption(option) {
+          // Update original select
+          this.originalSelect.value = option.value;
+          this.originalSelect.dispatchEvent(new Event('change'));
+      
+          // Update custom select
+          this.button.textContent = option.label;
+          this.closeDropdown();
+        }
+      }
+</script>
