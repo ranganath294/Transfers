@@ -1,16 +1,39 @@
 <style>
-    /* Existing styles */
+    /* Enhanced multi-select dropdown styling */
     .optimized-select-wrapper {
         position: relative;
         width: 100%;
     }
     
+    /* Button styling */
     .optimized-select-button {
         width: 100%;
         text-align: left;
         cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        min-height: 38px;
+        background-color: #fff;
+        border: 1px solid #ced4da;
+        position: relative;
+        padding-right: 2rem;
     }
     
+    .optimized-select-button::after {
+        content: '';
+        position: absolute;
+        right: 0.75rem;
+        top: 50%;
+        transform: translateY(-50%);
+        width: 0;
+        height: 0;
+        border-left: 5px solid transparent;
+        border-right: 5px solid transparent;
+        border-top: 5px solid #6c757d;
+    }
+    
+    /* Improved dropdown container */
     .optimized-select-dropdown {
         display: none;
         position: absolute;
@@ -20,114 +43,185 @@
         background: white;
         border: 1px solid #dee2e6;
         border-radius: 0.375rem;
-        box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        box-shadow: 0 4px 16px rgba(0,0,0,0.15);
         z-index: 1000;
         margin-top: 0.25rem;
+        overflow: hidden;
     }
     
+    /* Selected items styling */
+    .selected-items-container {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.3rem;
+        padding: 0.75rem;
+        min-height: 0;
+        max-height: 6rem;
+        overflow-y: auto;
+        border-bottom: 1px solid #eee;
+        background-color: #f8f9fa;
+    }
+    
+    .selected-item {
+        display: flex;
+        align-items: center;
+        background-color: #e7f2ff;
+        border: 1px solid #d0e2ff;
+        border-radius: 3rem;
+        padding: 0.25rem 0.75rem;
+        font-size: 0.875rem;
+        transition: all 0.2s ease;
+        user-select: none;
+    }
+    
+    .selected-item:hover {
+        background-color: #d0e2ff;
+    }
+    
+    .selected-item-label {
+        margin-right: 0.25rem;
+    }
+    
+    .selected-item-remove {
+        margin-left: 0.3rem;
+        cursor: pointer;
+        font-size: 1rem;
+        line-height: 1;
+        width: 1rem;
+        height: 1rem;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        color: #6c757d;
+        font-weight: bold;
+        border-radius: 50%;
+        transition: all 0.2s ease;
+    }
+    
+    .selected-item-remove:hover {
+        color: #dc3545;
+        background-color: rgba(0, 0, 0, 0.05);
+    }
+    
+    /* Search input styling */
     .optimized-select-search {
         width: 100%;
-        padding: 0.5rem;
-        border-bottom: 1px solid #dee2e6;
-        border-radius: 0.375rem 0.375rem 0 0;
+        padding: 0.75rem;
+        border: none;
+        border-bottom: 1px solid #eee;
+        border-radius: 0;
+        outline: none;
     }
     
+    .optimized-select-search:focus {
+        box-shadow: none;
+        border-color: #eee;
+    }
+    
+    /* Options container */
     .optimized-select-options {
         overflow-y: auto;
         position: relative;
-        border-radius: 0 0 0.375rem 0.375rem;
+        max-height: calc(35px * 8); /* Based on item height and max visible items */
     }
     
     .virtual-scroll-container {
         position: relative;
     }
     
+    /* Option styling */
     .optimized-select-option {
-        padding: 0.5rem 1rem;
+        padding: 0.5rem 0.75rem;
         cursor: pointer;
         position: absolute;
         width: 100%;
         display: flex;
         align-items: center;
+        transition: background-color 0.15s ease;
     }
     
     .optimized-select-option:hover {
-        background-color: #f8f9fa;
+        background-color: #f3f9ff;
     }
     
+    .optimized-select-option.selected {
+        background-color: #e9f3ff;
+        font-weight: 500;
+    }
+    
+    .optimized-select-option.selected::before {
+        content: '✓';
+        margin-right: 0.5rem;
+        color: #0d6efd;
+        font-weight: bold;
+    }
+    
+    /* Scrollbar styling */
     .optimized-select-options::-webkit-scrollbar {
-        width: 6px;
+        width: 8px;
     }
     
     .optimized-select-options::-webkit-scrollbar-track {
         background: #f1f1f1;
-        border-radius: 3px;
+        border-radius: 4px;
     }
     
     .optimized-select-options::-webkit-scrollbar-thumb {
-        background: #888;
-        border-radius: 3px;
+        background: #ccc;
+        border-radius: 4px;
     }
     
     .optimized-select-options::-webkit-scrollbar-thumb:hover {
-        background: #555;
+        background: #999;
     }
     
-    /* New styles for selected items */
-    .selected-items-container {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 0.5rem;
-        padding: 0.5rem;
-        min-height: 2rem;
-        max-height: 6rem;
-        overflow-y: auto;
-        border-bottom: 1px solid #dee2e6;
+    /* Empty state */
+    .empty-options {
+        padding: 1rem;
+        text-align: center;
+        color: #6c757d;
     }
     
-    .selected-item {
-        display: flex;
-        align-items: center;
-        background-color: #e9ecef;
-        border-radius: 0.25rem;
-        padding: 0.25rem 0.5rem;
-        font-size: 0.875rem;
-    }
-    
-    .selected-item-remove {
-        margin-left: 0.5rem;
-        cursor: pointer;
-        font-weight: bold;
-        padding: 0 0.25rem;
-        border-radius: 50%;
-    }
-    
-    .selected-item-remove:hover {
-        background-color: rgba(0, 0, 0, 0.1);
-    }
-    
-    .optimized-select-option.selected {
-        background-color: #e9ecef;
+    /* Responsive styling */
+    @media (max-width: 768px) {
+        .selected-item {
+            padding: 0.2rem 0.5rem;
+            font-size: 0.8rem;
+        }
+        
+        .selected-item-remove {
+            margin-left: 0.2rem;
+        }
+        
+        .optimized-select-search {
+            padding: 0.5rem;
+        }
     }
 </style>
 
 <script>
-    // Enhanced OptimizedSelect with multiple select functionality
+    // Enhanced OptimizedMultiSelect with better UI
     class OptimizedMultiSelect {
         static counter = 0; // Static counter to ensure unique ID
         constructor(originalSelect, options = {}) {
             if(originalSelect.dataset.initialized){
                 return;
             }
-            this.originalSelect = originalSeleckt;
-            this.options = options;
-            this.itemHeight = 35;
-            this.maxVisibleItems = 8; // Maximum number of visible items
-            this.allOptions = Array.from(originalSelect.options).map(opt => ({
-                value: opt.value,
-                label: opt.text,
-                selected: opt.selected
-            }));
+            this.originalSelect = originalSelect;
+            this.options = {
+                itemHeight: 35,
+                maxVisibleItems: 8,
+                ...options
+            };
+            this.itemHeight = this.options.itemHeight;
+            this.maxVisibleItems = this.options.maxVisibleItems;
+            this.allOptions = Array.from(originalSelect.options)
+                .filter(opt => opt.value) // Filter out empty values
+                .map(opt => ({
+                    value: opt.value,
+                    label: opt.text,
+                    selected: opt.selected
+                }));
             this.selectedValues = new Set();
             this.isOpen = false;
             originalSelect.dataset.initialized = 'true';
@@ -150,28 +244,32 @@
             this.wrapper.className = 'optimized-select-wrapper';
             this.wrapper.id = `${this.elementId}-wrapper`;
             
-            // Create custom select button
+            // Create button with selected items display
             this.button = document.createElement('button');
             this.button.className = 'optimized-select-button form-select';
             this.button.id = `${this.elementId}-button`;
             this.button.type = 'button'; // Prevent form submission
-            this.updateButtonText();
+            
+            // Create selected summary text
+            this.selectedSummary = document.createElement('span');
+            this.selectedSummary.className = 'selected-summary';
+            this.button.appendChild(this.selectedSummary);
             
             // Create dropdown container
             this.dropdown = document.createElement('div');
             this.dropdown.className = 'optimized-select-dropdown';
             this.dropdown.id = `${this.elementId}-dropdown`;
             
-            // Create selected items container
-            this.selectedItemsContainer = document.createElement('div');
-            this.selectedItemsContainer.className = 'selected-items-container';
-            this.selectedItemsContainer.id = `${this.elementId}-selected-items`;
-            
             // Create search input
             this.searchInput = document.createElement('input');
             this.searchInput.className = 'optimized-select-search form-control';
             this.searchInput.id = `${this.elementId}-search`;
             this.searchInput.placeholder = 'Search...';
+            
+            // Create selected items container - position it correctly
+            this.selectedItemsContainer = document.createElement('div');
+            this.selectedItemsContainer.className = 'selected-items-container';
+            this.selectedItemsContainer.id = `${this.elementId}-selected-items`;
             
             // Create options container
             this.optionsContainer = document.createElement('div');
@@ -183,7 +281,7 @@
             this.virtualScroll.className = 'virtual-scroll-container';
             this.virtualScroll.id = `${this.elementId}-virtual-scroll`;
             
-            // Assemble the components
+            // Assemble the components in the correct order
             this.dropdown.appendChild(this.selectedItemsContainer);
             this.dropdown.appendChild(this.searchInput);
             this.dropdown.appendChild(this.optionsContainer);
@@ -196,8 +294,8 @@
             this.originalSelect.parentNode.insertBefore(this.wrapper, this.originalSelect.nextSibling);
             
             this.addEventListeners();
+            this.updateButtonText();
             this.updateSelectedItemsDisplay();
-            this.filterAndRenderOptions();
         }
         
         addEventListeners() {
@@ -210,6 +308,13 @@
             // Handle search
             this.searchInput.addEventListener('input', () => {
                 this.filterAndRenderOptions();
+            });
+            
+            // Handle keyboard navigation
+            this.searchInput.addEventListener('keydown', (e) => {
+                if (e.key === 'Escape') {
+                    this.closeDropdown();
+                }
             });
             
             // Prevent search input from closing dropdown
@@ -255,7 +360,6 @@
             this.isOpen = false;
             this.dropdown.style.display = 'none';
             this.searchInput.value = '';
-            this.filterAndRenderOptions();
         }
         
         filterAndRenderOptions() {
@@ -266,6 +370,12 @@
             
             // Reset scroll position
             this.optionsContainer.scrollTop = 0;
+            
+            // Handle empty state
+            if (this.filteredOptions.length === 0) {
+                this.virtualScroll.innerHTML = '<div class="empty-options">No options found</div>';
+                return;
+            }
             
             // Calculate the height based on the number of filtered options
             const height = Math.min(this.filteredOptions.length, this.maxVisibleItems) * this.itemHeight;
@@ -288,7 +398,10 @@
                     optionEl.classList.add('selected');
                 }
                 
-                optionEl.textContent = option.label;
+                const labelEl = document.createElement('span');
+                labelEl.textContent = option.label;
+                optionEl.appendChild(labelEl);
+                
                 optionEl.style.position = 'absolute';
                 optionEl.style.top = `${(startIndex + index) * this.itemHeight}px`;
                 optionEl.style.height = `${this.itemHeight}px`;
@@ -328,6 +441,7 @@
         updateSelectedItemsDisplay() {
             this.selectedItemsContainer.innerHTML = '';
             
+            // Always show the container but hide when empty
             if (this.selectedValues.size === 0) {
                 this.selectedItemsContainer.style.display = 'none';
                 return;
@@ -342,12 +456,15 @@
                     itemEl.className = 'selected-item';
                     
                     const labelEl = document.createElement('span');
+                    labelEl.className = 'selected-item-label';
                     labelEl.textContent = option.label;
                     itemEl.appendChild(labelEl);
                     
                     const removeEl = document.createElement('span');
                     removeEl.className = 'selected-item-remove';
-                    removeEl.textContent = '×';
+                    removeEl.innerHTML = '&times;'; // Cross mark
+                    removeEl.setAttribute('role', 'button');
+                    removeEl.setAttribute('aria-label', `Remove ${option.label}`);
                     removeEl.addEventListener('mousedown', (e) => {
                         e.preventDefault();
                         e.stopPropagation();
@@ -367,117 +484,24 @@
             const selected = this.allOptions.filter(option => this.selectedValues.has(option.value));
             
             if (selected.length === 0) {
-                this.button.textContent = 'Choose...';
+                this.selectedSummary.textContent = 'Choose options...';
             } else if (selected.length === 1) {
-                this.button.textContent = selected[0].label;
+                this.selectedSummary.textContent = selected[0].label;
             } else {
-                this.button.textContent = `${selected.length} items selected`;
+                this.selectedSummary.textContent = `${selected.length} items selected`;
             }
         }
     }
-</script>
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-// Initialize the multi-select when the page loads
-document.addEventListener('DOMContentLoaded', function() {
-    const spSelect = document.getElementById('sp-select');
-    const multiSelect = new OptimizedMultiSelect(spSelect);
     
-    // Update the event listener for the SP select
-    spSelect.addEventListener('change', function() {
-        // Get all selected options
-        const selectedOptions = Array.from(this.selectedOptions).map(option => option.value);
-        // Filter out any empty values
-        const spNames = selectedOptions.filter(name => name);
-        
-        const tableContainer = document.getElementById('table-container');
-
-        if (spNames.length > 0) {
-            // Add loading state
-            tableContainer.classList.add('table-loading');
-
-            // Create the URL with multiple sp_name parameters
-            const params = new URLSearchParams();
-            spNames.forEach(name => {
-                params.append('sp_name', name);
-            });
-
-            fetch(`/get_counts/?${params.toString()}`)
-                .then(response => response.json())
-                .then(data => {
-                    // Remove loading state
-                    tableContainer.classList.remove('table-loading');
-
-                    // Rest of your code to populate the table
-                    const tableBody = document.getElementById('table-body');
-                    tableBody.innerHTML = '';
-                    const tableHeaders = document.getElementById('table-headers');
-                    tableHeaders.innerHTML = '<th id="metrics-header" scope="col" class="metrics-cell">Metrics</th>';
-                    
-                    if (data.length > 0) {
-                        const teams = Object.keys(data[0]).filter(key => key !== 'Metrics');
-                        teams.forEach((team, index) => {
-                            const th = document.createElement('th');
-                            th.setAttribute('id', `team-header-${index}`);
-                            th.setAttribute('scope', 'col');
-                            th.textContent = team;
-                            tableHeaders.appendChild(th);
-                        });
-                        
-                        data.forEach((row, rowIndex) => {
-                            const tr = document.createElement('tr');
-                            tr.setAttribute('id', `data-row-${rowIndex}`);
-                            
-                            const metricsTd = document.createElement('td');
-                            metricsTd.setAttribute('id', `metrics-cell-${rowIndex}`);
-                            metricsTd.textContent = row.Metrics;
-                            metricsTd.className = 'metrics-cell';
-                            tr.appendChild(metricsTd);
-                            
-                            teams.forEach((team, colIndex) => {
-                                const td = document.createElement('td');
-                                td.setAttribute('id', `data-cell-${rowIndex}-${colIndex}`);
-                                const value = row[team] !== undefined ? row[team] : '';
-                                td.textContent = value === 0 ? '0' : value; // Ensure '0' is displayed
-                                tr.appendChild(td);
-                            });
-                            
-                            tableBody.appendChild(tr);
-                        });
-                    }
-                })
-                .catch(error => {
-                    // Remove loading state
-                    tableContainer.classList.remove('table-loading');
-
-                    console.error('Error:', error);
-                    addAlert('danger', `Error loading data. Please try again.`);
-                });
-        } else {
-            addAlert('danger', `Please select at least one SP to view metrics`);
+    // Initialize the multi-select when the page loads
+    document.addEventListener('DOMContentLoaded', function() {
+        const spSelect = document.getElementById('sp-select');
+        if (spSelect) {
+            const multiSelect = new OptimizedMultiSelect(spSelect);
         }
     });
-});
+</script>
+
 
 
 
@@ -497,7 +521,6 @@ document.addEventListener('DOMContentLoaded', function() {
 <div id="sp-selector" class="select-container">
     <label for="sp-select" class="form-label">Select SP:</label>
     <select id="sp-select" name="sp_name" class="form-select" multiple>
-        <option value="">--No SP Selected--</option>
         {% for sp_name in sp_names %}
             <option value="{{ sp_name }}" {% if sp_name == selected_sp %}selected{% endif %}>{{ sp_name }}</option>
         {% endfor %}
