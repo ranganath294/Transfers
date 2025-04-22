@@ -1,238 +1,92 @@
-{% extends 'base.html' %}
-{% block content %}
-<style>
-    /* Container styles */
-    .container {
-        padding: 2rem;
-        max-width: 100%;
-    }
-
-    /* Select dropdown styles */
-    .select-container {
-        margin-bottom: 2rem;
-    }
-
-    .form-select {
-        max-width: 300px;
-        border: 1px solid #dee2e6;
-        padding: 0.5rem;
-        border-radius: 4px;
-    }
-
-    /* Enhanced table container styles */
-    .table-responsive {
-        border-radius: 8px;
-        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
-        display: inline-block;
-        min-width: min-content;
-        border: 1px solid #dee2e6;
-        overflow: hidden; /* Maintains border-radius with table inside */
-    }
-
-    /* Enhanced table styles */
-    .table {
-        margin-bottom: 0;
-        width: auto !important;
-        min-width: 0 !important;
-        border-collapse: separate;
-        border-spacing: 0;
-    }
-
-    /* Header styles */
-    .table th {
-        background-color: #f8f9fa;
-        font-weight: 600;
-        white-space: nowrap;
-        border: 1px solid #dee2e6;
-        padding: 1rem;
-        position: sticky;
-        top: 0;
-        z-index: 1;
-        color: #2c3e50;
-    }
-
-    /* Cell styles */
-    .table td {
-        vertical-align: middle;
-        border: 1px solid #dee2e6;
-        padding: 0.75rem 1rem;
-    }
-
-    /* Metrics column styling */
-    .metrics-cell {
-        background-color: #e8f4ff;
-        font-weight: 500;
-        color: #1e90ff !important;
-        white-space: nowrap;
-        padding-right: 1.5rem !important;
-        border-right: 2px solid #dee2e6 !important; /* Emphasize metrics column */
-    }
-
-    th.metrics-cell{
-        background-color: #f7f9fa !important;
-        color: #2c3e50 !important;
-        font-weight: 600 !important;
-    }
-
-    /* Other columns */
-    .table th:not(:first-child),
-    .table td:not(:first-child) {
-        text-align: center;
-        white-space: nowrap;
-        min-width: 100px; /* Ensures minimum column width */
-    }
-
-    /* Hover effect */
-    .table tbody tr:hover {
-        background-color: rgba(232, 244, 255, 0.3);
-    }
-
-    /* Title styling */
-    .page-title {
-        color: #2c3e50;
-        margin-bottom: 2rem;
-        font-weight: 600;
-    }
-
-    /* Responsive design */
-    @media (max-width: 1200px) {
-        .container {
-            padding: 1.5rem;
-        }
-        
-        .table th,
-        .table td {
-            padding: 0.75rem;
-        }
-    }
-
-    @media (max-width: 768px) {
-        .container {
-            padding: 1rem;
-        }
-        
-        .metrics-cell {
-            padding-right: 1rem !important;
-        }
-        
-        .table td:not(:first-child), 
-        .table th:not(:first-child) {
-            padding: 0.5rem;
-            min-width: 80px;
-        }
-        
-        .table-responsive {
-            margin: 0 -1rem;
-            border-radius: 0;
-            border-left: none;
-            border-right: none;
-        }
-    }
-
-    /* Loading state */
-    .table-loading {
-        opacity: 0.6;
-        pointer-events: none;
-    }
-
-    /* Empty state */
-    .table-empty {
-        padding: 2rem;
-        text-align: center;
-        color: #6c757d;
-    }
-</style>
-
-<div id="alert-container" class="alert-container px-5">
+<!-- Change the select to allow multiple selections -->
+<div id="sp-selector" class="select-container">
+    <label for="sp-select" class="form-label">Select SP:</label>
+    <select id="sp-select" name="sp_name" class="form-select" multiple>
+        <option value="">--No SP Selected--</option>
+        {% for sp_name in sp_names %}
+            <option value="{{ sp_name }}" {% if sp_name == selected_sp %}selected{% endif %}>{{ sp_name }}</option>
+        {% endfor %}
+    </select>
 </div>
-<div id="main-container" class="container container-fluid">
-    <h1 id="page-title" class="page-title">SP Metrics Report</h1>
+
+
+
+
+
+
+
+
+
+document.getElementById('sp-select').addEventListener('change', function() {
+    // Get all selected options
+    const selectedOptions = Array.from(this.selectedOptions).map(option => option.value);
+    // Filter out any empty values
+    const spNames = selectedOptions.filter(name => name);
     
-    <div id="sp-selector" class="select-container">
-        <label for="sp-select" class="form-label">Select SP:</label>
-        <select id="sp-select" name="sp_name" class="form-select">
-            <option value="">--No SP Selected--</option>
-            {% for sp_name in sp_names %}
-                <option value="{{ sp_name }}" {% if sp_name == selected_sp %}selected{% endif %}>{{ sp_name }}</option>
-            {% endfor %}
-        </select>
-    </div>
+    const tableContainer = document.getElementById('table-container');
 
-    <div id="table-container" class="table-responsive">
-        <table id="metrics-table" class="table table-hover">
-            <thead>
-                <tr id="table-headers">
-                    <th id="metrics-header" scope="col" class="metrics-cell">Metrics</th>
-                </tr>
-            </thead>
-            <tbody id="table-body">
-            </tbody>
-        </table>
-    </div>
-</div>
+    if (spNames.length > 0) {
+        // Add loading state
+        tableContainer.classList.add('table-loading');
 
-<script>
-    document.getElementById('sp-select').addEventListener('change', function() {
-        const spName = this.value;
-        const tableContainer = document.getElementById('table-container');
+        // Create the URL with multiple sp_name parameters
+        const params = new URLSearchParams();
+        spNames.forEach(name => {
+            params.append('sp_name', name);
+        });
 
-        if (spName) {
-            // Add loading state
-            tableContainer.classList.add('table-loading');
+        fetch(`/get_counts/?${params.toString()}`)
+            .then(response => response.json())
+            .then(data => {
+                // Remove loading state
+                tableContainer.classList.remove('table-loading');
 
-            fetch(`/get_counts/?sp_name=${encodeURIComponent(spName)}`)
-                .then(response => response.json())
-                .then(data => {
-                    // Remove loading state
-                    tableContainer.classList.remove('table-loading');
-
-                    const tableBody = document.getElementById('table-body');
-                    tableBody.innerHTML = '';
-                    const tableHeaders = document.getElementById('table-headers');
-                    tableHeaders.innerHTML = '<th id="metrics-header" scope="col" class="metrics-cell">Metrics</th>';
+                // Rest of your code to populate the table
+                const tableBody = document.getElementById('table-body');
+                tableBody.innerHTML = '';
+                const tableHeaders = document.getElementById('table-headers');
+                tableHeaders.innerHTML = '<th id="metrics-header" scope="col" class="metrics-cell">Metrics</th>';
+                
+                if (data.length > 0) {
+                    const teams = Object.keys(data[0]).filter(key => key !== 'Metrics');
+                    teams.forEach((team, index) => {
+                        const th = document.createElement('th');
+                        th.setAttribute('id', `team-header-${index}`);
+                        th.setAttribute('scope', 'col');
+                        th.textContent = team;
+                        tableHeaders.appendChild(th);
+                    });
                     
-                    if (data.length > 0) {
-                        const teams = Object.keys(data[0]).filter(key => key !== 'Metrics');
-                        teams.forEach((team, index) => {
-                            const th = document.createElement('th');
-                            th.setAttribute('id', `team-header-${index}`);
-                            th.setAttribute('scope', 'col');
-                            th.textContent = team;
-                            tableHeaders.appendChild(th);
+                    data.forEach((row, rowIndex) => {
+                        const tr = document.createElement('tr');
+                        tr.setAttribute('id', `data-row-${rowIndex}`);
+                        
+                        const metricsTd = document.createElement('td');
+                        metricsTd.setAttribute('id', `metrics-cell-${rowIndex}`);
+                        metricsTd.textContent = row.Metrics;
+                        metricsTd.className = 'metrics-cell';
+                        tr.appendChild(metricsTd);
+                        
+                        teams.forEach((team, colIndex) => {
+                            const td = document.createElement('td');
+                            td.setAttribute('id', `data-cell-${rowIndex}-${colIndex}`);
+                            const value = row[team] !== undefined ? row[team] : '';
+                            td.textContent = value === 0 ? '0' : value; // Ensure '0' is displayed
+                            tr.appendChild(td);
                         });
                         
-                        data.forEach((row, rowIndex) => {
-                            const tr = document.createElement('tr');
-                            tr.setAttribute('id', `data-row-${rowIndex}`);
-                            
-                            const metricsTd = document.createElement('td');
-                            metricsTd.setAttribute('id', `metrics-cell-${rowIndex}`);
-                            metricsTd.textContent = row.Metrics;
-                            metricsTd.className = 'metrics-cell';
-                            tr.appendChild(metricsTd);
-                            
-                            teams.forEach((team, colIndex) => {
-                                const td = document.createElement('td');
-                                td.setAttribute('id', `data-cell-${rowIndex}-${colIndex}`);
-                                const value = row[team] !== undefined ? row[team] : '';
-                                td.textContent = value === 0 ? '0' : value; // Ensure '0' is displayed
-                                tr.appendChild(td);
-                            });
-                            
-                            tableBody.appendChild(tr);
-                        });
-                    }
-                })
-                .catch(error => {
-                    // Remove loading state
-                    tableContainer.classList.remove('table-loading');
+                        tableBody.appendChild(tr);
+                    });
+                }
+            })
+            .catch(error => {
+                // Remove loading state
+                tableContainer.classList.remove('table-loading');
 
-                    console.error('Error:', error);
-                    addAlert('danger', `Error loading data. Please try again.`);
-                });
-        } else {
-            addAlert('danger', `Please select an SP to view metrics`);
-        }
-    });
-</script>
-{% endblock %}
+                console.error('Error:', error);
+                addAlert('danger', `Error loading data. Please try again.`);
+            });
+    } else {
+        addAlert('danger', `Please select at least one SP to view metrics`);
+    }
+});
