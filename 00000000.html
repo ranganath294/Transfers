@@ -1,89 +1,102 @@
-def add_table_to_slide(slide, data, rows, cols, left, top, width, height):
+from pptx import Presentation
+from pptx.util import Inches, Pt
+from pptx.dml.color import RGBColor
+
+def add_table_to_slide(slide, data, merged_cells_info, left, top, width, height):
+    rows = len(data)
+    cols = len(data[0]) if data else 0
     table = slide.shapes.add_table(rows, cols, left, top, width, height).table
-    table.first_col = True
+
+    table.first_col = False
     table.first_row = True
     table.horz_banding = True
     table.vert_banding = True
 
     # Set column widths
     for i, col in enumerate(table.columns):
-        col.width = Inches(width / cols)
+        col.width = Inches(width.inches / cols)
 
     # Set row heights
     for i, row in enumerate(table.rows):
-        row.height = Inches(height / rows)
+        row.height = Inches(height.inches / rows)
 
-    # Fill the table with data
+    # Fill data and format
     for i, row in enumerate(data):
-        for j, cell in enumerate(row):
-            table.cell(i, j).text = str(cell)
-            table.cell(i, j).text_frame.paragraphs[0].font.size = Pt(12)
-            table.cell(i, j).text_frame.paragraphs[0].font.color.rgb = RGBColor(0, 0, 0)
+        for j, cell_text in enumerate(row):
+            cell = table.cell(i, j)
+            cell.text = str(cell_text)
+            para = cell.text_frame.paragraphs[0]
+            para.font.size = Pt(12)
+            para.font.color.rgb = RGBColor(0, 0, 0)
+
+    # Merge cells based on merged_cells_info
+    for info in merged_cells_info:
+        col_idx, start_row, span = info
+        if span > 1:
+            table.cell(start_row, col_idx).merge(table.cell(start_row + span - 1, col_idx))
 
     return table
 
-# Function to create a slide for each SP, team, and phase
+def build_table_data(team, phase, coverage_types, team_row_index, phase_row_index):
+    data = []
+    merged_cells = []
+
+    header = [
+        'Test Team', 'Date', 'Phase', 'Coverage Type', 'Total TCs', 'Coverage', 'Coverage %',
+        'Passed', 'Pass %', 'Failed', 'Fail %', 'Blocked', 'Block %', 'Unique Issues'
+    ]
+    data.append(header)
+
+    for i, ct in enumerate(coverage_types):
+        ct_metrics = ct['metrics']
+        row = [
+            team['team_name'], phase['date'], phase['phase'], ct['coverage_type'],
+            ct_metrics['total'], ct_metrics['coverage'], f"{ct_metrics['coverage_percentage']:.2f}%",
+            ct_metrics['passed'], f"{ct_metrics['passed_percentage']:.2f}%",
+            ct_metrics['failed'], f"{ct_metrics['failed_percentage']:.2f}%",
+            ct_metrics['blocked'], f"{ct_metrics['blocked_percentage']:.2f}%",
+            phase['unique_issue_count']
+        ]
+        data.append(row)
+
+    num_rows = len(coverage_types)
+    if num_rows > 1:
+        # Merge "Phase" and "Team" cells across rows
+        merged_cells.append((0, team_row_index + 1, num_rows))  # Team name column
+        merged_cells.append((1, phase_row_index + 1, num_rows))  # Date column
+        merged_cells.append((2, phase_row_index + 1, num_rows))  # Phase column
+
+    return data[1:], merged_cells
+
+def create_slide_with_table(prs, sp_name, team, phase):
+    slide_layout = prs.slide_layouts[5]  # Blank layout
+    slide = prs.slides.add_slide(slide_layout)
+
+    title_shape = slide.shapes.title
+    if title_shape:
+        title_shape.text = f"SP: {sp_name}, Team: {team['team_name']}, Phase: {phase['phase']} ({phase['date']})"
+
+    left = Inches(0.5)
+    top = Inches(1.5)
+    width = Inches(11.0)
+    height = Inches(0.5 * max(1, len(phase['coverage_types'])))
+
+    table_rows_data, merged_cells = build_table_data(team, phase, phase['coverage_types'], 0, 0)
+    table_data = [
+        [
+            'Test Team', 'Date', 'Phase', 'Coverage Type', 'Total TCs', 'Coverage', 'Coverage %',
+            'Passed', 'Pass %', 'Failed', 'Fail %', 'Blocked', 'Block %', 'Unique Issues'
+        ]
+    ] + table_rows_data
+
+    add_table_to_slide(slide, table_data, merged_cells, left, top, width, height)
+
 def create_slides(prs, filtered_data):
     for sp in filtered_data:
-        sp_name = sp['sp_name']
-        teams = sp['teams']
+        for team in sp['teams']:
+            for phase in team['phases']:
+                create_slide_with_table(prs, sp['sp_name'], team, phase)
 
-        for team in teams:
-            team_name = team['team_name']
-            phases = team['phases']
-
-            for phase in phases:
-                phase_name = phase['phase']
-                phase_date = phase['date']
-                coverage_types = phase['coverage_types']
-                phase_metrics = phase['metrics']
-                unique_issue_count = phase['unique_issue_count']
-                unique_issue_list = phase['unique_issue_list']
-                unique_cr_count = phase['unique_cr_count']
-                unique_jira_count = phase['unique_jira_count']
-
-                # Create a new slide
-                slide_layout = prs.slide_layouts[5]  # Blank slide
-                slide = prs.slides.add_slide(slide_layout)
-
-                # Add title
-                title = slide.shapes.title
-                title.text = f"SP: {sp_name}, Team: {team_name}, Phase: {phase_name} ({phase_date})"
-
-                # Calculate table dimensions
-                rows = 1 + len(coverage_types)
-                cols = 15  # Number of columns
-
-                # Add table
-                left = Inches(0.5)
-                top = Inches(1.5)
-                width = Inches(11.5)  # Use the entire horizontal space
-                height = Inches(0.5 * rows)
-
-                # Prepare table data
-                table_data = []
-                table_data.append([
-                    'Test Team', 'Date', 'Phase', 'Coverage Type', 'Total TCs', 'Coverage', 'Coverage %',
-                    'Passed', 'Pass %', 'Failed', 'Fail %', 'Blocked', 'Block %', 'Unique Issues'
-                ])
-
-                for ct in coverage_types:
-                    ct_name = ct['coverage_type']
-                    ct_metrics = ct['metrics']
-                    ct_row = [
-                        team_name, phase_date, phase_name, ct_name,
-                        ct_metrics['total'], ct_metrics['coverage'], f"{ct_metrics['coverage_percentage']:.2f}%",
-                        ct_metrics['passed'], f"{ct_metrics['passed_percentage']:.2f}%",
-                        ct_metrics['failed'], f"{ct_metrics['failed_percentage']:.2f}%",
-                        ct_metrics['blocked'], f"{ct_metrics['blocked_percentage']:.2f}%",
-                        unique_issue_count
-                    ]
-                    table_data.append(ct_row)
-
-                # Add table to slide
-                add_table_to_slide(slide, table_data, rows, cols, left, top, width, height)
-
-# Main function to generate the PPT
 def generate_ppt(filtered_data, output_filename='report.pptx'):
     prs = Presentation()
     create_slides(prs, filtered_data)
