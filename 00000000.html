@@ -1,116 +1,27 @@
-from pptx import Presentation
-from pptx.util import Inches, Pt
-from pptx.dml.color import RGBColor
-
-# Helper function to merge cell text and style
-def set_cell_text(cell, text, font_size=12, bold=False):
-    paragraph = cell.text_frame.paragraphs[0]
-    paragraph.text = text
-    paragraph.font.size = Pt(font_size)
-    paragraph.font.bold = bold
-    paragraph.font.color.rgb = RGBColor(0, 0, 0)
-
-# Function to add table to slide with proper layout and merged cells
-def add_table_to_slide(slide, data, merge_info, rows, cols, left, top, width, height):
-    table_shape = slide.shapes.add_table(rows, cols, left, top, width, height)
-    table = table_shape.table
-    table.first_col = False
-    table.first_row = True
-    table.horz_banding = True
-    table.vert_banding = False
-
-    # Set column widths uniformly
-    col_width = width / cols
-    for i in range(cols):
-        table.columns[i].width = col_width
-
-    # Set row heights
-    row_height = height / rows
-    for i in range(rows):
-        table.rows[i].height = row_height
-
-    # Fill in the table with data
-    for i, row_data in enumerate(data):
-        for j, cell_text in enumerate(row_data):
-            set_cell_text(table.cell(i, j), str(cell_text))
-
-    # Merge cells based on merge_info
-    for merge in merge_info:
-        table.cell(*merge['start']).merge(table.cell(*merge['end']))
-
-    return table
-
-# Function to create slides with option to filter by team and phase
-def create_filtered_slides(prs, filtered_data, selected_team=None, selected_phase=None):
-    for sp in filtered_data:
-        sp_name = sp['sp_name']
-        for team in sp['teams']:
-            team_name = team['team_name']
-            if selected_team and team_name != selected_team:
-                continue
-            for phase in team['phases']:
-                phase_name = phase['phase']
-                if selected_phase and phase_name != selected_phase:
-                    continue
-
-                phase_date = phase['date']
-                coverage_types = phase['coverage_types']
-                unique_issue_count = phase['unique_issue_count']
-
-                slide_layout = prs.slide_layouts[5]  # Blank layout
-                slide = prs.slides.add_slide(slide_layout)
-
-                # Add title
-                title_shape = slide.shapes.title
-                if title_shape:
-                    title_shape.text = f"SP: {sp_name}, Team: {team_name}, Phase: {phase_name} ({phase_date})"
-
-                # Table data preparation
-                headers = [
-                    'Test Team', 'Date', 'Phase', 'Coverage Type',
-                    'Total TCs', 'Coverage', 'Coverage %',
-                    'Passed', 'Pass %', 'Failed', 'Fail %',
-                    'Blocked', 'Block %', 'Unique Issues'
-                ]
-                table_data = [headers]
-                merge_info = []
-
-                start_row_idx = 1
-                for idx, ct in enumerate(coverage_types):
-                    metrics = ct['metrics']
-                    row = [
-                        team_name, phase_date, phase_name, ct['coverage_type'],
-                        metrics['total'], metrics['coverage'], f"{metrics['coverage_percentage']:.2f}%",
-                        metrics['passed'], f"{metrics['passed_percentage']:.2f}%",
-                        metrics['failed'], f"{metrics['failed_percentage']:.2f}%",
-                        metrics['blocked'], f"{metrics['blocked_percentage']:.2f}%",
-                        unique_issue_count
-                    ]
-                    table_data.append(row)
-
-                # Merge first 3 columns across coverage types (only if more than 1)
-                if len(coverage_types) > 1:
-                    for col in range(3):  # Team, Date, Phase columns
-                        merge_info.append({
-                            'start': (1, col),
-                            'end': (len(coverage_types), col)
-                        })
-
-                # Add table
-                rows = len(table_data)
-                cols = len(headers)
-                left = Inches(0.2)
-                top = Inches(1.2)
-                width = Inches(12.5)  # within safe limits
-                height = Inches(0.5 * rows)
-                add_table_to_slide(slide, table_data, merge_info, rows, cols, left, top, width, height)
-
-# Generate PPT with filtered options
-def generate_filtered_ppt(filtered_data, output_filename='filtered_report.pptx', selected_team=None, selected_phase=None):
-    prs = Presentation()
+Traceback (most recent call last):
+  File "C:\Users\slua_ba1d0d3d85b6\Documents\WLAN_CSTSPBOT3.0_StreamLit_pip\create_ppt.py", line 136, in <module>
+    generate_filtered_ppt(table_data, r'C:\Dropbox\To Laptop\New folder\debug\000_report.pptx', selected_team="BT", selected_phase="ES")
+  File "C:\Users\slua_ba1d0d3d85b6\Documents\WLAN_CSTSPBOT3.0_StreamLit_pip\create_ppt.py", line 130, in generate_filtered_ppt
     create_filtered_slides(prs, filtered_data, selected_team, selected_phase)
-    prs.save(output_filename)
-    return output_filename
-
-output_filename = 'demo_filtered_report.pptx'
-output_filename
+  File "C:\Users\slua_ba1d0d3d85b6\Documents\WLAN_CSTSPBOT3.0_StreamLit_pip\create_ppt.py", line 125, in create_filtered_slides
+    add_table_to_slide(slide, table_data, merge_info, rows, cols, left, top, width, height)
+  File "C:\Users\slua_ba1d0d3d85b6\Documents\WLAN_CSTSPBOT3.0_StreamLit_pip\create_ppt.py", line 44, in add_table_to_slide
+    table.columns[i].width = col_width
+    ^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\slua_ba1d0d3d85b6\Documents\WLAN_CSTSPBOT3.0_StreamLit_pip\.venv\Lib\site-packages\pptx\table.py", line 396, in width
+    self._gridCol.w = width
+    ^^^^^^^^^^^^^^^
+  File "C:\Users\slua_ba1d0d3d85b6\Documents\WLAN_CSTSPBOT3.0_StreamLit_pip\.venv\Lib\site-packages\pptx\oxml\xmlchemy.py", line 271, in set_attr_value
+    str_value = self._simple_type.to_xml(value)
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\slua_ba1d0d3d85b6\Documents\WLAN_CSTSPBOT3.0_StreamLit_pip\.venv\Lib\site-packages\pptx\oxml\simpletypes.py", line 26, in to_xml
+    cls.validate(value)
+  File "C:\Users\slua_ba1d0d3d85b6\Documents\WLAN_CSTSPBOT3.0_StreamLit_pip\.venv\Lib\site-packages\pptx\oxml\simpletypes.py", line 313, in validate
+    ST_CoordinateUnqualified.validate(value)
+  File "C:\Users\slua_ba1d0d3d85b6\Documents\WLAN_CSTSPBOT3.0_StreamLit_pip\.venv\Lib\site-packages\pptx\oxml\simpletypes.py", line 345, in validate
+    cls.validate_int_in_range(value, -27273042329600, 27273042316900)
+  File "C:\Users\slua_ba1d0d3d85b6\Documents\WLAN_CSTSPBOT3.0_StreamLit_pip\.venv\Lib\site-packages\pptx\oxml\simpletypes.py", line 52, in validate_int_in_range
+    cls.validate_int(value)
+  File "C:\Users\slua_ba1d0d3d85b6\Documents\WLAN_CSTSPBOT3.0_StreamLit_pip\.venv\Lib\site-packages\pptx\oxml\simpletypes.py", line 39, in validate_int
+    raise TypeError("value must be an integral type, got %s" % type(value))
+TypeError: value must be an integral type, got <class 'float'>
