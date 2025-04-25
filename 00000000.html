@@ -270,5 +270,3 @@ def create_slides(prs, filtered_data, selected_teams=None, selected_phases=None,
 def generate_ppt(filtered_data, output_filename='report.pptx', selected_teams=None, selected_phases=None, page_config='team'):
     prs = Presentation()
     create_slides(prs, filtered_data, selected_teams, selected_phases, page_config)
-
-when selected multiple phases, then except in team_phase and phase configuration, in other cofigurations, the row spanning in team column is not happening correctly. that is suppose configuration is single or team and in selected phases there 2 or 3 phases, then now the each team should span across number of phases * number of coverage types that is legacy and newfr (2). but it is not soanning like that
