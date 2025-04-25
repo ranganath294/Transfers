@@ -1,27 +1,98 @@
-Traceback (most recent call last):
-  File "C:\Users\slua_ba1d0d3d85b6\Documents\WLAN_CSTSPBOT3.0_StreamLit_pip\create_ppt.py", line 136, in <module>
-    generate_filtered_ppt(table_data, r'C:\Dropbox\To Laptop\New folder\debug\000_report.pptx', selected_team="BT", selected_phase="ES")
-  File "C:\Users\slua_ba1d0d3d85b6\Documents\WLAN_CSTSPBOT3.0_StreamLit_pip\create_ppt.py", line 130, in generate_filtered_ppt
-    create_filtered_slides(prs, filtered_data, selected_team, selected_phase)
-  File "C:\Users\slua_ba1d0d3d85b6\Documents\WLAN_CSTSPBOT3.0_StreamLit_pip\create_ppt.py", line 125, in create_filtered_slides
-    add_table_to_slide(slide, table_data, merge_info, rows, cols, left, top, width, height)
-  File "C:\Users\slua_ba1d0d3d85b6\Documents\WLAN_CSTSPBOT3.0_StreamLit_pip\create_ppt.py", line 44, in add_table_to_slide
-    table.columns[i].width = col_width
-    ^^^^^^^^^^^^^^^^^^^^^^
-  File "C:\Users\slua_ba1d0d3d85b6\Documents\WLAN_CSTSPBOT3.0_StreamLit_pip\.venv\Lib\site-packages\pptx\table.py", line 396, in width
-    self._gridCol.w = width
-    ^^^^^^^^^^^^^^^
-  File "C:\Users\slua_ba1d0d3d85b6\Documents\WLAN_CSTSPBOT3.0_StreamLit_pip\.venv\Lib\site-packages\pptx\oxml\xmlchemy.py", line 271, in set_attr_value
-    str_value = self._simple_type.to_xml(value)
-                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "C:\Users\slua_ba1d0d3d85b6\Documents\WLAN_CSTSPBOT3.0_StreamLit_pip\.venv\Lib\site-packages\pptx\oxml\simpletypes.py", line 26, in to_xml
-    cls.validate(value)
-  File "C:\Users\slua_ba1d0d3d85b6\Documents\WLAN_CSTSPBOT3.0_StreamLit_pip\.venv\Lib\site-packages\pptx\oxml\simpletypes.py", line 313, in validate
-    ST_CoordinateUnqualified.validate(value)
-  File "C:\Users\slua_ba1d0d3d85b6\Documents\WLAN_CSTSPBOT3.0_StreamLit_pip\.venv\Lib\site-packages\pptx\oxml\simpletypes.py", line 345, in validate
-    cls.validate_int_in_range(value, -27273042329600, 27273042316900)
-  File "C:\Users\slua_ba1d0d3d85b6\Documents\WLAN_CSTSPBOT3.0_StreamLit_pip\.venv\Lib\site-packages\pptx\oxml\simpletypes.py", line 52, in validate_int_in_range
-    cls.validate_int(value)
-  File "C:\Users\slua_ba1d0d3d85b6\Documents\WLAN_CSTSPBOT3.0_StreamLit_pip\.venv\Lib\site-packages\pptx\oxml\simpletypes.py", line 39, in validate_int
-    raise TypeError("value must be an integral type, got %s" % type(value))
-TypeError: value must be an integral type, got <class 'float'>
+from pptx import Presentation
+from pptx.util import Inches, Pt
+import os
+
+
+def add_table_to_slide(slide, table_data, merge_info, rows, cols, left, top, width, height):
+    # Convert dimensions to EMU if not already
+    if not isinstance(left, int): left = Inches(left)
+    if not isinstance(top, int): top = Inches(top)
+    if not isinstance(width, int): width = Inches(width)
+    if not isinstance(height, int): height = Inches(height)
+
+    table_shape = slide.shapes.add_table(rows, cols, left, top, width, height)
+    table = table_shape.table
+
+    # Set uniform column widths
+    col_width = int(width / cols)
+    for i in range(cols):
+        table.columns[i].width = col_width
+
+    # Fill data
+    for i in range(rows):
+        for j in range(cols):
+            if i < len(table_data) and j < len(table_data[i]):
+                cell = table.cell(i, j)
+                cell.text = str(table_data[i][j])
+                for paragraph in cell.text_frame.paragraphs:
+                    for run in paragraph.runs:
+                        run.font.size = Pt(10)
+
+    # Apply merge info and remove duplicate merged texts
+    for (start_row, start_col, end_row, end_col) in merge_info:
+        cell = table.cell(start_row, start_col)
+        cell.merge(table.cell(end_row, end_col))
+        for i in range(start_row, end_row + 1):
+            for j in range(start_col, end_col + 1):
+                if i != start_row or j != start_col:
+                    table.cell(i, j).text = ""
+
+
+def filter_table_data(table_data, team=None, phase=None):
+    header = table_data[0]
+    filtered = [header]
+    for row in table_data[1:]:
+        if (team is None or row[0] == team) and (phase is None or row[1] == phase):
+            filtered.append(row)
+    return filtered
+
+
+def generate_merge_info(table_data):
+    # Example: Merge (0,0)-(1,0) for Team, (0,1)-(1,1) for Phase, (0,2)-(0,4) for header row
+    merge_info = []
+    merge_info.append((0, 0, 1, 0))  # Merge 'Team'
+    merge_info.append((0, 1, 1, 1))  # Merge 'Phase'
+    merge_info.append((0, 2, 0, len(table_data[0]) - 1))  # Merge 'Date' across top if needed
+    return merge_info
+
+
+def create_filtered_slides(prs, table_data, selected_team, selected_phase):
+    slide_layout = prs.slide_layouts[6]
+    slide = prs.slides.add_slide(slide_layout)
+
+    filtered_data = filter_table_data(table_data, selected_team, selected_phase)
+
+    rows = len(filtered_data)
+    cols = len(filtered_data[0]) if rows > 0 else 0
+
+    left = 0.2  # inches
+    top = 1.0
+    width = 9.6
+    height = 5.5
+
+    merge_info = generate_merge_info(filtered_data)
+    add_table_to_slide(slide, filtered_data, merge_info, rows, cols, left, top, width, height)
+
+
+def generate_filtered_ppt(table_data, output_path, selected_team=None, selected_phase=None):
+    prs = Presentation()
+    create_filtered_slides(prs, table_data, selected_team, selected_phase)
+    prs.save(output_path)
+    print(f"PPT saved to: {output_path}")
+
+
+if __name__ == "__main__":
+    # Sample data format: Team | Phase | Date | Col1 | Col2 | ...
+    table_data = [
+        ['Team', 'Phase', 'Date', 'Status', 'Remarks'],
+        ['BT', 'ES', '2025-04-24', 'Pass', 'All good'],
+        ['BT', 'ES', '2025-04-25', 'Fail', 'Check logs'],
+        ['BT', 'DV', '2025-04-26', 'Pass', 'Retested'],
+        ['QA', 'ES', '2025-04-27', 'Pass', 'Looks fine'],
+    ]
+
+    selected_team = "BT"
+    selected_phase = "ES"
+    output_file = os.path.join(os.getcwd(), "filtered_report.pptx")
+
+    generate_filtered_ppt(table_data, output_file, selected_team, selected_phase)
