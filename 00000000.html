@@ -1,98 +1,132 @@
-from pptx import Presentation
-from pptx.util import Inches, Pt
-import os
-
-
-def add_table_to_slide(slide, table_data, merge_info, rows, cols, left, top, width, height):
-    # Convert dimensions to EMU if not already
-    if not isinstance(left, int): left = Inches(left)
-    if not isinstance(top, int): top = Inches(top)
-    if not isinstance(width, int): width = Inches(width)
-    if not isinstance(height, int): height = Inches(height)
-
+def add_table_to_slide(slide, data, merge_info, left, top, width, height):
+    rows = len(data)
+    cols = len(data[0])
     table_shape = slide.shapes.add_table(rows, cols, left, top, width, height)
     table = table_shape.table
+    
+    # Set column widths to fit slide width
+    for col in table.columns:
+        col.width = width // cols
+    
+    # Set row heights
+    for row in table.rows:
+        row.height = height // rows
+    
+    # Fill the table
+    for i, row_data in enumerate(data):
+        for j, cell_data in enumerate(row_data):
+            cell = table.cell(i, j)
+            if cell.text == "":
+                cell.text = str(cell_data)
+            para = cell.text_frame.paragraphs[0]
+            para.font.size = Pt(10)
+            para.font.color.rgb = RGBColor(0, 0, 0)
+    
+    # Apply merging
+    for merge in merge_info:
+        start_row, end_row, col_idx = merge
+        # Check if the range is already merged
+        if not is_range_merged(table, start_row, end_row, col_idx):
+            table.cell(start_row, col_idx).merge(table.cell(end_row, col_idx))
+    
+    return table
 
-    # Set uniform column widths
-    col_width = int(width / cols)
-    for i in range(cols):
-        table.columns[i].width = col_width
+def is_range_merged(table, start_row, end_row, col_idx):
+    # Check if any cell in the range is already merged
+    for i in range(start_row, end_row + 1):
+        cell = table.cell(i, col_idx)
+        if cell.is_merge_origin:
+            return True
+    return False
 
-    # Fill data
-    for i in range(rows):
-        for j in range(cols):
-            if i < len(table_data) and j < len(table_data[i]):
-                cell = table.cell(i, j)
-                cell.text = str(table_data[i][j])
-                for paragraph in cell.text_frame.paragraphs:
-                    for run in paragraph.runs:
-                        run.font.size = Pt(10)
+def is_range_merged(table, start_row, end_row, col_idx):
+    # Check if any cell in the range is already merged
+    for i in range(start_row, end_row + 1):
+        cell = table.cell(i, col_idx)
+        if cell.is_merge_origin:
+            return True
+    return False
 
-    # Apply merge info and remove duplicate merged texts
-    for (start_row, start_col, end_row, end_col) in merge_info:
-        cell = table.cell(start_row, start_col)
-        cell.merge(table.cell(end_row, end_col))
-        for i in range(start_row, end_row + 1):
-            for j in range(start_col, end_col + 1):
-                if i != start_row or j != start_col:
-                    table.cell(i, j).text = ""
-
-
-def filter_table_data(table_data, team=None, phase=None):
-    header = table_data[0]
-    filtered = [header]
-    for row in table_data[1:]:
-        if (team is None or row[0] == team) and (phase is None or row[1] == phase):
-            filtered.append(row)
-    return filtered
-
-
-def generate_merge_info(table_data):
-    # Example: Merge (0,0)-(1,0) for Team, (0,1)-(1,1) for Phase, (0,2)-(0,4) for header row
+def prepare_table_data(teams):
+    table_data = []
     merge_info = []
-    merge_info.append((0, 0, 1, 0))  # Merge 'Team'
-    merge_info.append((0, 1, 1, 1))  # Merge 'Phase'
-    merge_info.append((0, 2, 0, len(table_data[0]) - 1))  # Merge 'Date' across top if needed
-    return merge_info
-
-
-def create_filtered_slides(prs, table_data, selected_team, selected_phase):
-    slide_layout = prs.slide_layouts[6]
-    slide = prs.slides.add_slide(slide_layout)
-
-    filtered_data = filter_table_data(table_data, selected_team, selected_phase)
-
-    rows = len(filtered_data)
-    cols = len(filtered_data[0]) if rows > 0 else 0
-
-    left = 0.2  # inches
-    top = 1.0
-    width = 9.6
-    height = 5.5
-
-    merge_info = generate_merge_info(filtered_data)
-    add_table_to_slide(slide, filtered_data, merge_info, rows, cols, left, top, width, height)
-
-
-def generate_filtered_ppt(table_data, output_path, selected_team=None, selected_phase=None):
-    prs = Presentation()
-    create_filtered_slides(prs, table_data, selected_team, selected_phase)
-    prs.save(output_path)
-    print(f"PPT saved to: {output_path}")
-
-
-if __name__ == "__main__":
-    # Sample data format: Team | Phase | Date | Col1 | Col2 | ...
-    table_data = [
-        ['Team', 'Phase', 'Date', 'Status', 'Remarks'],
-        ['BT', 'ES', '2025-04-24', 'Pass', 'All good'],
-        ['BT', 'ES', '2025-04-25', 'Fail', 'Check logs'],
-        ['BT', 'DV', '2025-04-26', 'Pass', 'Retested'],
-        ['QA', 'ES', '2025-04-27', 'Pass', 'Looks fine'],
+    header = [
+        'Test Team', 'Date', 'Phase', 'Coverage Type', 'Total TCs',
+        'Coverage', 'Coverage %', 'Passed', 'Pass %', 'Failed', 'Fail %',
+        'Blocked', 'Block %', 'Unique Issues'
     ]
+    table_data.append(header)
+    current_row = 1  # since 0 is header
 
-    selected_team = "BT"
-    selected_phase = "ES"
-    output_file = os.path.join(os.getcwd(), "filtered_report.pptx")
+    for team in teams:
+        team_name = team['team_name']
+        team_start_row = current_row
+        for phase in team['phases']:
+            phase_name = phase['phase']
+            phase_date = phase['date']
+            coverage_types = phase['coverage_types']
+            unique_issue_count = phase['unique_issue_count']
+            phase_start_row = current_row
+            for ct in coverage_types:
+                ct_metrics = ct['metrics']
+                row = [
+                    team_name if current_row == team_start_row else "",  # Only set team name for the first row of the team
+                    phase_date if current_row == phase_start_row else "",  # Only set phase date for the first row of the phase
+                    phase_name if current_row == phase_start_row else "",  # Only set phase name for the first row of the phase
+                    ct['coverage_type'],
+                    ct_metrics['total'], ct_metrics['coverage'], f"{ct_metrics['coverage_percentage']:.2f}%",
+                    ct_metrics['passed'], f"{ct_metrics['passed_percentage']:.2f}%",
+                    ct_metrics['failed'], f"{ct_metrics['failed_percentage']:.2f}%",
+                    ct_metrics['blocked'], f"{ct_metrics['blocked_percentage']:.2f}%",
+                    unique_issue_count
+                ]
+                table_data.append(row)
+                current_row += 1
+            # Merge phase columns
+            if current_row > phase_start_row + 1:  # Only merge if there are multiple rows for this phase
+                merge_info.append((phase_start_row, current_row - 1, 1))  # Date
+                merge_info.append((phase_start_row, current_row - 1, 2))  # Phase
+        # Merge team column
+        if current_row > team_start_row + 1:  # Only merge if there are multiple rows for this team
+            merge_info.append((team_start_row, current_row - 1, 0))  # Team
+    return table_data, merge_info
 
-    generate_filtered_ppt(table_data, output_file, selected_team, selected_phase)
+def create_slides(prs, filtered_data, selected_teams=None, selected_phases=None):
+    for sp in filtered_data:
+        sp_name = sp['sp_name']
+        teams = sp['teams']
+        slide_layout = prs.slide_layouts[5]  # Blank slide
+        slide = prs.slides.add_slide(slide_layout)
+        
+        # Add title manually
+        title_shape = slide.shapes.add_textbox(Inches(0.5), Inches(0.3), Inches(11), Inches(0.5))
+        title_frame = title_shape.text_frame
+        title_frame.text = f"SP: {sp_name}"
+        title_frame.paragraphs[0].font.size = Pt(20)
+        
+        # Filter teams and phases based on selection
+        filtered_teams = []
+        for team in teams:
+            if selected_teams is None or team['team_name'] in selected_teams:
+                filtered_phases = []
+                for phase in team['phases']:
+                    if selected_phases is None or phase['phase'] in selected_phases:
+                        filtered_phases.append(phase)
+                if filtered_phases:
+                    filtered_teams.append({'team_name': team['team_name'], 'phases': filtered_phases})
+        
+        # Prepare data
+        table_data, merge_info = prepare_table_data(filtered_teams)
+        
+        if table_data:  # Only add a table if there is data
+            # Table positioning and dimensions
+            left = Inches(0.2)
+            top = Inches(1.0)
+            width = Inches(12.8 - 0.4)  # leaving 0.2 inch margin on each side
+            height = Inches(0.4 * len(table_data))  # rough estimate per row
+            add_table_to_slide(slide, table_data, merge_info, left, top, width, height)
+
+def generate_ppt(filtered_data, output_filename='report.pptx', selected_teams=None, selected_phases=None):
+    prs = Presentation()
+    create_slides(prs, filtered_data, selected_teams, selected_phases)
+    prs.save(output_filename)
