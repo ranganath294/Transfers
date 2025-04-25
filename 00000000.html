@@ -270,3 +270,4 @@ def create_slides(prs, filtered_data, selected_teams=None, selected_phases=None,
 def generate_ppt(filtered_data, output_filename='report.pptx', selected_teams=None, selected_phases=None, page_config='team'):
     prs = Presentation()
     create_slides(prs, filtered_data, selected_teams, selected_phases, page_config)
+    prs.save(output_filename)
