@@ -1,61 +1,29 @@
-def get_req_data_from_coverage_data(sp:str, team:str, phase:str, coverage_data):
-    for sp_data in coverage_data:
-        if sp_data["sp_name"] == sp:
-            for team_data in sp_data["teams"]:
-                if team_data["team_name"] == team:
-                    for phase_data in team_data["phases"]:
-                        if phase_data["phase"] == phase:
-                            metrics = phase_data["metrics"]
-                            return {
-                                "coverage_percentage": metrics["coverage_percentage"],
-                                "passed_percentage": metrics["passed_percentage"]
-                            }
-    return {
-        "coverage_percentage": None,
-        "passed_percentage": None
-            }
-
-def create_projection_sheet_pivot_graph_imgs(sp: str, team: str, phase: str, csv_path:str, coverage_data, rows_to_plot:list):
-    # Read the CSV file
-    df = pd.read_csv(csv_path, index_col=0)
-
-    # Remove columns that are not valid dates
-    valid_columns = [col for col in df.columns if is_valid_date(col)]
-    df = df[valid_columns]
-    
-    # Convert percentage strings to numeric values
-    for column in df.columns:
-        df[column] = df[column].str.rstrip('%').astype('float')
-    
-    # Get current date and coverage/pass percentages
-    current_date = datetime.now()
-    req_values = get_req_data_from_coverage_data(sp, team, phase, coverage_data)
-    current_coverage_value = req_values["coverage_percentage"]
-    current_pass_value = req_values["passed_percentage"]
-
     # Plot the data
     num_columns = df.shape[1] + 1
     plt.figure(figsize=(max(num_columns, 15), 9))
-    
+
+    # Plot existing lines for each row
     for row in rows_to_plot:
         if row in df.index:
             plt.plot(df.columns, df.loc[row], label=row, marker='o')  # Add points as dots
+
+    # Plot current coverage and pass percentage as 'x'
+    if current_coverage_value is not None:
+        plt.scatter(df.columns[-1], current_coverage_value, color='red', marker='x', s=100, label='Current Coverage')
+        plt.axhline(y=current_coverage_value, xmax=(len(df.columns) - 1)/len(df.columns), color='red', linestyle='--', linewidth=1)
+        plt.axvline(x=df.columns[-1], ymax=(current_coverage_value / 100), color='red', linestyle='--', linewidth=1)
+
+    if current_pass_value is not None:
+        plt.scatter(df.columns[-1], current_pass_value, color='blue', marker='x', s=100, label='Current Pass %')
+        plt.axhline(y=current_pass_value, xmax=(len(df.columns) - 1)/len(df.columns), color='blue', linestyle='--', linewidth=1)
+        plt.axvline(x=df.columns[-1], ymax=(current_pass_value / 100), color='blue', linestyle='--', linewidth=1)
 
     # Customize the plot
     plt.xlabel('Dates')
     plt.ylabel('Percentages')
     plt.title('Pivot Graph')
     plt.legend()
-    plt.grid(axis='y')  # Add horizontal grid lines only
-    
-    # Ensure the directory exists
-    output_dir = os.path.join(ConfigPaths.root_dir, "projection_sheets_pivot_graphs")
-    if not os.path.exists(output_dir):
-        os.makedirs(output_dir)
-    
-    # Save the plot as a jpg file with the same name as the CSV file
-    output_filename = os.path.splitext(os.path.basename(csv_path))[0] + '.jpg'
-    output_file_path = os.path.join(output_dir, output_filename)
-    plt.savefig(output_file_path)
-    print(f"saving and closing projection graph jpg for {csv_path}")
-    plt.close()
+    plt.grid(axis='y')
+
+    # Force axes to start from 0%
+    plt.ylim(bottom=0)
