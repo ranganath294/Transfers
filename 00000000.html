@@ -1,33 +1,46 @@
-    # Plot the data (with original df.columns)
-    num_columns = df.shape[1] + 1
-    plt.figure(figsize=(max(num_columns, 15), 9))
-
-    # Keep original x-ticks
+    # Prepare x-axis dates
     x_labels = df.columns
     x_pos = pd.to_datetime(x_labels, errors='coerce')
 
     for row in rows_to_plot:
         if row in df.index:
-            plt.plot(x_pos, df.loc[row], label=row, marker='o')  # Add points as dots
+            color = None
+            if row.lower() == "goal coverage":
+                color = 'blue'
+            elif row.lower() == "goal pass":
+                color = 'green'
+            plt.plot(x_pos, df.loc[row], label=row, marker='o', color=color)
 
-    # Plot current coverage/pass at datetime.now()
     now = datetime.now()
 
+    # Plot current coverage with annotation
     if current_coverage_value is not None:
         plt.scatter(now, current_coverage_value, color='red', marker='x', s=100, label='Current Coverage')
         plt.plot([now, now], [0, current_coverage_value], 'r--', linewidth=1)
         plt.plot([x_pos.min(), now], [current_coverage_value, current_coverage_value], 'r--', linewidth=1)
+        plt.annotate(f'{current_coverage_value:.1f}%', 
+                     xy=(x_pos.min(), current_coverage_value), 
+                     xytext=(-5, 0), textcoords='offset points',
+                     ha='right', va='center', color='red', fontsize=10)
 
+    # Plot current pass with annotation
     if current_pass_value is not None:
-        plt.scatter(now, current_pass_value, color='blue', marker='x', s=100, label='Current Pass %')
-        plt.plot([now, now], [0, current_pass_value], 'b--', linewidth=1)
-        plt.plot([x_pos.min(), now], [current_pass_value, current_pass_value], 'b--', linewidth=1)
+        plt.scatter(now, current_pass_value, color='orange', marker='x', s=100, label='Current Pass %')
+        plt.plot([now, now], [0, current_pass_value], 'orange', linestyle='--', linewidth=1)
+        plt.plot([x_pos.min(), now], [current_pass_value, current_pass_value], 'orange', linestyle='--', linewidth=1)
+        plt.annotate(f'{current_pass_value:.1f}%', 
+                     xy=(x_pos.min(), current_pass_value), 
+                     xytext=(-5, 0), textcoords='offset points',
+                     ha='right', va='center', color='orange', fontsize=10)
 
-    # Final formatting
+    # Set axis limits
+    plt.xlim(left=x_pos.min(), right=now)
+    plt.ylim(bottom=0)
+
+    # Format and save
     plt.xlabel('Dates')
     plt.ylabel('Percentages')
     plt.title('Pivot Graph')
     plt.legend()
     plt.grid(axis='y')
-    plt.ylim(bottom=0)
     plt.xticks(ticks=x_pos, labels=x_labels, rotation=45)
