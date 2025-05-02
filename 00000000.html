@@ -1,29 +1,33 @@
-    # Plot the data
+    # Plot the data (with original df.columns)
     num_columns = df.shape[1] + 1
     plt.figure(figsize=(max(num_columns, 15), 9))
 
-    # Plot existing lines for each row
+    # Keep original x-ticks
+    x_labels = df.columns
+    x_pos = pd.to_datetime(x_labels, errors='coerce')
+
     for row in rows_to_plot:
         if row in df.index:
-            plt.plot(df.columns, df.loc[row], label=row, marker='o')  # Add points as dots
+            plt.plot(x_pos, df.loc[row], label=row, marker='o')  # Add points as dots
 
-    # Plot current coverage and pass percentage as 'x'
+    # Plot current coverage/pass at datetime.now()
+    now = datetime.now()
+
     if current_coverage_value is not None:
-        plt.scatter(df.columns[-1], current_coverage_value, color='red', marker='x', s=100, label='Current Coverage')
-        plt.axhline(y=current_coverage_value, xmax=(len(df.columns) - 1)/len(df.columns), color='red', linestyle='--', linewidth=1)
-        plt.axvline(x=df.columns[-1], ymax=(current_coverage_value / 100), color='red', linestyle='--', linewidth=1)
+        plt.scatter(now, current_coverage_value, color='red', marker='x', s=100, label='Current Coverage')
+        plt.plot([now, now], [0, current_coverage_value], 'r--', linewidth=1)
+        plt.plot([x_pos.min(), now], [current_coverage_value, current_coverage_value], 'r--', linewidth=1)
 
     if current_pass_value is not None:
-        plt.scatter(df.columns[-1], current_pass_value, color='blue', marker='x', s=100, label='Current Pass %')
-        plt.axhline(y=current_pass_value, xmax=(len(df.columns) - 1)/len(df.columns), color='blue', linestyle='--', linewidth=1)
-        plt.axvline(x=df.columns[-1], ymax=(current_pass_value / 100), color='blue', linestyle='--', linewidth=1)
+        plt.scatter(now, current_pass_value, color='blue', marker='x', s=100, label='Current Pass %')
+        plt.plot([now, now], [0, current_pass_value], 'b--', linewidth=1)
+        plt.plot([x_pos.min(), now], [current_pass_value, current_pass_value], 'b--', linewidth=1)
 
-    # Customize the plot
+    # Final formatting
     plt.xlabel('Dates')
     plt.ylabel('Percentages')
     plt.title('Pivot Graph')
     plt.legend()
     plt.grid(axis='y')
-
-    # Force axes to start from 0%
     plt.ylim(bottom=0)
+    plt.xticks(ticks=x_pos, labels=x_labels, rotation=45)
