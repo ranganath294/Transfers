@@ -1,273 +1,61 @@
-# Function to add a table to a slide
-def add_table_to_slide(slide, data, merge_info, left, top, width, height):
-    rows = len(data)
-    cols = len(data[0])
-    table_shape = slide.shapes.add_table(rows, cols, left, top, width, height)
-    table = table_shape.table
-    # Define proportional column widths
-    column_widths = [
-        Inches(0.7),  # Test Team
-        Inches(0.9),  # Date
-        Inches(0.6),  # Phase
-        Inches(0.8),  # Coverage Type
-        Inches(0.7),  # Total TCs
-        Inches(0.7),  # Coverage
-        Inches(0.7),  # Coverage %
-        Inches(0.7),  # Passed
-        Inches(0.7),  # Pass %
-        Inches(0.7),  # Failed
-        Inches(0.7),  # Fail %
-        Inches(0.7),  # Blocked
-        Inches(0.7),  # Block %
-        Inches(0.7)   # Unique Issues
-    ]
-    # Set column widths
-    for i, col_width in enumerate(column_widths):
-        table.columns[i].width = col_width
-    # Set row heights
-    for row in table.rows:
-        row.height = Inches(0.4)  # Adjust row height as needed
-    # Fill the table
-    for i, row_data in enumerate(data):
-        for j, cell_data in enumerate(row_data):
-            cell = table.cell(i, j)
-            if cell.text == "":
-                cell.text = str(cell_data)
-            para = cell.text_frame.paragraphs[0]
-            para.font.size = Pt(10)
-            para.font.color.rgb = RGBColor(0, 0, 0)
-    # Apply merging
-    for merge in merge_info:
-        start_row, end_row, col_idx = merge
-        # Check if the range is already merged
-        if not is_range_merged(table, start_row, end_row, col_idx):
-            table.cell(start_row, col_idx).merge(table.cell(end_row, col_idx))
-    return table
+def get_req_data_from_coverage_data(sp:str, team:str, phase:str, coverage_data):
+    for sp_data in coverage_data:
+        if sp_data["sp_name"] == sp:
+            for team_data in sp_data["teams"]:
+                if team_data["team_name"] == team:
+                    for phase_data in team_data["phases"]:
+                        if phase_data["phase"] == phase:
+                            metrics = phase_data["metrics"]
+                            return {
+                                "coverage_percentage": metrics["coverage_percentage"],
+                                "passed_percentage": metrics["passed_percentage"]
+                            }
+    return {
+        "coverage_percentage": None,
+        "passed_percentage": None
+            }
 
-def is_range_merged(table, start_row, end_row, col_idx):
-    # Check if any cell in the range is already merged
-    for i in range(start_row, end_row + 1):
-        cell = table.cell(i, col_idx)
-        if cell.is_merge_origin:
-            return True
-    return False
+def create_projection_sheet_pivot_graph_imgs(sp: str, team: str, phase: str, csv_path:str, coverage_data, rows_to_plot:list):
+    # Read the CSV file
+    df = pd.read_csv(csv_path, index_col=0)
 
-def prepare_table_data(teams):
-    table_data = []
-    merge_info = []
-    header = [
-        'Test Team', 'Date', 'Phase', 'Coverage Type', 'Total TCs',
-        'Coverage', 'Coverage %', 'Passed', 'Pass %', 'Failed', 'Fail %',
-        'Blocked', 'Block %', 'Unique Issues'
-    ]
-    table_data.append(header)
-    current_row = 1  # since 0 is header
-    for team in teams:
-        team_name = team['team_name']
-        team_start_row = current_row
-        for phase in team['phases']:
-            phase_name = phase['phase']
-            phase_date = phase['date']
-            coverage_types = phase['coverage_types']
-            unique_issue_count = phase['unique_issue_count']
-            phase_start_row = current_row
-            for ct in coverage_types:
-                ct_metrics = ct['metrics']
-                row = [
-                    team_name if current_row == team_start_row else "",  # Only set team name for the first row of the team
-                    phase_date if current_row == phase_start_row else "",  # Only set phase date for the first row of the phase
-                    phase_name if current_row == phase_start_row else "",  # Only set phase name for the first row of the phase
-                    ct['coverage_type'],
-                    ct_metrics['total'], ct_metrics['coverage'], f"{ct_metrics['coverage_percentage']:.2f}%",
-                    ct_metrics['passed'], f"{ct_metrics['passed_percentage']:.2f}%",
-                    ct_metrics['failed'], f"{ct_metrics['failed_percentage']:.2f}%",
-                    ct_metrics['blocked'], f"{ct_metrics['blocked_percentage']:.2f}%",
-                    unique_issue_count
-                ]
-                table_data.append(row)
-                current_row += 1
-            # Merge phase columns
-            if current_row > phase_start_row + 1:  # Only merge if there are multiple rows for this phase
-                merge_info.append((phase_start_row, current_row - 1, 1))  # Date
-                merge_info.append((phase_start_row, current_row - 1, 2))  # Phase
-            # Merge team column
-            if current_row > team_start_row + 1:  # Only merge if there are multiple rows for this team
-                merge_info.append((team_start_row, current_row - 1, 0))  # Team
-    return table_data, merge_info
+    # Remove columns that are not valid dates
+    valid_columns = [col for col in df.columns if is_valid_date(col)]
+    df = df[valid_columns]
+    
+    # Convert percentage strings to numeric values
+    for column in df.columns:
+        df[column] = df[column].str.rstrip('%').astype('float')
+    
+    # Get current date and coverage/pass percentages
+    current_date = datetime.now()
+    req_values = get_req_data_from_coverage_data(sp, team, phase, coverage_data)
+    current_coverage_value = req_values["coverage_percentage"]
+    current_pass_value = req_values["passed_percentage"]
 
-def create_slides(prs, filtered_data, selected_teams=None, selected_phases=None, page_config='single'):
-    for sp in filtered_data:
-        sp_name = sp['sp_name']
-        teams = sp['teams']
-        slide_layout = prs.slide_layouts[5]  # Blank slide
-        # Filter teams and phases based on selection
-        filtered_teams = []
-        for team in teams:
-            if selected_teams is None or team['team_name'] in selected_teams:
-                filtered_phases = []
-                for phase in team['phases']:
-                    if selected_phases is None or phase['phase'] in selected_phases:
-                        filtered_phases.append(phase)
-                if filtered_phases:
-                    filtered_teams.append({'team_name': team['team_name'], 'phases': filtered_phases})
-        
-        if page_config == 'single':
-            # Prepare data for all teams and phases
-            table_data, merge_info = prepare_table_data(filtered_teams)
-            if table_data:  # Only add a table if there is data
-                slide = prs.slides.add_slide(slide_layout)
-                # Add title manually
-                title_shape = slide.shapes.add_textbox(Inches(0.5), Inches(0.3), Inches(11), Inches(0.5))
-                title_frame = title_shape.text_frame
-                title_frame.text = f"SP: {sp_name} Teams: {', '.join(map(str, selected_teams))} Phases {', '.join(map(str, selected_phases))}"
-                title_frame.paragraphs[0].font.size = Pt(20)
-                # Table positioning and dimensions
-                left = Inches(0.0)
-                top = Inches(1.0)
-                width = Inches(11.6)  # Adjusted width to fit within the page
-                height = Inches(0.4 * len(table_data))  # rough estimate per row
-                add_table_to_slide(slide, table_data, merge_info, left, top, width, height)
-        
-        elif page_config == 'team':
-            # Prepare data for each team
-            for team in filtered_teams:
-                team_data, team_merge_info = prepare_table_data([team])
-                if team_data:  # Only add a table if there is data
-                    slide = prs.slides.add_slide(slide_layout)
-                    # Add title manually
-                    title_shape = slide.shapes.add_textbox(Inches(0.5), Inches(0.3), Inches(11), Inches(0.5))
-                    title_frame = title_shape.text_frame
-                    title_frame.text = f"{sp_name} - Team: {team['team_name']}"
-                    title_frame.paragraphs[0].font.size = Pt(20)
-                    # Table positioning and dimensions
-                    left = Inches(0.0)
-                    top = Inches(1.0)
-                    width = Inches(11.6)  # Adjusted width to fit within the page
-                    height = Inches(0.4 * len(team_data))  # rough estimate per row
-                    add_table_to_slide(slide, team_data, team_merge_info, left, top, width, height)
-        
-        elif page_config == 'phase':
-            # Prepare data for each phase
-            all_phases = []
-            for team in filtered_teams:
-                all_phases.extend(team['phases'])
-            phase_dict = {}
-            for phase in all_phases:
-                phase_name = phase['phase']
-                if phase_name not in phase_dict:
-                    phase_dict[phase_name] = []
-                phase_dict[phase_name].append(phase)
-            for phase_name, phases in phase_dict.items():
-                phase_data = []
-                phase_merge_info = []
-                header = [
-                    'Test Team', 'Date', 'Phase', 'Coverage Type', 'Total TCs',
-                    'Coverage', 'Coverage %', 'Passed', 'Pass %', 'Failed', 'Fail %',
-                    'Blocked', 'Block %', 'Unique Issues'
-                ]
-                phase_data.append(header)
-                current_row = 1  # since 0 is header
-                for team in filtered_teams:
-                    team_name = team['team_name']
-                    team_start_row = current_row
-                    for phase in team['phases']:
-                        if phase['phase'] == phase_name:
-                            phase_date = phase['date']
-                            coverage_types = phase['coverage_types']
-                            unique_issue_count = phase['unique_issue_count']
-                            phase_start_row = current_row
-                            for ct in coverage_types:
-                                ct_metrics = ct['metrics']
-                                row = [
-                                    team_name if current_row == team_start_row else "",  # Only set team name for the first row of the team
-                                    phase_date if current_row == phase_start_row else "",  # Only set phase date for the first row of the phase
-                                    phase_name if current_row == phase_start_row else "",  # Only set phase name for the first row of the phase
-                                    ct['coverage_type'],
-                                    ct_metrics['total'], ct_metrics['coverage'], f"{ct_metrics['coverage_percentage']:.2f}%",
-                                    ct_metrics['passed'], f"{ct_metrics['passed_percentage']:.2f}%",
-                                    ct_metrics['failed'], f"{ct_metrics['failed_percentage']:.2f}%",
-                                    ct_metrics['blocked'], f"{ct_metrics['blocked_percentage']:.2f}%",
-                                    unique_issue_count
-                                ]
-                                phase_data.append(row)
-                                current_row += 1
-                            # Merge phase columns
-                            if current_row > phase_start_row + 1:  # Only merge if there are multiple rows for this phase
-                                phase_merge_info.append((phase_start_row, current_row - 1, 1))  # Date
-                                phase_merge_info.append((phase_start_row, current_row - 1, 2))  # Phase
-                            # Merge team column
-                            if current_row > team_start_row + 1:  # Only merge if there are multiple rows for this team
-                                phase_merge_info.append((team_start_row, current_row - 1, 0))  # Team
-                if phase_data:  # Only add a table if there is data
-                    slide = prs.slides.add_slide(slide_layout)
-                    # Add title manually
-                    title_shape = slide.shapes.add_textbox(Inches(0.5), Inches(0.3), Inches(11), Inches(0.5))
-                    title_frame = title_shape.text_frame
-                    title_frame.text = f"{sp_name} - Phase: {phase_name}"
-                    title_frame.paragraphs[0].font.size = Pt(20)
-                    # Table positioning and dimensions
-                    left = Inches(0.0)
-                    top = Inches(1.0)
-                    width = Inches(11.6)  # Adjusted width to fit within the page
-                    height = Inches(0.4 * len(phase_data))  # rough estimate per row
-                    add_table_to_slide(slide, phase_data, phase_merge_info, left, top, width, height)
-        
-        elif page_config == 'team_phase':
-            # Prepare data for each team and phase combination
-            for team in filtered_teams:
-                team_name = team['team_name']
-                for phase in team['phases']:
-                    phase_name = phase['phase']
-                    phase_date = phase['date']
-                    coverage_types = phase['coverage_types']
-                    unique_issue_count = phase['unique_issue_count']
-                    phase_data = []
-                    phase_merge_info = []
-                    header = [
-                        'Test Team', 'Date', 'Phase', 'Coverage Type', 'Total TCs',
-                        'Coverage', 'Coverage %', 'Passed', 'Pass %', 'Failed', 'Fail %',
-                        'Blocked', 'Block %', 'Unique Issues'
-                    ]
-                    phase_data.append(header)
-                    current_row = 1  # since 0 is header
-                    phase_start_row = current_row
-                    for ct in coverage_types:
-                        ct_metrics = ct['metrics']
-                        row = [
-                            team_name if current_row == phase_start_row else "",  # Only set team name for the first row of the phase
-                            phase_date if current_row == phase_start_row else "",  # Only set phase date for the first row of the phase
-                            phase_name if current_row == phase_start_row else "",  # Only set phase name for the first row of the phase
-                            ct['coverage_type'],
-                            ct_metrics['total'], ct_metrics['coverage'], f"{ct_metrics['coverage_percentage']:.2f}%",
-                            ct_metrics['passed'], f"{ct_metrics['passed_percentage']:.2f}%",
-                            ct_metrics['failed'], f"{ct_metrics['failed_percentage']:.2f}%",
-                            ct_metrics['blocked'], f"{ct_metrics['blocked_percentage']:.2f}%",
-                            unique_issue_count
-                        ]
-                        phase_data.append(row)
-                        current_row += 1
-                    # Merge phase columns
-                    if current_row > phase_start_row + 1:  # Only merge if there are multiple rows for this phase
-                        phase_merge_info.append((phase_start_row, current_row - 1, 1))  # Date
-                        phase_merge_info.append((phase_start_row, current_row - 1, 2))  # Phase
-                    # Merge team column
-                    if current_row > phase_start_row + 1:  # Only merge if there are multiple rows for this team
-                        phase_merge_info.append((phase_start_row, current_row - 1, 0))  # Team
-                    if phase_data:  # Only add a table if there is data
-                        slide = prs.slides.add_slide(slide_layout)
-                        # Add title manually
-                        title_shape = slide.shapes.add_textbox(Inches(0.5), Inches(0.3), Inches(11), Inches(0.5))
-                        title_frame = title_shape.text_frame
-                        title_frame.text = f"{sp_name} - Team: {team_name} - Phase: {phase_name}"
-                        title_frame.paragraphs[0].font.size = Pt(20)
-                        # Table positioning and dimensions
-                        left = Inches(0.0)
-                        top = Inches(1.0)
-                        width = Inches(11.6)  # Adjusted width to fit within the page
-                        height = Inches(0.4 * len(phase_data))  # rough estimate per row
-                        add_table_to_slide(slide, phase_data, phase_merge_info, left, top, width, height)
+    # Plot the data
+    num_columns = df.shape[1] + 1
+    plt.figure(figsize=(max(num_columns, 15), 9))
+    
+    for row in rows_to_plot:
+        if row in df.index:
+            plt.plot(df.columns, df.loc[row], label=row, marker='o')  # Add points as dots
 
-def generate_ppt(filtered_data, output_filename='report.pptx', selected_teams=None, selected_phases=None, page_config='team'):
-    prs = Presentation()
-    create_slides(prs, filtered_data, selected_teams, selected_phases, page_config)
-    prs.save(output_filename)
+    # Customize the plot
+    plt.xlabel('Dates')
+    plt.ylabel('Percentages')
+    plt.title('Pivot Graph')
+    plt.legend()
+    plt.grid(axis='y')  # Add horizontal grid lines only
+    
+    # Ensure the directory exists
+    output_dir = os.path.join(ConfigPaths.root_dir, "projection_sheets_pivot_graphs")
+    if not os.path.exists(output_dir):
+        os.makedirs(output_dir)
+    
+    # Save the plot as a jpg file with the same name as the CSV file
+    output_filename = os.path.splitext(os.path.basename(csv_path))[0] + '.jpg'
+    output_file_path = os.path.join(output_dir, output_filename)
+    plt.savefig(output_file_path)
+    print(f"saving and closing projection graph jpg for {csv_path}")
+    plt.close()
