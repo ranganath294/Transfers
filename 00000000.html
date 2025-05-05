@@ -1,86 +1,50 @@
-def add_coverage_report_slides(prs, coverage_summary_data, selected_sp, selected_teams=None, selected_phases=None):
-    for sp in coverage_summary_data:
-        sp_name = sp['sp_name']
-        teams = sp['teams']
-        
-        # Filter teams and phases based on selection
-        filtered_teams = []
-        for team in teams:
-            if selected_teams is None or team['team_name'] in selected_teams:
-                filtered_phases = []
-                for phase in team['phases']:
-                    if selected_phases is None or phase['phase'] in selected_phases:
-                        filtered_phases.append(phase)
-                if filtered_phases:
-                    filtered_teams.append({'team_name': team['team_name'], 'phases': filtered_phases})
-        
-        # Prepare data for each team and phase combination
-        for team in filtered_teams:
-            team_name = team['team_name']
-            for phase in team['phases']:
-                phase_name = phase['phase']
-                phase_date = phase['date']
-                coverage_types = phase['coverage_types']
-                unique_issue_count = phase['unique_issue_count']
-                phase_data, phase_merge_info = prepare_table_data([{'team_name': team_name, 'phases': [phase]}])
-                if phase_data:  # Only add a table if there is data
-                    title_text = f"{sp_name} {team_name} {phase_name}"
-                    add_slide_with_table(prs, title_text, phase_data, phase_merge_info, Inches(0.0), Inches(2), Inches(11.6), Inches(0.4 * len(phase_data)))
+def add_combined_coverage_slide(prs, coverage_summary_data, selected_sp, selected_teams=None, selected_phases=None):
+    for sp in coverage_summary_data:
+        sp_name = sp['sp_name']
+        teams = sp['teams']
 
+        for team in teams:
+            if selected_teams is None or team['team_name'] in selected_teams:
+                team_name = team['team_name']
 
-def add_test_group_percentages_slides(prs, coverage_summary_data, selected_sp, selected_teams, selected_phases):
-    for team_name in selected_teams:
-        for phase_name in selected_phases:
-            test_group_percentages = calculate_test_group_percentages_data(selected_sp, team_name, phase_name, coverage_summary_data)
-            if test_group_percentages:
-                test_group_table_data = [['Test Group', 'Test Group Percentage']] + [[tg['test_group'], format_percentage(tg['test_group_percentage'])] for tg in test_group_percentages]
-                test_group_title_text = f"{selected_sp} {team_name} {phase_name} Test Group Percentages"
-                test_group_slide_layout = prs.slide_layouts[5]  # Title and Content slide
-                test_group_slide = prs.slides.add_slide(test_group_slide_layout)
-                test_group_title = test_group_slide.shapes.title
-                test_group_title.text = test_group_title_text
-                add_general_table_to_slide(test_group_slide, test_group_table_data, Inches(3.0), Inches(2), Inches(11.6), Inches(0.4 * len(test_group_table_data)))
+                for phase in team['phases']:
+                    if selected_phases is None or phase['phase'] in selected_phases:
+                        phase_name = phase['phase']
 
+                        # Prepare main coverage report data
+                        phase_data, phase_merge_info = prepare_table_data([{'team_name': team_name, 'phases': [phase]}])
+                        if not phase_data:
+                            continue
 
-def add_subsystem_percentages_slides(prs, coverage_summary_data, selected_sp, selected_teams, selected_phases):
-    for team_name in selected_teams:
-        for phase_name in selected_phases:
-            subsystem_percentages = calculate_subsystem_percentages_data(selected_sp, team_name, phase_name, coverage_summary_data)
-            if subsystem_percentages:
-                test_group_table_data = [['Subsystem', 'Subsystem Percentage']] + [[tg['subsystem'], format_percentage(tg['subsystemPercentage'])] for tg in subsystem_percentages]
-                test_group_title_text = f"{selected_sp} {team_name} {phase_name} Subsystem Percentages"
-                test_group_slide_layout = prs.slide_layouts[5]  # Title and Content slide
-                test_group_slide = prs.slides.add_slide(test_group_slide_layout)
-                test_group_title = test_group_slide.shapes.title
-                test_group_title.text = test_group_title_text
-                add_general_table_to_slide(test_group_slide, test_group_table_data, Inches(3.0), Inches(2), Inches(11.6), Inches(0.4 * len(test_group_table_data)))
+                        # Add slide
+                        slide = prs.slides.add_slide(prs.slide_layouts[5])
+                        slide.shapes.title.text = f"{sp_name} {team_name} {phase_name}"
 
-def add_general_table_to_slide(slide, data, left, top, width, height):
-    rows = len(data)
-    cols = len(data[0])
-    table_shape = slide.shapes.add_table(rows, cols, left, top, width, height)
-    table = table_shape.table
-    # Define proportional column widths
-    column_widths = [Inches(2.0)] * cols  # Adjust column widths as needed
-    # column_widths = [width / cols] * cols
-    # Set column widths
-    for i, col_width in enumerate(column_widths):
-        table.columns[i].width = col_width
-    
-    # row_height = height / rows
-    
-    # Set row heights
-    for row in table.rows:
-        row.height = Inches(0.4)  # Adjust row height as needed
-        # row.height = row_height
-    
-    # Fill the table
-    for i, row_data in enumerate(data):
-        for j, cell_data in enumerate(row_data):
-            cell = table.cell(i, j)
-            if cell.text == "":
-                cell.text = str(cell_data)
-            para = cell.text_frame.paragraphs[0]
-            para.font.size = Pt(10)
-            para.font.color.rgb = RGBColor(0, 0, 0)
-    return table
+                        # Main coverage report table on top
+                        add_general_table_to_slide(
+                            slide, phase_data, Inches(0.0), Inches(1.5), Inches(11.6), Inches(0.4 * len(phase_data))
+                        )
+
+                        # Bottom half tables (side-by-side)
+                        # Fixed space assignment (regardless of number of rows)
+                        test_group_percentages = calculate_test_group_percentages_data(selected_sp, team_name, phase_name, coverage_summary_data)
+                        if test_group_percentages:
+                            test_group_table_data = [['Test Group', 'Test Group Percentage']] + [
+                                [tg['test_group'], format_percentage(tg['test_group_percentage'])] for tg in test_group_percentages
+                            ]
+                            add_general_table_to_slide(
+                                slide, test_group_table_data,
+                                left=Inches(0.3), top=Inches(1.5 + 0.4 * len(phase_data) + 0.5),
+                                width=Inches(5.5), height=Inches(3.0)
+                            )
+
+                        subsystem_percentages = calculate_subsystem_percentages_data(selected_sp, team_name, phase_name, coverage_summary_data)
+                        if subsystem_percentages:
+                            subsystem_table_data = [['Subsystem', 'Subsystem Percentage']] + [
+                                [tg['subsystem'], format_percentage(tg['subsystemPercentage'])] for tg in subsystem_percentages
+                            ]
+                            add_general_table_to_slide(
+                                slide, subsystem_table_data,
+                                left=Inches(6.0), top=Inches(1.5 + 0.4 * len(phase_data) + 0.5),
+                                width=Inches(5.5), height=Inches(3.0)
+                            )
