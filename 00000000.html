@@ -65,6 +65,31 @@
 .coverage-table tbody tr:nth-child(even) {
     background-color: #f9f9f9;
 }
+.details-links {
+    display: flex;
+    gap: 10px;
+}
+.details-links a {
+    display: inline-block;
+    padding: 4px 8px;
+    border-radius: 4px;
+    text-decoration: none;
+    font-weight: 500;
+    font-size: 14px;
+    transition: all 0.2s ease;
+}
+.excel-link {
+    background-color: #217346; /* Excel green color */
+    color: white !important;
+}
+.ppt-link {
+    background-color: #D04423; /* PowerPoint orange color */
+    color: white !important;
+}
+.details-links a:hover {
+    opacity: 0.85;
+    transform: translateY(-1px);
+}
 </style>
 <script>
     document.addEventListener('DOMContentLoaded', function() {
@@ -148,6 +173,7 @@
             const headers = [
                 'SP Name',
                 'Test Team',
+                'Details',
                 'Phase',
                 'Date',
                 'Projected Coverage %',
@@ -191,6 +217,30 @@
                             tdTeam.textContent = team.team_name;
                             tdTeam.rowSpan = teamRowspan;
                             tr.appendChild(tdTeam);
+                            
+                            const tdDetails = document.createElement('td');
+                            tdDetails.rowSpan = teamRowspan;
+                            
+                            const linksDiv = document.createElement('div');
+                            linksDiv.className = 'details-links';
+                            
+                            // Create Excel link
+                            const excelLink = document.createElement('a');
+                            excelLink.href = `/download_excel/?sp=${encodeURIComponent(sp.sp_name)}&team=${encodeURIComponent(team.team_name)}`;
+                            excelLink.className = 'excel-link';
+                            excelLink.textContent = 'Excel';
+                            linksDiv.appendChild(excelLink);
+                            
+                            // Create PPT link
+                            const pptLink = document.createElement('a');
+                            pptLink.href = `/download_ppt/?sp=${encodeURIComponent(sp.sp_name)}&team=${encodeURIComponent(team.team_name)}`;
+                            pptLink.className = 'ppt-link';
+                            pptLink.textContent = 'PPT';
+                            linksDiv.appendChild(pptLink);
+                            
+                            tdDetails.appendChild(linksDiv);
+                            tr.appendChild(tdDetails);
+                            
                             isFirstTeamRow = false;
                         }
     
@@ -216,30 +266,6 @@
             });
     
             table.appendChild(tbody);
-    
-            // Add styles
-            const style = document.createElement('style');
-            style.textContent = `
-                .coverage-table {
-                    border-collapse: collapse;
-                    width: 100%;
-                    margin: 20px 0;
-                }
-                .coverage-table th,
-                .coverage-table td {
-                    border: 1px solid #ddd;
-                    padding: 8px;
-                    text-align: left;
-                }
-                .coverage-table th {
-                    background-color: #f5f5f5;
-                    font-weight: bold;
-                }
-                .coverage-table tbody tr:nth-child(even) {
-                    background-color: #f9f9f9;
-                }
-            `;
-            document.head.appendChild(style);
     
             const targetElement = document.getElementById(targetElementId);
             targetElement.innerHTML = '';
