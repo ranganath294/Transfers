@@ -1,256 +1,84 @@
-{% extends 'base.html' %}
-{% block content %}
-<div class="alert-container px-5">
-</div>
-<div class="container container-fluid">
-    <div class="d-flex justify-content-between align-items-center">
-        <h1 class="page-title">Active SPs Report</h1>
-        {% if last_refreshed_dt %}
-            <div class="last-refreshed">
-                Last Refreshed At: {{ last_refreshed_dt }} IST
-            </div>
-        {% endif %}
-    </div>
-    <div class="card mb-3">
-        <div class="card-body">
-            <div class="d-flex justify-content-between align-items-center mb-3">
-                <div class="btn-group" role="group" aria-label="Test Team filters">
-                    <button type="button" class="btn btn-outline-primary team-filter active" data-team="all">All Teams</button>
-                    <button type="button" class="btn btn-outline-primary team-filter" data-team="BT">BT</button>
-                    <button type="button" class="btn btn-outline-primary team-filter" data-team="WLAN">WLAN</button>
-                </div>
-                <div class="btn-group" role="group" aria-label="Phase filters">
-                    <button type="button" class="btn btn-outline-primary phase-filter active" data-phase="all">All Phases</button>
-                    <button type="button" class="btn btn-outline-primary phase-filter" data-phase="ES">ES</button>
-                    <button type="button" class="btn btn-outline-primary phase-filter" data-phase="FC">FC</button>
-                    <button type="button" class="btn btn-outline-primary phase-filter" data-phase="CS">CS</button>
-                </div>
-            </div>
-            <div class="table-responsive">
-                <div id="tableContainer"></div>
-            </div>
-        </div>
-    </div>
-</div>
-<style>
-.container {
-    padding: 2rem;
-    max-width: 100%;
-}
-.btn-group {
-    margin-right: 10px;
-}
-.btn-group .btn {
-    margin-right: 2px;
-}
-.coverage-table {
-    border-collapse: collapse;
-    width: 100%;
-    margin: 20px 0;
-    border: 1px solid black; /* Solid black border for the table */
-}
-.coverage-table th,
-.coverage-table td {
-    border: 1px solid black; /* Solid black borders for table cells */
-    padding: 8px;
-    text-align: left;
-    font-size: 15px; /* Set font size to 15px */
-    color: black; /* Set text color to black */
-}
-.coverage-table th {
-    background-color: #328AA4; /* Set background color for headers */
-    font-weight: bold;
-    color: white; /* Set text color for headers to white */
-}
-.coverage-table tbody tr:nth-child(even) {
-    background-color: #f9f9f9;
-}
-</style>
-<script>
-    document.addEventListener('DOMContentLoaded', function() {
-        let currentData = {{ table_data|safe }};
-        let selectedTeam = 'all';
-        let selectedPhase = 'all';
-    
-        // Helper functions from existing code
-        function calculateSpRowspan(sp) {
-            return sp.teams.reduce((acc, team) => {
-                return acc + calculateTeamRowspan(team);
-            }, 0);
-        }
-    
-        function calculateTeamRowspan(team) {
-            return team.phases.reduce((acc, phase) => {
-                if (phase.coverage_types) {
-                    return acc + phase.coverage_types.length;
+function downloadReport(reportType) {
+            const spSelect = document.getElementById('sp_name');
+            const selectedSp = spSelect.value;
+            if (!selectedSp) {
+                addAlert('danger', 'Please select an SP first');
+                return;
+            }
+            
+            const params = new URLSearchParams();
+            params.append('sp_name', selectedSp);
+            params.append('reportType', reportType);
+
+            if (reportType === 'sp_report') {
+                const teamName = document.querySelector('input[name="team-filter"]:checked').value;
+                const phaseName = document.querySelector('.sp-report-phase-filter.active').getAttribute('data-phase');
+                if (!teamName || !phaseName) {
+                    addAlert('danger', 'Please select a team and phase first');
+                    return;
                 }
-                return acc + 1;
-            }, 0);
-        }
-    
-        function formatPercentage(value) {
-            return value ? value.toFixed(2) + '%' : '0.00%';
-        }
-    
-        // Filter data based on selected team and phase
-        function filterData(data, team, phase) {
-            return data.map(sp => ({
-                ...sp,
-                teams: sp.teams
-                    .filter(t => team === 'all' || t.team_name === team)
-                    .map(t => ({
-                        ...t,
-                        phases: t.phases.filter(p => phase === 'all' || p.phase === phase)
-                    }))
-                    .filter(t => t.phases.length > 0)
-            })).filter(sp => sp.teams.length > 0);
-        }
-    
-        // Add click handlers for team filters
-        document.querySelectorAll('.team-filter').forEach(button => {
-            button.addEventListener('click', function() {
-                // Remove active class from all team buttons
-                document.querySelectorAll('.team-filter').forEach(btn => {
-                    btn.classList.remove('active');
-                });
-                // Add active class to clicked button
-                this.classList.add('active');
-                
-                selectedTeam = this.getAttribute('data-team');
-                const filteredData = filterData(currentData, selectedTeam, selectedPhase);
-                renderCoverageTable(filteredData, 'tableContainer');
-            });
-        });
-    
-        // Add click handlers for phase filters
-        document.querySelectorAll('.phase-filter').forEach(button => {
-            button.addEventListener('click', function() {
-                // Remove active class from all phase buttons
-                document.querySelectorAll('.phase-filter').forEach(btn => {
-                    btn.classList.remove('active');
-                });
-                // Add active class to clicked button
-                this.classList.add('active');
-                
-                selectedPhase = this.getAttribute('data-phase');
-                const filteredData = filterData(currentData, selectedTeam, selectedPhase);
-                renderCoverageTable(filteredData, 'tableContainer');
-            });
-        });
-    
-        function renderCoverageTable(data, targetElementId) {
-            const table = document.createElement('table');
-            table.className = 'coverage-table';
-    
-            // Create header
-            const thead = document.createElement('thead');
-            const headerRow = document.createElement('tr');
-            const headers = [
-                'SP Name',
-                'Test Team',
-                'Phase',
-                'Date',
-                'Projected Coverage %',
-                'Coverage %',
-                'Pass %',
-                'Fail %',
-                'Block %'
-            ];
-    
-            headers.forEach(header => {
-                const th = document.createElement('th');
-                th.textContent = header;
-                headerRow.appendChild(th);
-            });
-            thead.appendChild(headerRow);
-            table.appendChild(thead);
-    
-            // Create table body
-            const tbody = document.createElement('tbody');
-            data.forEach(sp => {
-                const spRowspan = calculateSpRowspan(sp);
-                let isFirstSpRow = true;
-    
-                sp.teams.forEach(team => {
-                    const teamRowspan = calculateTeamRowspan(team);
-                    let isFirstTeamRow = true;
-    
-                    team.phases.forEach(phase => {
-                        const tr = document.createElement('tr');
-    
-                        if (isFirstSpRow) {
-                            const tdSp = document.createElement('td');
-                            tdSp.textContent = sp.sp_name;
-                            tdSp.rowSpan = spRowspan;
-                            tr.appendChild(tdSp);
-                            isFirstSpRow = false;
-                        }
-    
-                        if (isFirstTeamRow) {
-                            const tdTeam = document.createElement('td');
-                            tdTeam.textContent = team.team_name;
-                            tdTeam.rowSpan = teamRowspan;
-                            tr.appendChild(tdTeam);
-                            isFirstTeamRow = false;
-                        }
-    
-                        const cells = [
-                            phase.phase,
-                            phase.date,
-                            phase.expected_cov_percentage,
-                            formatPercentage(phase.metrics.coverage_percentage),
-                            formatPercentage(phase.metrics.passed_percentage),
-                            formatPercentage(phase.metrics.failed_percentage),
-                            formatPercentage(phase.metrics.blocked_percentage)
-                        ];
-    
-                        cells.forEach(cellData => {
-                            const td = document.createElement('td');
-                            td.textContent = cellData;
-                            tr.appendChild(td);
+                params.append('team_name', teamName);
+                params.append('phase_name', phaseName);
+            }
+            
+            fetch(`{% url 'cst_reporting_views:download_file' %}?${params.toString()}`)
+                .then(response => {
+                    // Check if response is JSON (error) or file (success)
+                    const contentType = response.headers.get('Content-Type');
+                    if (contentType && contentType.includes('application/json')) {
+                        return response.json().then(data => {
+                            throw new Error(data.error_msg || 'Download failed');
                         });
-    
-                        tbody.appendChild(tr);
-                    });
+                    }
+                    
+                    if (!response.ok) {
+                        throw new Error('Download failed with status: ' + response.status);
+                    }
+                    
+                    // Extract filename from Content-Disposition header
+                    const contentDisposition = response.headers.get('Content-Disposition');
+                    let filename = '';
+                    if (contentDisposition && contentDisposition.includes('filename=')) {
+                        filename = contentDisposition.split('filename=')[1].replace(/['"]/g, '');
+                    } else {
+                        // Determine the file extension based on the content type
+                        const contentTypeToExtensionMap = {
+                            'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': 'xlsx',
+                            'text/csv': 'csv',
+                            'application/vnd.openxmlformats-officedocument.presentationml.presentation': 'pptx',
+                            'image/png': 'png',
+                            'image/jpeg': 'jpg',
+                            'application/pdf': 'pdf',
+                            // Add more mappings as needed
+                        };
+                        const extension = contentTypeToExtensionMap[contentType] || 'unknown';
+                        filename = `${selectedSp}_${reportType}.${extension}`;
+                    }
+                    
+                    return response.blob().then(blob => ({ blob, filename }));
+                })
+                .then(({ blob, filename }) => {
+                    console.log("Blob type:", blob.type);
+                    console.log("Blob size:", blob.size);
+                    
+                    // Double-check that we actually received a valid file
+                    if (blob.size === 0) {
+                        throw new Error("Received empty file");
+                    }
+                    
+                    const url = window.URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.style.display = 'none';
+                    a.href = url;
+                    a.download = filename;
+                    document.body.appendChild(a);
+                    a.click();
+                    window.URL.revokeObjectURL(url);
+                    document.body.removeChild(a);
+                    addAlert('success', `${filename} downloaded successfully!`);
+                })
+                .catch(error => {
+                    console.error("Download error:", error);
+                    addAlert('danger', `Error: ${error.message}`);
                 });
-            });
-    
-            table.appendChild(tbody);
-    
-            // Add styles
-            const style = document.createElement('style');
-            style.textContent = `
-                .coverage-table {
-                    border-collapse: collapse;
-                    width: 100%;
-                    margin: 20px 0;
-                }
-                .coverage-table th,
-                .coverage-table td {
-                    border: 1px solid #ddd;
-                    padding: 8px;
-                    text-align: left;
-                }
-                .coverage-table th {
-                    background-color: #f5f5f5;
-                    font-weight: bold;
-                }
-                .coverage-table tbody tr:nth-child(even) {
-                    background-color: #f9f9f9;
-                }
-            `;
-            document.head.appendChild(style);
-    
-            const targetElement = document.getElementById(targetElementId);
-            targetElement.innerHTML = '';
-            targetElement.appendChild(table);
         }
-    
-        // Initial render with unfiltered data
-        if (currentData) {
-            renderCoverageTable(currentData, 'tableContainer');
-        }
-    });
-    
-</script>
-{% endblock %}
