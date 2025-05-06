@@ -67,16 +67,19 @@
 }
 .details-links {
     display: flex;
-    gap: 10px;
+    flex-direction: column;
+    gap: 8px;
 }
 .details-links a {
-    display: inline-block;
-    padding: 4px 8px;
+    display: block;
+    padding: 6px 10px;
     border-radius: 4px;
     text-decoration: none;
     font-weight: 500;
     font-size: 14px;
     transition: all 0.2s ease;
+    text-align: center;
+    width: 100%;
 }
 .excel-link {
     background-color: #217346; /* Excel green color */
@@ -231,11 +234,11 @@
                             excelLink.textContent = 'Excel';
                             linksDiv.appendChild(excelLink);
                             
-                            // Create PPT link
+                            // Create PPT link (renamed to Scrum Sheet)
                             const pptLink = document.createElement('a');
                             pptLink.href = `/download_ppt/?sp=${encodeURIComponent(sp.sp_name)}&team=${encodeURIComponent(team.team_name)}`;
                             pptLink.className = 'ppt-link';
-                            pptLink.textContent = 'PPT';
+                            pptLink.textContent = 'Scrum Sheet';
                             linksDiv.appendChild(pptLink);
                             
                             tdDetails.appendChild(linksDiv);
