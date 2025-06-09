@@ -7,61 +7,13 @@ function renderSPReportInCumulativeTable(coverageSummaryData, contentContainer) 
     const spReportCardBody = document.createElement('div');
     spReportCardBody.className = 'card-body';
     
-    // Create phase filter container for SP Report view
+    // Create phase filter container for SP Report view with flexbox layout
     const phaseFilterContainer = document.createElement('div');
-    phaseFilterContainer.className = 'mb-3'; // Add margin bottom for spacing
+    phaseFilterContainer.className = 'mb-3 d-flex flex-column flex-sm-row justify-content-between align-items-start align-items-sm-center gap-2';
 
-    // Create responsive flex container for downloads and phase buttons
-    const headerContainer = document.createElement('div');
-    headerContainer.className = 'd-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-2';
-
-    // Create downloads dropdown container (left side)
-    const downloadsContainer = document.createElement('div');
-    downloadsContainer.className = 'dropdown downloads-dropdown order-2 order-md-1';
-
-    // Create downloads dropdown button
-    const downloadButton = document.createElement('button');
-    downloadButton.className = 'btn btn-primary dropdown-toggle';
-    downloadButton.type = 'button';
-    downloadButton.id = 'downloadDropdown';
-    downloadButton.setAttribute('data-bs-toggle', 'dropdown');
-    downloadButton.setAttribute('aria-expanded', 'false');
-    downloadButton.textContent = 'Downloads';
-
-    // Create downloads dropdown menu
-    const downloadMenu = document.createElement('ul');
-    downloadMenu.className = 'dropdown-menu';
-    downloadMenu.setAttribute('aria-labelledby', 'downloadDropdown');
-
-    // Create dropdown items
-    const downloadItems = [
-        { id: 'exportCoverageReport', text: 'Daily Coverage Report XL' },
-        { id: 'exportScrumSheet', text: 'Export Scrum Sheet to XL' },
-        { id: 'downloadSPReport', text: 'Download SP Report' }
-    ];
-
-    downloadItems.forEach(item => {
-        const li = document.createElement('li');
-        const a = document.createElement('a');
-        a.className = 'dropdown-item';
-        a.href = '#';
-        a.id = item.id;
-        a.textContent = item.text;
-        li.appendChild(a);
-        downloadMenu.appendChild(li);
-    });
-
-    // Append dropdown elements
-    downloadsContainer.appendChild(downloadButton);
-    downloadsContainer.appendChild(downloadMenu);
-
-    // Create phase button container (right side)
-    const phaseButtonContainer = document.createElement('div');
-    phaseButtonContainer.className = 'order-1 order-md-2';
-    
     // Create button group for phase filters with 4px gap
     const spReportPhaseButtonGroup = document.createElement('div');
-    spReportPhaseButtonGroup.className = 'btn-group';
+    spReportPhaseButtonGroup.className = 'btn-group flex-shrink-0';
     spReportPhaseButtonGroup.setAttribute('role', 'group');
     spReportPhaseButtonGroup.setAttribute('aria-label', 'Phase filters');
     spReportPhaseButtonGroup.style.gap = '4px'; // Add 4px gap between buttons
@@ -77,20 +29,56 @@ function renderSPReportInCumulativeTable(coverageSummaryData, contentContainer) 
         spReportPhaseButtonGroup.appendChild(button);
     });
     
-    // Append phase buttons to container
-    phaseButtonContainer.appendChild(spReportPhaseButtonGroup);
-
-    // Append both containers to header container
-    headerContainer.appendChild(downloadsContainer);
-    headerContainer.appendChild(phaseButtonContainer);
+    // Create downloads dropdown container
+    const downloadsContainer = document.createElement('div');
+    downloadsContainer.className = 'dropdown downloads-dropdown flex-shrink-0';
+    
+    // Create downloads dropdown button
+    const downloadsButton = document.createElement('button');
+    downloadsButton.className = 'btn btn-primary dropdown-toggle';
+    downloadsButton.type = 'button';
+    downloadsButton.id = 'downloadDropdown';
+    downloadsButton.setAttribute('data-bs-toggle', 'dropdown');
+    downloadsButton.setAttribute('aria-expanded', 'false');
+    downloadsButton.textContent = 'Downloads';
+    
+    // Create dropdown menu
+    const dropdownMenu = document.createElement('ul');
+    dropdownMenu.className = 'dropdown-menu';
+    dropdownMenu.setAttribute('aria-labelledby', 'downloadDropdown');
+    
+    // Create dropdown items
+    const dropdownItems = [
+        { id: 'exportCoverageReport', text: 'Daily Coverage Report XL' },
+        { id: 'exportScrumSheet', text: 'Export Scrum Sheet to XL' },
+        { id: 'downloadSPReport', text: 'Download SP Report' }
+    ];
+    
+    dropdownItems.forEach(item => {
+        const listItem = document.createElement('li');
+        const link = document.createElement('a');
+        link.className = 'dropdown-item';
+        link.href = '#';
+        link.id = item.id;
+        link.textContent = item.text;
+        listItem.appendChild(link);
+        dropdownMenu.appendChild(listItem);
+    });
+    
+    // Append button and menu to dropdown container
+    downloadsContainer.appendChild(downloadsButton);
+    downloadsContainer.appendChild(dropdownMenu);
     
     // Create SP Report content container
     const spReportContentContainer = document.createElement('div');
     spReportContentContainer.id = 'spReportContentContainer';
     spReportContentContainer.className = 'mt-3'; // Add margin top for spacing
     
+    // Append elements to the phase filter container
+    phaseFilterContainer.appendChild(spReportPhaseButtonGroup);
+    phaseFilterContainer.appendChild(downloadsContainer);
+    
     // Append elements to the card
-    phaseFilterContainer.appendChild(headerContainer);
     spReportCardBody.appendChild(phaseFilterContainer);
     spReportCardBody.appendChild(spReportContentContainer);
     spReportCardElement.appendChild(spReportCardBody);
@@ -117,23 +105,24 @@ function renderSPReportInCumulativeTable(coverageSummaryData, contentContainer) 
     });
 
     // Add event listeners for download buttons
-    downloadMenu.addEventListener('click', (e) => {
+    dropdownMenu.addEventListener('click', (e) => {
         e.preventDefault();
-        if (e.target.classList.contains('dropdown-item')) {
-            const downloadId = e.target.id;
-            // Handle download actions based on the clicked item ID
-            switch (downloadId) {
+        const target = e.target;
+        
+        if (target.classList.contains('dropdown-item')) {
+            // Handle different download actions based on the clicked item's ID
+            switch (target.id) {
                 case 'exportCoverageReport':
-                    // Handle Daily Coverage Report XL export
-                    console.log('Exporting Daily Coverage Report XL');
+                    // Add your export coverage report logic here
+                    console.log('Export Coverage Report clicked');
                     break;
                 case 'exportScrumSheet':
-                    // Handle Scrum Sheet export
-                    console.log('Exporting Scrum Sheet to XL');
+                    // Add your export scrum sheet logic here
+                    console.log('Export Scrum Sheet clicked');
                     break;
                 case 'downloadSPReport':
-                    // Handle SP Report download
-                    console.log('Downloading SP Report');
+                    // Add your download SP report logic here
+                    console.log('Download SP Report clicked');
                     break;
             }
         }
