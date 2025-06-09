@@ -48,20 +48,20 @@
     border-collapse: collapse;
     width: 100%;
     margin: 20px 0;
-    border: 1px solid black;
+    border: 1px solid black; /* Solid black border for the table */
 }
 .coverage-table th,
 .coverage-table td {
-    border: 1px solid black;
+    border: 1px solid black; /* Solid black borders for table cells */
     padding: 8px;
     text-align: left;
-    font-size: 15px;
-    color: black;
+    font-size: 15px; /* Set font size to 15px */
+    color: black; /* Set text color to black */
 }
 .coverage-table th {
-    background-color: #328AA4;
+    background-color: #328AA4; /* Set background color for headers */
     font-weight: bold;
-    color: white;
+    color: white; /* Set text color for headers to white */
 }
 .coverage-table tbody tr:nth-child(even) {
     background-color: #f9f9f9;
@@ -274,9 +274,11 @@
         // Add click handlers for team filters
         document.querySelectorAll('.team-filter').forEach(button => {
             button.addEventListener('click', function() {
+                // Remove active class from all team buttons
                 document.querySelectorAll('.team-filter').forEach(btn => {
                     btn.classList.remove('active');
                 });
+                // Add active class to clicked button
                 this.classList.add('active');
                 
                 selectedTeam = this.getAttribute('data-team');
@@ -288,9 +290,11 @@
         // Add click handlers for phase filters
         document.querySelectorAll('.phase-filter').forEach(button => {
             button.addEventListener('click', function() {
+                // Remove active class from all phase buttons
                 document.querySelectorAll('.phase-filter').forEach(btn => {
                     btn.classList.remove('active');
                 });
+                // Add active class to clicked button
                 this.classList.add('active');
                 
                 selectedPhase = this.getAttribute('data-phase');
@@ -531,3 +535,4 @@
     
 </script>
 {% endblock %}
+there are buttons and dropdwn in coverage details column.Now they are occupying so much spce. I want those buttons to have as much space as teh length of text it has. same goes to dropdown. i dontwant them to occupy complete space
