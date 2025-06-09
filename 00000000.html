@@ -48,53 +48,187 @@
     border-collapse: collapse;
     width: 100%;
     margin: 20px 0;
-    border: 1px solid black; /* Solid black border for the table */
+    border: 1px solid black;
 }
 .coverage-table th,
 .coverage-table td {
-    border: 1px solid black; /* Solid black borders for table cells */
+    border: 1px solid black;
     padding: 8px;
     text-align: left;
-    font-size: 15px; /* Set font size to 15px */
-    color: black; /* Set text color to black */
+    font-size: 15px;
+    color: black;
 }
 .coverage-table th {
-    background-color: #328AA4; /* Set background color for headers */
+    background-color: #328AA4;
     font-weight: bold;
-    color: white; /* Set text color for headers to white */
+    color: white;
 }
 .coverage-table tbody tr:nth-child(even) {
     background-color: #f9f9f9;
 }
+
+/* Enhanced Details Links Styling */
+.details-container {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    align-items: flex-start;
+    min-width: 200px;
+}
+
+.phase-selector {
+    width: 100%;
+    margin-bottom: 8px;
+}
+
+.phase-dropdown {
+    position: relative;
+    display: inline-block;
+    width: 100%;
+}
+
+.dropdown-button {
+    background: #f8f9fa;
+    border: 1px solid #dee2e6;
+    border-radius: 6px;
+    padding: 6px 12px;
+    font-size: 13px;
+    color: #495057;
+    cursor: pointer;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    width: 100%;
+    transition: all 0.2s ease;
+    min-height: 32px;
+}
+
+.dropdown-button:hover {
+    background: #e9ecef;
+    border-color: #adb5bd;
+}
+
+.dropdown-button.open {
+    border-color: #007bff;
+    box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.25);
+}
+
+.dropdown-arrow {
+    font-size: 10px;
+    color: #6c757d;
+    transition: transform 0.2s ease;
+}
+
+.dropdown-button.open .dropdown-arrow {
+    transform: rotate(180deg);
+}
+
+.dropdown-menu {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    background: white;
+    border: 1px solid #dee2e6;
+    border-radius: 6px;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+    z-index: 1000;
+    max-height: 200px;
+    overflow-y: auto;
+    display: none;
+}
+
+.dropdown-menu.show {
+    display: block;
+}
+
+.dropdown-item {
+    padding: 8px 12px;
+    font-size: 13px;
+    color: #495057;
+    cursor: pointer;
+    border-bottom: 1px solid #f1f3f4;
+    transition: background-color 0.15s ease;
+}
+
+.dropdown-item:last-child {
+    border-bottom: none;
+}
+
+.dropdown-item:hover {
+    background-color: #f8f9fa;
+}
+
+.dropdown-item.selected {
+    background-color: #007bff;
+    color: white;
+}
+
 .details-links {
     display: flex;
     flex-direction: column;
     gap: 8px;
     align-items: flex-start;
+    width: 100%;
 }
+
 .details-links a {
     display: inline-block;
-    padding: 5px 10px;
-    border-radius: 4px;
+    padding: 8px 16px;
+    border-radius: 6px;
     text-decoration: none;
     font-weight: 500;
-    font-size: 14px;
+    font-size: 13px;
     transition: all 0.2s ease;
     text-align: center;
-    min-width: 100px;
+    width: 100%;
     white-space: nowrap;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
 }
+
 .excel-link {
-    background-color: #3b9f68; /* Excel green color */
+    background: linear-gradient(135deg, #3b9f68, #2d7a50);
     color: white !important;
 }
+
 .ppt-link {
-    background-color: #d5320c; /* PowerPoint orange color */
+    background: linear-gradient(135deg, #d5320c, #b8280a);
     color: white !important;
 }
+
 .details-links a:hover {
-    opacity: 0.85;
-    transform: translateY(-1px);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+}
+
+.excel-link:hover {
+    background: linear-gradient(135deg, #2d7a50, #245d3e);
+}
+
+.ppt-link:hover {
+    background: linear-gradient(135deg, #b8280a, #9e2208);
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .details-container {
+        min-width: 160px;
+    }
+    
+    .details-links a {
+        padding: 6px 12px;
+        font-size: 12px;
+    }
+    
+    .dropdown-button {
+        padding: 4px 8px;
+        font-size: 12px;
+    }
+    
+    .dropdown-item {
+        padding: 6px 10px;
+        font-size: 12px;
+    }
 }
 </style>
 <script>
@@ -140,11 +274,9 @@
         // Add click handlers for team filters
         document.querySelectorAll('.team-filter').forEach(button => {
             button.addEventListener('click', function() {
-                // Remove active class from all team buttons
                 document.querySelectorAll('.team-filter').forEach(btn => {
                     btn.classList.remove('active');
                 });
-                // Add active class to clicked button
                 this.classList.add('active');
                 
                 selectedTeam = this.getAttribute('data-team');
@@ -156,11 +288,9 @@
         // Add click handlers for phase filters
         document.querySelectorAll('.phase-filter').forEach(button => {
             button.addEventListener('click', function() {
-                // Remove active class from all phase buttons
                 document.querySelectorAll('.phase-filter').forEach(btn => {
                     btn.classList.remove('active');
                 });
-                // Add active class to clicked button
                 this.classList.add('active');
                 
                 selectedPhase = this.getAttribute('data-phase');
@@ -168,6 +298,100 @@
                 renderCoverageTable(filteredData, 'tableContainer');
             });
         });
+
+        // Create phase dropdown
+        function createPhaseDropdown(spName, teamName, phases, containerId) {
+            const container = document.createElement('div');
+            container.className = 'phase-selector';
+            
+            const dropdown = document.createElement('div');
+            dropdown.className = 'phase-dropdown';
+            
+            const button = document.createElement('div');
+            button.className = 'dropdown-button';
+            button.innerHTML = `
+                <span class="selected-text">Select Phase</span>
+                <span class="dropdown-arrow">▼</span>
+            `;
+            
+            const menu = document.createElement('div');
+            menu.className = 'dropdown-menu';
+            
+            // Add phase options
+            phases.forEach(phase => {
+                const item = document.createElement('div');
+                item.className = 'dropdown-item';
+                item.textContent = phase.phase;
+                item.setAttribute('data-phase', phase.phase);
+                menu.appendChild(item);
+            });
+            
+            dropdown.appendChild(button);
+            dropdown.appendChild(menu);
+            container.appendChild(dropdown);
+            
+            // Toggle dropdown
+            button.addEventListener('click', function(e) {
+                e.stopPropagation();
+                
+                // Close other dropdowns
+                document.querySelectorAll('.dropdown-button.open').forEach(btn => {
+                    if (btn !== button) {
+                        btn.classList.remove('open');
+                        btn.nextElementSibling.classList.remove('show');
+                    }
+                });
+                
+                button.classList.toggle('open');
+                menu.classList.toggle('show');
+            });
+            
+            // Handle phase selection
+            menu.addEventListener('click', function(e) {
+                if (e.target.classList.contains('dropdown-item')) {
+                    const selectedPhase = e.target.getAttribute('data-phase');
+                    const selectedText = e.target.textContent;
+                    
+                    // Update button text
+                    button.querySelector('.selected-text').textContent = selectedText;
+                    
+                    // Update selected state
+                    menu.querySelectorAll('.dropdown-item').forEach(item => {
+                        item.classList.remove('selected');
+                    });
+                    e.target.classList.add('selected');
+                    
+                    // Close dropdown
+                    button.classList.remove('open');
+                    menu.classList.remove('show');
+                    
+                    // Update download links
+                    updateDownloadLinks(containerId, spName, teamName, selectedPhase);
+                }
+            });
+            
+            return container;
+        }
+        
+        // Update download links with selected phase
+        function updateDownloadLinks(containerId, spName, teamName, selectedPhase) {
+            const container = document.getElementById(containerId);
+            const excelLink = container.querySelector('.excel-link');
+            const pptLink = container.querySelector('.ppt-link');
+            
+            if (excelLink && pptLink) {
+                // Update URLs with phase parameter
+                const baseExcelUrl = `/download_file_new/?sp_name=${encodeURIComponent(spName)}&team_name=${encodeURIComponent(teamName)}&reportType=scrum_sheet&tab=active_sps`;
+                const basePptUrl = `/download_file_new/?sp_name=${encodeURIComponent(spName)}&team_name=${encodeURIComponent(teamName)}&reportType=sp_report&tab=active_sps`;
+                
+                excelLink.href = `${baseExcelUrl}&phase_name=${encodeURIComponent(selectedPhase)}`;
+                pptLink.href = `${basePptUrl}&phase_name=${encodeURIComponent(selectedPhase)}`;
+                
+                // Update button text
+                excelLink.textContent = `${selectedPhase} Scrum Sheet`;
+                pptLink.textContent = `${selectedPhase} Coverage Report`;
+            }
+        }
     
         function renderCoverageTable(data, targetElementId) {
             const table = document.createElement('table');
@@ -199,6 +423,8 @@
     
             // Create table body
             const tbody = document.createElement('tbody');
+            let rowCounter = 0;
+            
             data.forEach(sp => {
                 const spRowspan = calculateSpRowspan(sp);
                 let isFirstSpRow = true;
@@ -209,6 +435,7 @@
     
                     team.phases.forEach(phase => {
                         const tr = document.createElement('tr');
+                        const currentRowId = `row-${rowCounter++}`;
     
                         if (isFirstSpRow) {
                             const tdSp = document.createElement('td');
@@ -226,7 +453,16 @@
 
                             const tdDetails = document.createElement('td');
                             tdDetails.rowSpan = teamRowspan;
+                            tdDetails.id = currentRowId;
                             
+                            const detailsContainer = document.createElement('div');
+                            detailsContainer.className = 'details-container';
+                            
+                            // Create phase dropdown
+                            const phaseDropdown = createPhaseDropdown(sp.sp_name, team.team_name, team.phases, currentRowId);
+                            detailsContainer.appendChild(phaseDropdown);
+                            
+                            // Create download links container
                             const linksDiv = document.createElement('div');
                             linksDiv.className = 'details-links';
                             
@@ -244,7 +480,8 @@
                             pptLink.textContent = 'Coverage Report';
                             linksDiv.appendChild(pptLink);
                             
-                            tdDetails.appendChild(linksDiv);
+                            detailsContainer.appendChild(linksDiv);
+                            tdDetails.appendChild(detailsContainer);
                             tr.appendChild(tdDetails);
 
                             isFirstTeamRow = false;
@@ -273,34 +510,18 @@
     
             table.appendChild(tbody);
     
-            // Add styles
-            const style = document.createElement('style');
-            style.textContent = `
-                .coverage-table {
-                    border-collapse: collapse;
-                    width: 100%;
-                    margin: 20px 0;
-                }
-                .coverage-table th,
-                .coverage-table td {
-                    border: 1px solid #ddd;
-                    padding: 8px;
-                    text-align: left;
-                }
-                .coverage-table th {
-                    background-color: #f5f5f5;
-                    font-weight: bold;
-                }
-                .coverage-table tbody tr:nth-child(even) {
-                    background-color: #f9f9f9;
-                }
-            `;
-            document.head.appendChild(style);
-    
             const targetElement = document.getElementById(targetElementId);
             targetElement.innerHTML = '';
             targetElement.appendChild(table);
         }
+        
+        // Close dropdowns when clicking outside
+        document.addEventListener('click', function() {
+            document.querySelectorAll('.dropdown-button.open').forEach(button => {
+                button.classList.remove('open');
+                button.nextElementSibling.classList.remove('show');
+            });
+        });
     
         // Initial render with unfiltered data
         if (currentData) {
