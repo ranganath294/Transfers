@@ -116,23 +116,6 @@ function renderSPReportInCumulativeTable(coverageSummaryData, contentContainer) 
         }
     }
     
-    // Function to check if SP Report is selected and show/hide dropdown
-    function updateDownloadDropdownVisibility() {
-        try {
-            const isSpReportChecked = document.getElementById('spReport') ? document.getElementById('spReport').checked : true;
-            console.log("updateDownloadDropdownButton Called and spReport: ", isSpReportChecked);
-            
-            if (isSpReportChecked) {
-                downloadsButton.style.display = 'block';
-                updateDownloadDropdownText();
-            } else {
-                downloadsButton.style.display = 'none';
-            }
-        } catch (error) {
-            console.error('Error updating download dropdown visibility:', error);
-        }
-    }
-    
     // Add event listeners for phase filter buttons
     spReportPhaseButtonGroup.addEventListener('click', async (e) => {
         if (e.target.classList.contains('sp-report-phase-filter')) {
@@ -168,9 +151,6 @@ function renderSPReportInCumulativeTable(coverageSummaryData, contentContainer) 
             }
         }
     });
-
-    // Initial setup
-    updateDownloadDropdownVisibility();
     
     // Add listeners for SP selection and team filter changes if they exist
     const spSelect = document.getElementById('sp_name');
@@ -184,18 +164,8 @@ function renderSPReportInCumulativeTable(coverageSummaryData, contentContainer) 
         filter.addEventListener('change', updateDownloadDropdownText);
     });
     
-    // Add listener for SP Report checkbox if it exists
-    const spReportCheckbox = document.getElementById('spReport');
-    if (spReportCheckbox) {
-        spReportCheckbox.addEventListener('change', updateDownloadDropdownVisibility);
-    }
+    updateDownloadDropdownText();
 
     // Initial render of SP Report with default 'ES' phase
     renderSPReportTableAndGraph('ES', spReportContentContainer);
-    
-    // Return function to allow external updates if needed
-    return {
-        updateDropdownText: updateDownloadDropdownText,
-        updateDropdownVisibility: updateDownloadDropdownVisibility
-    };
 }
