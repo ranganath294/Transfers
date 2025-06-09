@@ -1,182 +1,312 @@
-function renderSPReportInCumulativeTable(coverageSummaryData, contentContainer) {
-    // Create a single card structure for SP Report view
-    const spReportCardElement = document.createElement('div');
-    spReportCardElement.className = 'card mb-3';
-
-    // Create card body
-    const spReportCardBody = document.createElement('div');
-    spReportCardBody.className = 'card-body';
-    
-    // Create phase filter container for SP Report view with flexbox layout
-    const phaseFilterContainer = document.createElement('div');
-    phaseFilterContainer.className = 'mb-3 d-flex flex-column flex-sm-row justify-content-between align-items-start align-items-sm-center gap-2';
-
-    // Create button group for phase filters with 4px gap
-    const spReportPhaseButtonGroup = document.createElement('div');
-    spReportPhaseButtonGroup.className = 'btn-group flex-shrink-0';
-    spReportPhaseButtonGroup.setAttribute('role', 'group');
-    spReportPhaseButtonGroup.setAttribute('aria-label', 'Phase filters');
-    spReportPhaseButtonGroup.style.gap = '4px'; // Add 4px gap between buttons
-    
-    // Create phase filter buttons
-    const phases = ['ES', 'FC', 'CS'];
-    phases.forEach(phase => {
-        const button = document.createElement('button');
-        button.type = 'button';
-        button.className = `btn btn-outline-primary sp-report-phase-filter ${phase === 'ES' ? 'active' : ''}`;
-        button.setAttribute('data-phase', phase);
-        button.textContent = phase;
-        spReportPhaseButtonGroup.appendChild(button);
-    });
-    
-    // Create downloads dropdown container with hover functionality
-    const downloadsContainer = document.createElement('div');
-    downloadsContainer.className = 'dropdown downloads-dropdown flex-shrink-0';
-    
-    // Create downloads dropdown button
-    const downloadsButton = document.createElement('button');
-    downloadsButton.className = 'btn btn-primary dropdown-toggle';
-    downloadsButton.type = 'button';
-    downloadsButton.id = 'downloadDropdown';
-    downloadsButton.textContent = 'Downloads';
-    
-    // Create dropdown menu
-    const dropdownMenu = document.createElement('ul');
-    dropdownMenu.className = 'dropdown-menu';
-    dropdownMenu.setAttribute('aria-labelledby', 'downloadDropdown');
-    
-    // Create dropdown items with initial text
-    const dropdownItems = [
-        { id: 'exportCoverageReport', text: 'Daily Coverage Report XL', downloadType: 'coverage_report' },
-        { id: 'exportScrumSheet', text: 'Export Scrum Sheet to XL', downloadType: 'scrum_sheet' },
-        { id: 'downloadSPReport', text: 'Download SP Report', downloadType: 'sp_report' }
-    ];
-    
-    dropdownItems.forEach(item => {
-        const listItem = document.createElement('li');
-        const link = document.createElement('a');
-        link.className = 'dropdown-item';
-        link.href = '#';
-        link.id = item.id;
-        link.textContent = item.text;
-        link.setAttribute('data-download-type', item.downloadType);
-        listItem.appendChild(link);
-        dropdownMenu.appendChild(listItem);
-    });
-    
-    // Append button and menu to dropdown container
-    downloadsContainer.appendChild(downloadsButton);
-    downloadsContainer.appendChild(dropdownMenu);
-    
-    // Create SP Report content container
-    const spReportContentContainer = document.createElement('div');
-    spReportContentContainer.id = 'spReportContentContainer';
-    spReportContentContainer.className = 'mt-3'; // Add margin top for spacing
-    
-    // Append elements to the phase filter container
-    phaseFilterContainer.appendChild(spReportPhaseButtonGroup);
-    phaseFilterContainer.appendChild(downloadsContainer);
-    
-    // Append elements to the card
-    spReportCardBody.appendChild(phaseFilterContainer);
-    spReportCardBody.appendChild(spReportContentContainer);
-    spReportCardElement.appendChild(spReportCardBody);
-    
-    // Append card to the main content container
-    contentContainer.appendChild(spReportCardElement);
-    
-    // Function to update dropdown button text based on current selections
-    function updateDownloadDropdownText() {
-        try {
-            const spSelect = document.getElementById('sp_name');
-            const selectedSp = spSelect ? spSelect.value : '';
-            const selectedTeamElement = document.querySelector('input[name="team-filter"]:checked');
-            const selectedTeam = selectedTeamElement ? selectedTeamElement.value : '';
-            const selectedPhaseButton = document.querySelector('.sp-report-phase-filter.active');
-            const selectedPhase = selectedPhaseButton ? selectedPhaseButton.getAttribute('data-phase') : 'ES';
-
-            // Update dropdown item texts
-            const exportCoverageReportLink = document.getElementById('exportCoverageReport');
-            const exportScrumSheetLink = document.getElementById('exportScrumSheet');
-            const downloadSPReportLink = document.getElementById('downloadSPReport');
-
-            if (exportCoverageReportLink) {
-                exportCoverageReportLink.textContent = `${selectedSp} ${selectedTeam} ${selectedPhase} Daily Coverage Report`;
-            }
-            if (exportScrumSheetLink) {
-                exportScrumSheetLink.textContent = `${selectedSp} ${selectedTeam} ${selectedPhase} Daily Scrum CRs`;
-            }
-            if (downloadSPReportLink) {
-                downloadSPReportLink.textContent = `${selectedSp} ${selectedTeam} ${selectedPhase} Report PPT`;
-            }
-        } catch (error) {
-            console.error('Error updating download dropdown text:', error);
-        }
-    }
-    
-    // Add hover functionality to dropdown
-    let hoverTimeout;
-    
-    downloadsContainer.addEventListener('mouseenter', () => {
-        clearTimeout(hoverTimeout);
-        // Update dropdown text on hover instead of on button changes
-        updateDownloadDropdownText();
-        dropdownMenu.classList.add('show');
-    });
-    
-    downloadsContainer.addEventListener('mouseleave', () => {
-        hoverTimeout = setTimeout(() => {
-            dropdownMenu.classList.remove('show');
-        }, 150); // Small delay to prevent flickering when moving between button and menu
-    });
-    
-    // Prevent dropdown from closing when hovering over the menu itself
-    dropdownMenu.addEventListener('mouseenter', () => {
-        clearTimeout(hoverTimeout);
-    });
-    
-    dropdownMenu.addEventListener('mouseleave', () => {
-        hoverTimeout = setTimeout(() => {
-            dropdownMenu.classList.remove('show');
-        }, 150);
-    });
-    
-    // Add event listeners for phase filter buttons
-    spReportPhaseButtonGroup.addEventListener('click', async (e) => {
-        if (e.target.classList.contains('sp-report-phase-filter')) {
-            // Remove active class from all buttons
-            spReportPhaseButtonGroup.querySelectorAll('.sp-report-phase-filter').forEach(btn => btn.classList.remove('active'));
-            // Add active class to the clicked button
-            e.target.classList.add('active');
-            // Get the selected phase
-            const selectedPhase = e.target.getAttribute('data-phase');
-            
-            // Clear the SP Report content container
-            spReportContentContainer.innerHTML = '';
-            
-            // Render the table and graph with the selected phase
-            await renderSPReportTableAndGraph(selectedPhase, spReportContentContainer);
-        }
-    });
-
-    // Add event listeners for download buttons
-    dropdownMenu.addEventListener('click', (e) => {
-        e.preventDefault();
-        const target = e.target;
-        
-        if (target.classList.contains('dropdown-item')) {
-            const downloadType = target.getAttribute('data-download-type');
-            if (downloadType && typeof downloadReport === 'function') {
-                downloadReport(downloadType);
-            } else {
-                console.error('downloadReport function not found or download type not specified');
-            }
-        }
-    });
-    
-    // Remove the automatic listeners for SP selection and team filter changes
-    // since we're now updating on hover instead
-    
-    // Initial render of SP Report with default 'ES' phase
-    renderSPReportTableAndGraph('ES', spReportContentContainer);
+{% extends 'base.html' %}
+{% block content %}
+<div class="alert-container px-5">
+</div>
+<div class="container container-fluid">
+    <div class="d-flex justify-content-between align-items-center">
+        <h1 class="page-title">Active SPs Report</h1>
+        {% if last_refreshed_dt %}
+            <div class="last-refreshed">
+                Last Refreshed At: {{ last_refreshed_dt }} IST
+            </div>
+        {% endif %}
+    </div>
+    <div class="card mb-3">
+        <div class="card-body">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <div class="btn-group" role="group" aria-label="Test Team filters">
+                    <button type="button" class="btn btn-outline-primary team-filter active" data-team="all">All Teams</button>
+                    <button type="button" class="btn btn-outline-primary team-filter" data-team="BT">BT</button>
+                    <button type="button" class="btn btn-outline-primary team-filter" data-team="WLAN">WLAN</button>
+                </div>
+                <div class="btn-group" role="group" aria-label="Phase filters">
+                    <button type="button" class="btn btn-outline-primary phase-filter active" data-phase="all">All Phases</button>
+                    <button type="button" class="btn btn-outline-primary phase-filter" data-phase="ES">ES</button>
+                    <button type="button" class="btn btn-outline-primary phase-filter" data-phase="FC">FC</button>
+                    <button type="button" class="btn btn-outline-primary phase-filter" data-phase="CS">CS</button>
+                    <button type="button" class="btn btn-outline-primary phase-filter" data-phase="Post-CS">Post-CS</button>
+                </div>
+            </div>
+            <div class="table-responsive">
+                <div id="tableContainer"></div>
+            </div>
+        </div>
+    </div>
+</div>
+<style>
+.container {
+    padding: 2rem;
+    max-width: 100%;
 }
+.btn-group {
+    margin-right: 10px;
+}
+.btn-group .btn {
+    margin-right: 2px;
+}
+.coverage-table {
+    border-collapse: collapse;
+    width: 100%;
+    margin: 20px 0;
+    border: 1px solid black; /* Solid black border for the table */
+}
+.coverage-table th,
+.coverage-table td {
+    border: 1px solid black; /* Solid black borders for table cells */
+    padding: 8px;
+    text-align: left;
+    font-size: 15px; /* Set font size to 15px */
+    color: black; /* Set text color to black */
+}
+.coverage-table th {
+    background-color: #328AA4; /* Set background color for headers */
+    font-weight: bold;
+    color: white; /* Set text color for headers to white */
+}
+.coverage-table tbody tr:nth-child(even) {
+    background-color: #f9f9f9;
+}
+.details-links {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    align-items: flex-start;
+}
+.details-links a {
+    display: inline-block;
+    padding: 5px 10px;
+    border-radius: 4px;
+    text-decoration: none;
+    font-weight: 500;
+    font-size: 14px;
+    transition: all 0.2s ease;
+    text-align: center;
+    min-width: 100px;
+    white-space: nowrap;
+}
+.excel-link {
+    background-color: #3b9f68; /* Excel green color */
+    color: white !important;
+}
+.ppt-link {
+    background-color: #d5320c; /* PowerPoint orange color */
+    color: white !important;
+}
+.details-links a:hover {
+    opacity: 0.85;
+    transform: translateY(-1px);
+}
+</style>
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        let currentData = {{ table_data|safe }};
+        let selectedTeam = 'all';
+        let selectedPhase = 'all';
+    
+        // Helper functions from existing code
+        function calculateSpRowspan(sp) {
+            return sp.teams.reduce((acc, team) => {
+                return acc + calculateTeamRowspan(team);
+            }, 0);
+        }
+    
+        function calculateTeamRowspan(team) {
+            return team.phases.reduce((acc, phase) => {
+                if (phase.coverage_types) {
+                    return acc + phase.coverage_types.length;
+                }
+                return acc + 1;
+            }, 0);
+        }
+    
+        function formatPercentage(value) {
+            return value ? value.toFixed(2) + '%' : '0.00%';
+        }
+    
+        // Filter data based on selected team and phase
+        function filterData(data, team, phase) {
+            return data.map(sp => ({
+                ...sp,
+                teams: sp.teams
+                    .filter(t => team === 'all' || t.team_name === team)
+                    .map(t => ({
+                        ...t,
+                        phases: t.phases.filter(p => phase === 'all' || p.phase === phase)
+                    }))
+                    .filter(t => t.phases.length > 0)
+            })).filter(sp => sp.teams.length > 0);
+        }
+    
+        // Add click handlers for team filters
+        document.querySelectorAll('.team-filter').forEach(button => {
+            button.addEventListener('click', function() {
+                // Remove active class from all team buttons
+                document.querySelectorAll('.team-filter').forEach(btn => {
+                    btn.classList.remove('active');
+                });
+                // Add active class to clicked button
+                this.classList.add('active');
+                
+                selectedTeam = this.getAttribute('data-team');
+                const filteredData = filterData(currentData, selectedTeam, selectedPhase);
+                renderCoverageTable(filteredData, 'tableContainer');
+            });
+        });
+    
+        // Add click handlers for phase filters
+        document.querySelectorAll('.phase-filter').forEach(button => {
+            button.addEventListener('click', function() {
+                // Remove active class from all phase buttons
+                document.querySelectorAll('.phase-filter').forEach(btn => {
+                    btn.classList.remove('active');
+                });
+                // Add active class to clicked button
+                this.classList.add('active');
+                
+                selectedPhase = this.getAttribute('data-phase');
+                const filteredData = filterData(currentData, selectedTeam, selectedPhase);
+                renderCoverageTable(filteredData, 'tableContainer');
+            });
+        });
+    
+        function renderCoverageTable(data, targetElementId) {
+            const table = document.createElement('table');
+            table.className = 'coverage-table';
+    
+            // Create header
+            const thead = document.createElement('thead');
+            const headerRow = document.createElement('tr');
+            const headers = [
+                'SP Name',
+                'Test Team',
+                'Coverage Details',
+                'Phase',
+                'Date',
+                'Projected Coverage %',
+                'Coverage %',
+                'Pass %',
+                'Fail %',
+                'Block %'
+            ];
+    
+            headers.forEach(header => {
+                const th = document.createElement('th');
+                th.textContent = header;
+                headerRow.appendChild(th);
+            });
+            thead.appendChild(headerRow);
+            table.appendChild(thead);
+    
+            // Create table body
+            const tbody = document.createElement('tbody');
+            data.forEach(sp => {
+                const spRowspan = calculateSpRowspan(sp);
+                let isFirstSpRow = true;
+    
+                sp.teams.forEach(team => {
+                    const teamRowspan = calculateTeamRowspan(team);
+                    let isFirstTeamRow = true;
+    
+                    team.phases.forEach(phase => {
+                        const tr = document.createElement('tr');
+    
+                        if (isFirstSpRow) {
+                            const tdSp = document.createElement('td');
+                            tdSp.textContent = sp.sp_name;
+                            tdSp.rowSpan = spRowspan;
+                            tr.appendChild(tdSp);
+                            isFirstSpRow = false;
+                        }
+    
+                        if (isFirstTeamRow) {
+                            const tdTeam = document.createElement('td');
+                            tdTeam.textContent = team.team_name;
+                            tdTeam.rowSpan = teamRowspan;
+                            tr.appendChild(tdTeam);
+
+                            const tdDetails = document.createElement('td');
+                            tdDetails.rowSpan = teamRowspan;
+                            
+                            const linksDiv = document.createElement('div');
+                            linksDiv.className = 'details-links';
+                            
+                            // Create Excel link
+                            const excelLink = document.createElement('a');
+                            excelLink.href = `/download_file_new/?sp_name=${encodeURIComponent(sp.sp_name)}&team_name=${encodeURIComponent(team.team_name)}&reportType=scrum_sheet&tab=active_sps`;
+                            excelLink.className = 'excel-link';
+                            excelLink.textContent = 'Scrum Sheet';
+                            linksDiv.appendChild(excelLink);
+                            
+                            // Create PPT link
+                            const pptLink = document.createElement('a');
+                            pptLink.href = `/download_file_new/?sp_name=${encodeURIComponent(sp.sp_name)}&team_name=${encodeURIComponent(team.team_name)}&reportType=sp_report&tab=active_sps`;
+                            pptLink.className = 'ppt-link';
+                            pptLink.textContent = 'Coverage Report';
+                            linksDiv.appendChild(pptLink);
+                            
+                            tdDetails.appendChild(linksDiv);
+                            tr.appendChild(tdDetails);
+
+                            isFirstTeamRow = false;
+                        }
+    
+                        const cells = [
+                            phase.phase,
+                            phase.date,
+                            phase.expected_cov_percentage,
+                            formatPercentage(phase.metrics.coverage_percentage),
+                            formatPercentage(phase.metrics.passed_percentage),
+                            formatPercentage(phase.metrics.failed_percentage),
+                            formatPercentage(phase.metrics.blocked_percentage)
+                        ];
+    
+                        cells.forEach(cellData => {
+                            const td = document.createElement('td');
+                            td.textContent = cellData;
+                            tr.appendChild(td);
+                        });
+    
+                        tbody.appendChild(tr);
+                    });
+                });
+            });
+    
+            table.appendChild(tbody);
+    
+            // Add styles
+            const style = document.createElement('style');
+            style.textContent = `
+                .coverage-table {
+                    border-collapse: collapse;
+                    width: 100%;
+                    margin: 20px 0;
+                }
+                .coverage-table th,
+                .coverage-table td {
+                    border: 1px solid #ddd;
+                    padding: 8px;
+                    text-align: left;
+                }
+                .coverage-table th {
+                    background-color: #f5f5f5;
+                    font-weight: bold;
+                }
+                .coverage-table tbody tr:nth-child(even) {
+                    background-color: #f9f9f9;
+                }
+            `;
+            document.head.appendChild(style);
+    
+            const targetElement = document.getElementById(targetElementId);
+            targetElement.innerHTML = '';
+            targetElement.appendChild(table);
+        }
+    
+        // Initial render with unfiltered data
+        if (currentData) {
+            renderCoverageTable(currentData, 'tableContainer');
+        }
+    });
+    
+</script>
+{% endblock %}
