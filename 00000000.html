@@ -29,7 +29,7 @@ function renderSPReportInCumulativeTable(coverageSummaryData, contentContainer) 
         spReportPhaseButtonGroup.appendChild(button);
     });
     
-    // Create downloads dropdown container
+    // Create downloads dropdown container with hover functionality
     const downloadsContainer = document.createElement('div');
     downloadsContainer.className = 'dropdown downloads-dropdown flex-shrink-0';
     
@@ -38,8 +38,6 @@ function renderSPReportInCumulativeTable(coverageSummaryData, contentContainer) 
     downloadsButton.className = 'btn btn-primary dropdown-toggle';
     downloadsButton.type = 'button';
     downloadsButton.id = 'downloadDropdown';
-    downloadsButton.setAttribute('data-bs-toggle', 'dropdown');
-    downloadsButton.setAttribute('aria-expanded', 'false');
     downloadsButton.textContent = 'Downloads';
     
     // Create dropdown menu
@@ -116,6 +114,33 @@ function renderSPReportInCumulativeTable(coverageSummaryData, contentContainer) 
         }
     }
     
+    // Add hover functionality to dropdown
+    let hoverTimeout;
+    
+    downloadsContainer.addEventListener('mouseenter', () => {
+        clearTimeout(hoverTimeout);
+        // Update dropdown text on hover instead of on button changes
+        updateDownloadDropdownText();
+        dropdownMenu.classList.add('show');
+    });
+    
+    downloadsContainer.addEventListener('mouseleave', () => {
+        hoverTimeout = setTimeout(() => {
+            dropdownMenu.classList.remove('show');
+        }, 150); // Small delay to prevent flickering when moving between button and menu
+    });
+    
+    // Prevent dropdown from closing when hovering over the menu itself
+    dropdownMenu.addEventListener('mouseenter', () => {
+        clearTimeout(hoverTimeout);
+    });
+    
+    dropdownMenu.addEventListener('mouseleave', () => {
+        hoverTimeout = setTimeout(() => {
+            dropdownMenu.classList.remove('show');
+        }, 150);
+    });
+    
     // Add event listeners for phase filter buttons
     spReportPhaseButtonGroup.addEventListener('click', async (e) => {
         if (e.target.classList.contains('sp-report-phase-filter')) {
@@ -128,9 +153,6 @@ function renderSPReportInCumulativeTable(coverageSummaryData, contentContainer) 
             
             // Clear the SP Report content container
             spReportContentContainer.innerHTML = '';
-            
-            // Update dropdown text when phase changes
-            updateDownloadDropdownText();
             
             // Render the table and graph with the selected phase
             await renderSPReportTableAndGraph(selectedPhase, spReportContentContainer);
@@ -152,20 +174,9 @@ function renderSPReportInCumulativeTable(coverageSummaryData, contentContainer) 
         }
     });
     
-    // Add listeners for SP selection and team filter changes if they exist
-    const spSelect = document.getElementById('sp_name');
-    if (spSelect) {
-        spSelect.addEventListener('change', updateDownloadDropdownText);
-    }
+    // Remove the automatic listeners for SP selection and team filter changes
+    // since we're now updating on hover instead
     
-    // Add listeners for team filter changes
-    const teamFilters = document.querySelectorAll('input[name="team-filter"]');
-    teamFilters.forEach(filter => {
-        filter.addEventListener('change', updateDownloadDropdownText);
-    });
-    
-    updateDownloadDropdownText();
-
     // Initial render of SP Report with default 'ES' phase
     renderSPReportTableAndGraph('ES', spReportContentContainer);
 }
