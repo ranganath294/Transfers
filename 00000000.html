@@ -1,133 +1,54 @@
-function renderSPReportInCumulativeTable(coverageSummaryData, contentContainer) {
-    // Create a single card structure for SP Report view
-    const spReportCardElement = document.createElement('div');
-    spReportCardElement.className = 'card mb-3';
+// Function to update the download SP report item
+function updateDownloadDropdownButton() {
+    isSpReportChecked = document.getElementById('spReport').checked
+    console.log("updateDownloadDropdownButton Called and spReport: ", isSpReportChecked)
+    if (isSpReportChecked) {
+        const downloadDropdown = document.getElementById('downloadDropdown');
 
-    // Create card body
-    const spReportCardBody = document.createElement('div');
-    spReportCardBody.className = 'card-body';
-    
-    // Create phase filter container for SP Report view with flexbox layout
-    const phaseFilterContainer = document.createElement('div');
-    phaseFilterContainer.className = 'mb-3 d-flex flex-column flex-sm-row justify-content-between align-items-start align-items-sm-center gap-2';
+        const exportCoverageReportLink = document.getElementById('exportCoverageReport');
+        // const exportCRVerificationLink = document.getElementById('exportCRVerification');
+        const exportScrumSheetLink = document.getElementById('exportScrumSheet');
+        const downloadSPReportLink = document.getElementById('downloadSPReport');
 
-    // Create button group for phase filters with 4px gap
-    const spReportPhaseButtonGroup = document.createElement('div');
-    spReportPhaseButtonGroup.className = 'btn-group flex-shrink-0';
-    spReportPhaseButtonGroup.setAttribute('role', 'group');
-    spReportPhaseButtonGroup.setAttribute('aria-label', 'Phase filters');
-    spReportPhaseButtonGroup.style.gap = '4px'; // Add 4px gap between buttons
-    
-    // Create phase filter buttons
-    const phases = ['ES', 'FC', 'CS'];
-    phases.forEach(phase => {
-        const button = document.createElement('button');
-        button.type = 'button';
-        button.className = `btn btn-outline-primary sp-report-phase-filter ${phase === 'ES' ? 'active' : ''}`;
-        button.setAttribute('data-phase', phase);
-        button.textContent = phase;
-        spReportPhaseButtonGroup.appendChild(button);
-    });
-    
-    // Create downloads dropdown container
-    const downloadsContainer = document.createElement('div');
-    downloadsContainer.className = 'dropdown downloads-dropdown flex-shrink-0';
-    
-    // Create downloads dropdown button
-    const downloadsButton = document.createElement('button');
-    downloadsButton.className = 'btn btn-primary dropdown-toggle';
-    downloadsButton.type = 'button';
-    downloadsButton.id = 'downloadDropdown';
-    downloadsButton.setAttribute('data-bs-toggle', 'dropdown');
-    downloadsButton.setAttribute('aria-expanded', 'false');
-    downloadsButton.textContent = 'Downloads';
-    
-    // Create dropdown menu
-    const dropdownMenu = document.createElement('ul');
-    dropdownMenu.className = 'dropdown-menu';
-    dropdownMenu.setAttribute('aria-labelledby', 'downloadDropdown');
-    
-    // Create dropdown items
-    const dropdownItems = [
-        { id: 'exportCoverageReport', text: 'Daily Coverage Report XL' },
-        { id: 'exportScrumSheet', text: 'Export Scrum Sheet to XL' },
-        { id: 'downloadSPReport', text: 'Download SP Report' }
-    ];
-    
-    dropdownItems.forEach(item => {
-        const listItem = document.createElement('li');
-        const link = document.createElement('a');
-        link.className = 'dropdown-item';
-        link.href = '#';
-        link.id = item.id;
-        link.textContent = item.text;
-        listItem.appendChild(link);
-        dropdownMenu.appendChild(listItem);
-    });
-    
-    // Append button and menu to dropdown container
-    downloadsContainer.appendChild(downloadsButton);
-    downloadsContainer.appendChild(dropdownMenu);
-    
-    // Create SP Report content container
-    const spReportContentContainer = document.createElement('div');
-    spReportContentContainer.id = 'spReportContentContainer';
-    spReportContentContainer.className = 'mt-3'; // Add margin top for spacing
-    
-    // Append elements to the phase filter container
-    phaseFilterContainer.appendChild(spReportPhaseButtonGroup);
-    phaseFilterContainer.appendChild(downloadsContainer);
-    
-    // Append elements to the card
-    spReportCardBody.appendChild(phaseFilterContainer);
-    spReportCardBody.appendChild(spReportContentContainer);
-    spReportCardElement.appendChild(spReportCardBody);
-    
-    // Append card to the main content container
-    contentContainer.appendChild(spReportCardElement);
-    
-    // Add event listeners for phase filter buttons
-    spReportPhaseButtonGroup.addEventListener('click', async (e) => {
-        if (e.target.classList.contains('sp-report-phase-filter')) {
-            // Remove active class from all buttons
-            spReportPhaseButtonGroup.querySelectorAll('.sp-report-phase-filter').forEach(btn => btn.classList.remove('active'));
-            // Add active class to the clicked button
-            e.target.classList.add('active');
-            // Get the selected phase
-            const selectedPhase = e.target.getAttribute('data-phase');
-            
-            // Clear the SP Report content container
-            spReportContentContainer.innerHTML = '';
-            
-            // Render the table and graph with the selected phase
-            await renderSPReportTableAndGraph(selectedPhase, spReportContentContainer);
-        }
-    });
+        const spSelect = document.getElementById('sp_name');
+        const selectedSp = spSelect.value;
+        const selectedTeam = document.querySelector('input[name="team-filter"]:checked').value;
+        const selectedPhaseButton = document.querySelector('.sp-report-phase-filter.active');
+        const selectedPhase = selectedPhaseButton ? selectedPhaseButton.getAttribute('data-phase') : 'ES';
 
-    // Add event listeners for download buttons
-    dropdownMenu.addEventListener('click', (e) => {
-        e.preventDefault();
-        const target = e.target;
-        
-        if (target.classList.contains('dropdown-item')) {
-            // Handle different download actions based on the clicked item's ID
-            switch (target.id) {
-                case 'exportCoverageReport':
-                    // Add your export coverage report logic here
-                    console.log('Export Coverage Report clicked');
-                    break;
-                case 'exportScrumSheet':
-                    // Add your export scrum sheet logic here
-                    console.log('Export Scrum Sheet clicked');
-                    break;
-                case 'downloadSPReport':
-                    // Add your download SP report logic here
-                    console.log('Download SP Report clicked');
-                    break;
-            }
-        }
-    });
+        downloadDropdown.style.display = 'block';
 
-    // Initial render of SP Report with default 'ES' phase
-    renderSPReportTableAndGraph('ES', spReportContentContainer);
+        exportCoverageReportLink.textContent = `${selectedSp} ${selectedTeam} ${selectedPhase} Daily Coverage Report`;
+        // exportCRVerificationLink.textContent = `${selectedSp} ${selectedTeam} ${selectedPhase} Report`;
+        exportScrumSheetLink.textContent = `${selectedSp} ${selectedTeam} ${selectedPhase} Daily Scrum CRs`;
+        downloadSPReportLink.textContent = `${selectedSp} ${selectedTeam} ${selectedPhase} Report PPT`;
+    } else {
+        downloadDropdown.style.display = 'none';
+    }
 }
+
+
+// Common download function
+document.getElementById('exportCoverageReport').addEventListener('click', function(e) {
+    e.preventDefault();
+    downloadReport('coverage_report');
+});
+
+/*
+document.getElementById('exportCRVerification').addEventListener('click', function(e) {
+    e.preventDefault();
+    downloadReport('cr_verification_data');
+});
+*/
+
+document.getElementById('exportScrumSheet').addEventListener('click', function(e) {
+    e.preventDefault();
+    downloadReport('scrum_sheet');
+});
+
+document.getElementById('downloadSPReport').addEventListener('click', function(e) {
+    e.preventDefault();
+    downloadReport('sp_report');
+});
+
+
