@@ -67,24 +67,25 @@
     background-color: #f9f9f9;
 }
 
-/* Enhanced Details Links Styling */
+/* Enhanced Details Links Styling - Compact Version */
 .details-container {
     display: flex;
     flex-direction: column;
-    gap: 12px;
+    gap: 8px;
     align-items: flex-start;
-    min-width: 200px;
+    width: fit-content; /* Changed from min-width to fit-content */
+    min-width: auto; /* Reset min-width */
 }
 
 .phase-selector {
-    width: 100%;
-    margin-bottom: 8px;
+    width: fit-content; /* Changed from 100% to fit-content */
+    margin-bottom: 6px;
 }
 
 .phase-dropdown {
     position: relative;
     display: inline-block;
-    width: 100%;
+    width: fit-content; /* Changed from 100% to fit-content */
 }
 
 .dropdown-button {
@@ -98,9 +99,11 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
-    width: 100%;
+    width: fit-content; /* Changed from 100% to fit-content */
+    min-width: 120px; /* Added minimum width for usability */
     transition: all 0.2s ease;
     min-height: 32px;
+    white-space: nowrap; /* Prevent text wrapping */
 }
 
 .dropdown-button:hover {
@@ -117,6 +120,7 @@
     font-size: 10px;
     color: #6c757d;
     transition: transform 0.2s ease;
+    margin-left: 8px; /* Add some space between text and arrow */
 }
 
 .dropdown-button.open .dropdown-arrow {
@@ -127,7 +131,8 @@
     position: absolute;
     top: 100%;
     left: 0;
-    right: 0;
+    min-width: 100%; /* Ensure dropdown is at least as wide as button */
+    width: max-content; /* Fit content but not narrower than button */
     background: white;
     border: 1px solid #dee2e6;
     border-radius: 6px;
@@ -149,6 +154,7 @@
     cursor: pointer;
     border-bottom: 1px solid #f1f3f4;
     transition: background-color 0.15s ease;
+    white-space: nowrap; /* Prevent text wrapping */
 }
 
 .dropdown-item:last-child {
@@ -167,23 +173,24 @@
 .details-links {
     display: flex;
     flex-direction: column;
-    gap: 8px;
+    gap: 6px;
     align-items: flex-start;
-    width: 100%;
+    width: fit-content; /* Changed from 100% to fit-content */
 }
 
 .details-links a {
     display: inline-block;
-    padding: 8px 16px;
+    padding: 6px 12px; /* Reduced padding */
     border-radius: 6px;
     text-decoration: none;
     font-weight: 500;
     font-size: 13px;
     transition: all 0.2s ease;
     text-align: center;
-    width: 100%;
+    width: fit-content; /* Changed from 100% to fit-content */
     white-space: nowrap;
     box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    min-width: auto; /* Reset min-width */
 }
 
 .excel-link {
@@ -212,17 +219,18 @@
 /* Responsive Design */
 @media (max-width: 768px) {
     .details-container {
-        min-width: 160px;
+        width: fit-content;
     }
     
     .details-links a {
-        padding: 6px 12px;
+        padding: 5px 10px;
         font-size: 12px;
     }
     
     .dropdown-button {
         padding: 4px 8px;
         font-size: 12px;
+        min-width: 100px;
     }
     
     .dropdown-item {
@@ -535,4 +543,3 @@
     
 </script>
 {% endblock %}
-there are buttons and dropdwn in coverage details column.Now they are occupying so much spce. I want those buttons to have as much space as teh length of text it has. same goes to dropdown. i dontwant them to occupy complete space
