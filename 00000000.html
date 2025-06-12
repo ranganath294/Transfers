@@ -33,6 +33,21 @@
         </div>
     </div>
 </div>
+
+<!-- Loading Modal -->
+<div class="modal fade" id="loadingModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-sm modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-body text-center">
+                <div class="spinner-border text-primary" role="status">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
+                <p class="mt-2 mb-0">Preparing download...</p>
+            </div>
+        </div>
+    </div>
+</div>
+
 <style>
 .container {
     padding: 2rem;
@@ -48,59 +63,24 @@
     border-collapse: collapse;
     width: 100%;
     margin: 20px 0;
-    border: 1px solid black; /* Solid black border for the table */
+    border: 1px solid black;
 }
 .coverage-table th,
 .coverage-table td {
-    border: 1px solid black; /* Solid black borders for table cells */
+    border: 1px solid black;
     padding: 8px;
     text-align: left;
-    font-size: 15px; /* Set font size to 15px */
-    color: black; /* Set text color to black */
+    font-size: 15px;
+    color: black;
 }
 .coverage-table th {
-    background-color: #328AA4; /* Set background color for headers */
+    background-color: #328AA4;
     font-weight: bold;
-    color: white; /* Set text color for headers to white */
+    color: white;
 }
 .coverage-table tbody tr:nth-child(even) {
     background-color: #f9f9f9;
 }
-
-/*
-.coverage-table {
-    border-collapse: collapse;
-    width: 100%;
-    margin: 20px 0;
-    border: 1px solid black; 
-    table-layout: auto; 
-}
-
-.coverage-table th,
-.coverage-table td {
-    border: 1px solid black; 
-    padding: 8px;
-    text-align: left;
-    font-size: 15px; 
-    color: black; 
-    width: 1%; 
-    white-space: nowrap; 
-    overflow: hidden; 
-    text-overflow: ellipsis; 
-}
-
-.coverage-table th {
-    background-color: #328AA4; 
-    font-weight: bold;
-    color: white; 
-    min-width: 100px; 
-}
-
-.coverage-table tbody tr:nth-child(even) {
-    background-color: #f9f9f9; 
-}
-*/
-
 
 /* Enhanced Details Links Styling - Compact Version */
 .details-container {
@@ -108,19 +88,19 @@
     flex-direction: column;
     gap: 8px;
     align-items: flex-start;
-    width: fit-content; /* Changed from min-width to fit-content */
-    min-width: auto; /* Reset min-width */
+    width: fit-content;
+    min-width: auto;
 }
 
 .phase-selector {
-    width: fit-content; /* Changed from 100% to fit-content */
+    width: fit-content;
     margin-bottom: 6px;
 }
 
 .phase-dropdown {
     position: relative;
     display: inline-block;
-    width: fit-content; /* Changed from 100% to fit-content */
+    width: fit-content;
 }
 
 .dropdown-button {
@@ -134,11 +114,11 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
-    width: fit-content; /* Changed from 100% to fit-content */
-    min-width: 120px; /* Added minimum width for usability */
+    width: fit-content;
+    min-width: 120px;
     transition: all 0.2s ease;
     min-height: 32px;
-    white-space: nowrap; /* Prevent text wrapping */
+    white-space: nowrap;
 }
 
 .dropdown-button:hover {
@@ -155,7 +135,7 @@
     font-size: 10px;
     color: #6c757d;
     transition: transform 0.2s ease;
-    margin-left: 8px; /* Add some space between text and arrow */
+    margin-left: 8px;
 }
 
 .dropdown-button.open .dropdown-arrow {
@@ -166,8 +146,8 @@
     position: absolute;
     top: 100%;
     left: 0;
-    min-width: 100%; /* Ensure dropdown is at least as wide as button */
-    width: max-content; /* Fit content but not narrower than button */
+    min-width: 100%;
+    width: max-content;
     background: white;
     border: 1px solid #dee2e6;
     border-radius: 6px;
@@ -189,7 +169,7 @@
     cursor: pointer;
     border-bottom: 1px solid #f1f3f4;
     transition: background-color 0.15s ease;
-    white-space: nowrap; /* Prevent text wrapping */
+    white-space: nowrap;
 }
 
 .dropdown-item:last-child {
@@ -210,22 +190,24 @@
     flex-direction: column;
     gap: 6px;
     align-items: flex-start;
-    width: fit-content; /* Changed from 100% to fit-content */
+    width: fit-content;
 }
 
-.details-links a {
+.details-links button {
     display: inline-block;
-    padding: 6px 12px; /* Reduced padding */
+    padding: 6px 12px;
     border-radius: 6px;
     text-decoration: none;
     font-weight: 500;
     font-size: 13px;
     transition: all 0.2s ease;
     text-align: center;
-    width: fit-content; /* Changed from 100% to fit-content */
+    width: fit-content;
     white-space: nowrap;
     box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-    min-width: auto; /* Reset min-width */
+    min-width: auto;
+    border: none;
+    cursor: pointer;
 }
 
 .excel-link {
@@ -238,17 +220,71 @@
     color: white !important;
 }
 
-.details-links a:hover {
+.details-links button:hover:not(:disabled) {
     transform: translateY(-2px);
     box-shadow: 0 4px 8px rgba(0,0,0,0.15);
 }
 
-.excel-link:hover {
+.excel-link:hover:not(:disabled) {
     background: linear-gradient(135deg, #2d7a50, #245d3e);
 }
 
-.ppt-link:hover {
+.ppt-link:hover:not(:disabled) {
     background: linear-gradient(135deg, #2d7a50, #245d3e);
+}
+
+.details-links button:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    transform: none;
+}
+
+/* Alert styles */
+.alert {
+    padding: 12px 16px;
+    margin-bottom: 16px;
+    border: 1px solid transparent;
+    border-radius: 6px;
+    font-size: 14px;
+}
+
+.alert-success {
+    color: #155724;
+    background-color: #d4edda;
+    border-color: #c3e6cb;
+}
+
+.alert-danger {
+    color: #721c24;
+    background-color: #f8d7da;
+    border-color: #f5c6cb;
+}
+
+.alert-warning {
+    color: #856404;
+    background-color: #fff3cd;
+    border-color: #ffeaa7;
+}
+
+.alert-dismissible {
+    position: relative;
+    padding-right: 48px;
+}
+
+.btn-close {
+    position: absolute;
+    top: 50%;
+    right: 16px;
+    transform: translateY(-50%);
+    background: none;
+    border: none;
+    font-size: 18px;
+    cursor: pointer;
+    opacity: 0.5;
+}
+
+.btn-close:hover {
+    opacity: 1;
 }
 
 /* Responsive Design */
@@ -257,7 +293,7 @@
         width: fit-content;
     }
     
-    .details-links a {
+    .details-links button {
         padding: 5px 10px;
         font-size: 12px;
     }
@@ -274,6 +310,7 @@
     }
 }
 </style>
+
 <script>
     document.addEventListener('DOMContentLoaded', function() {
         let currentData = {{ table_data|safe }};
@@ -299,6 +336,107 @@
         function formatPercentage(value) {
             return value ? value.toFixed(2) + '%' : '0.00%';
         }
+
+        // Show alert function
+        function showAlert(message, type = 'danger') {
+            const alertContainer = document.querySelector('.alert-container');
+            const alertId = 'alert-' + Date.now();
+            
+            const alertDiv = document.createElement('div');
+            alertDiv.id = alertId;
+            alertDiv.className = `alert alert-${type} alert-dismissible`;
+            alertDiv.innerHTML = `
+                ${message}
+                <button type="button" class="btn-close" onclick="closeAlert('${alertId}')">&times;</button>
+            `;
+            
+            alertContainer.appendChild(alertDiv);
+            
+            // Auto-remove after 5 seconds
+            setTimeout(() => {
+                closeAlert(alertId);
+            }, 5000);
+        }
+
+        // Close alert function
+        window.closeAlert = function(alertId) {
+            const alertElement = document.getElementById(alertId);
+            if (alertElement) {
+                alertElement.remove();
+            }
+        };
+
+        // Show/hide loading modal
+        function showLoading() {
+            const modal = new bootstrap.Modal(document.getElementById('loadingModal'));
+            modal.show();
+        }
+
+        function hideLoading() {
+            const modal = bootstrap.Modal.getInstance(document.getElementById('loadingModal'));
+            if (modal) {
+                modal.hide();
+            }
+        }
+
+        // Enhanced download function with error handling
+        async function downloadFile(url, filename, button) {
+            try {
+                // Disable button and show loading
+                button.disabled = true;
+                const originalText = button.textContent;
+                button.textContent = 'Downloading...';
+                showLoading();
+
+                const response = await fetch(url);
+                
+                // Check if response is JSON (error case)
+                const contentType = response.headers.get('content-type');
+                
+                if (contentType && contentType.includes('application/json')) {
+                    // Handle JSON error response
+                    const errorData = await response.json();
+                    hideLoading();
+                    
+                    if (errorData.error) {
+                        showAlert(errorData.error, 'warning');
+                    } else if (errorData.message) {
+                        showAlert(errorData.message, 'danger');
+                    } else {
+                        showAlert('File not available or an error occurred.', 'danger');
+                    }
+                } else if (response.ok) {
+                    // Handle successful file download
+                    const blob = await response.blob();
+                    const downloadUrl = window.URL.createObjectURL(blob);
+                    
+                    // Create temporary download link
+                    const a = document.createElement('a');
+                    a.href = downloadUrl;
+                    a.download = filename || 'download';
+                    document.body.appendChild(a);
+                    a.click();
+                    
+                    // Cleanup
+                    window.URL.revokeObjectURL(downloadUrl);
+                    document.body.removeChild(a);
+                    hideLoading();
+                    
+                    showAlert('File downloaded successfully!', 'success');
+                } else {
+                    hideLoading();
+                    showAlert(`Download failed: ${response.status} ${response.statusText}`, 'danger');
+                }
+            } catch (error) {
+                hideLoading();
+                console.error('Download error:', error);
+                showAlert('Network error occurred while downloading the file.', 'danger');
+            } finally {
+                // Re-enable button
+                button.disabled = false;
+                button.textContent = originalText;
+            }
+        }
     
         // Filter data based on selected team and phase
         function filterData(data, team, phase) {
@@ -317,11 +455,9 @@
         // Add click handlers for team filters
         document.querySelectorAll('.team-filter').forEach(button => {
             button.addEventListener('click', function() {
-                // Remove active class from all team buttons
                 document.querySelectorAll('.team-filter').forEach(btn => {
                     btn.classList.remove('active');
                 });
-                // Add active class to clicked button
                 this.classList.add('active');
                 
                 selectedTeam = this.getAttribute('data-team');
@@ -333,11 +469,9 @@
         // Add click handlers for phase filters
         document.querySelectorAll('.phase-filter').forEach(button => {
             button.addEventListener('click', function() {
-                // Remove active class from all phase buttons
                 document.querySelectorAll('.phase-filter').forEach(btn => {
                     btn.classList.remove('active');
                 });
-                // Add active class to clicked button
                 this.classList.add('active');
                 
                 selectedPhase = this.getAttribute('data-phase');
@@ -423,20 +557,23 @@
         // Update download links with selected phase
         function updateDownloadLinks(containerId, spName, teamName, selectedPhase) {
             const container = document.getElementById(containerId);
-            const excelLink = container.querySelector('.excel-link');
-            const pptLink = container.querySelector('.ppt-link');
+            const excelButton = container.querySelector('.excel-link');
+            const pptButton = container.querySelector('.ppt-link');
             
-            if (excelLink && pptLink) {
-                // Update URLs with phase parameter
+            if (excelButton && pptButton) {
+                // Update button text
+                excelButton.textContent = `${selectedPhase} Scrum Sheet`;
+                pptButton.textContent = `${selectedPhase} Coverage Report`;
+                
+                // Update data attributes for URLs
                 const baseExcelUrl = `/download_file/?sp_name=${encodeURIComponent(spName)}&team_name=${encodeURIComponent(teamName)}&reportType=scrum_sheet&tab=active_sps`;
                 const basePptUrl = `/download_file/?sp_name=${encodeURIComponent(spName)}&team_name=${encodeURIComponent(teamName)}&reportType=coverage_report&tab=active_sps`;
                 
-                excelLink.href = `${baseExcelUrl}&phase_name=${encodeURIComponent(selectedPhase)}`;
-                pptLink.href = `${basePptUrl}&phase_name=${encodeURIComponent(selectedPhase)}`;
+                excelButton.setAttribute('data-url', `${baseExcelUrl}&phase_name=${encodeURIComponent(selectedPhase)}`);
+                pptButton.setAttribute('data-url', `${basePptUrl}&phase_name=${encodeURIComponent(selectedPhase)}`);
                 
-                // Update button text
-                excelLink.textContent = `${selectedPhase} Scrum Sheet`;
-                pptLink.textContent = `${selectedPhase} Coverage Report`;
+                excelButton.setAttribute('data-filename', `${spName}_${teamName}_${selectedPhase}_scrum_sheet.xlsx`);
+                pptButton.setAttribute('data-filename', `${spName}_${teamName}_${selectedPhase}_coverage_report.pptx`);
             }
         }
     
@@ -513,19 +650,35 @@
                             const linksDiv = document.createElement('div');
                             linksDiv.className = 'details-links';
                             
-                            // Create Excel link
-                            const excelLink = document.createElement('a');
-                            excelLink.href = `/download_file/?sp_name=${encodeURIComponent(sp.sp_name)}&team_name=${encodeURIComponent(team.team_name)}&reportType=scrum_sheet&tab=active_sps&phase_name=${encodeURIComponent(phase.phase)}`;
-                            excelLink.className = 'excel-link';
-                            excelLink.textContent = 'Scrum Sheet';
-                            linksDiv.appendChild(excelLink);
+                            // Create Excel button
+                            const excelButton = document.createElement('button');
+                            excelButton.className = 'excel-link';
+                            excelButton.textContent = 'Scrum Sheet';
+                            excelButton.setAttribute('data-url', `/download_file/?sp_name=${encodeURIComponent(sp.sp_name)}&team_name=${encodeURIComponent(team.team_name)}&reportType=scrum_sheet&tab=active_sps&phase_name=${encodeURIComponent(phase.phase)}`);
+                            excelButton.setAttribute('data-filename', `${sp.sp_name}_${team.team_name}_${phase.phase}_scrum_sheet.xlsx`);
                             
-                            // Create PPT link
-                            const pptLink = document.createElement('a');
-                            pptLink.href = `/download_file/?sp_name=${encodeURIComponent(sp.sp_name)}&team_name=${encodeURIComponent(team.team_name)}&reportType=coverage_report&tab=active_sps&phase_name=${encodeURIComponent(phase.phase)}`;
-                            pptLink.className = 'ppt-link';
-                            pptLink.textContent = 'Coverage Report';
-                            linksDiv.appendChild(pptLink);
+                            excelButton.addEventListener('click', function() {
+                                const url = this.getAttribute('data-url');
+                                const filename = this.getAttribute('data-filename');
+                                downloadFile(url, filename, this);
+                            });
+                            
+                            linksDiv.appendChild(excelButton);
+                            
+                            // Create PPT button
+                            const pptButton = document.createElement('button');
+                            pptButton.className = 'ppt-link';
+                            pptButton.textContent = 'Coverage Report';
+                            pptButton.setAttribute('data-url', `/download_file/?sp_name=${encodeURIComponent(sp.sp_name)}&team_name=${encodeURIComponent(team.team_name)}&reportType=coverage_report&tab=active_sps&phase_name=${encodeURIComponent(phase.phase)}`);
+                            pptButton.setAttribute('data-filename', `${sp.sp_name}_${team.team_name}_${phase.phase}_coverage_report.pptx`);
+                            
+                            pptButton.addEventListener('click', function() {
+                                const url = this.getAttribute('data-url');
+                                const filename = this.getAttribute('data-filename');
+                                downloadFile(url, filename, this);
+                            });
+                            
+                            linksDiv.appendChild(pptButton);
                             
                             detailsContainer.appendChild(linksDiv);
                             tdDetails.appendChild(detailsContainer);
