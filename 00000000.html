@@ -67,6 +67,41 @@
     background-color: #f9f9f9;
 }
 
+/*
+.coverage-table {
+    border-collapse: collapse;
+    width: 100%;
+    margin: 20px 0;
+    border: 1px solid black; 
+    table-layout: auto; 
+}
+
+.coverage-table th,
+.coverage-table td {
+    border: 1px solid black; 
+    padding: 8px;
+    text-align: left;
+    font-size: 15px; 
+    color: black; 
+    width: 1%; 
+    white-space: nowrap; 
+    overflow: hidden; 
+    text-overflow: ellipsis; 
+}
+
+.coverage-table th {
+    background-color: #328AA4; 
+    font-weight: bold;
+    color: white; 
+    min-width: 100px; 
+}
+
+.coverage-table tbody tr:nth-child(even) {
+    background-color: #f9f9f9; 
+}
+*/
+
+
 /* Enhanced Details Links Styling - Compact Version */
 .details-container {
     display: flex;
@@ -150,7 +185,7 @@
 .dropdown-item {
     padding: 8px 12px;
     font-size: 13px;
-    color: #495057;
+    color: #202326;
     cursor: pointer;
     border-bottom: 1px solid #f1f3f4;
     transition: background-color 0.15s ease;
@@ -199,7 +234,7 @@
 }
 
 .ppt-link {
-    background: linear-gradient(135deg, #d5320c, #b8280a);
+    background: linear-gradient(135deg, #3b9f68, #2d7a50);
     color: white !important;
 }
 
@@ -213,7 +248,7 @@
 }
 
 .ppt-link:hover {
-    background: linear-gradient(135deg, #b8280a, #9e2208);
+    background: linear-gradient(135deg, #2d7a50, #245d3e);
 }
 
 /* Responsive Design */
@@ -393,8 +428,8 @@
             
             if (excelLink && pptLink) {
                 // Update URLs with phase parameter
-                const baseExcelUrl = `/download_file_new/?sp_name=${encodeURIComponent(spName)}&team_name=${encodeURIComponent(teamName)}&reportType=scrum_sheet&tab=active_sps`;
-                const basePptUrl = `/download_file_new/?sp_name=${encodeURIComponent(spName)}&team_name=${encodeURIComponent(teamName)}&reportType=coverage_report&tab=active_sps`;
+                const baseExcelUrl = `/download_file/?sp_name=${encodeURIComponent(spName)}&team_name=${encodeURIComponent(teamName)}&reportType=scrum_sheet&tab=active_sps`;
+                const basePptUrl = `/download_file/?sp_name=${encodeURIComponent(spName)}&team_name=${encodeURIComponent(teamName)}&reportType=coverage_report&tab=active_sps`;
                 
                 excelLink.href = `${baseExcelUrl}&phase_name=${encodeURIComponent(selectedPhase)}`;
                 pptLink.href = `${basePptUrl}&phase_name=${encodeURIComponent(selectedPhase)}`;
@@ -480,14 +515,14 @@
                             
                             // Create Excel link
                             const excelLink = document.createElement('a');
-                            excelLink.href = `/download_file_new/?sp_name=${encodeURIComponent(sp.sp_name)}&team_name=${encodeURIComponent(team.team_name)}&reportType=scrum_sheet&tab=active_sps`;
+                            excelLink.href = `/download_file/?sp_name=${encodeURIComponent(sp.sp_name)}&team_name=${encodeURIComponent(team.team_name)}&reportType=scrum_sheet&tab=active_sps&phase_name=${encodeURIComponent(phase.phase)}`;
                             excelLink.className = 'excel-link';
                             excelLink.textContent = 'Scrum Sheet';
                             linksDiv.appendChild(excelLink);
                             
                             // Create PPT link
                             const pptLink = document.createElement('a');
-                            pptLink.href = `/download_file_new/?sp_name=${encodeURIComponent(sp.sp_name)}&team_name=${encodeURIComponent(team.team_name)}&reportType=sp_report&tab=active_sps`;
+                            pptLink.href = `/download_file/?sp_name=${encodeURIComponent(sp.sp_name)}&team_name=${encodeURIComponent(team.team_name)}&reportType=coverage_report&tab=active_sps&phase_name=${encodeURIComponent(phase.phase)}`;
                             pptLink.className = 'ppt-link';
                             pptLink.textContent = 'Coverage Report';
                             linksDiv.appendChild(pptLink);
